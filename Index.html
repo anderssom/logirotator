@@ -105,21 +105,22 @@
         </div>
     </div>
 
-    <!-- Modal Adicionar Colaborador -->
+    <!-- Modal Adicionar / Editar Colaborador (Projeto) -->
     <div id="modal-add" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">
+                <h3 id="modal-titulo" class="text-lg font-bold text-amber-400 flex items-center gap-2">
                     <i data-lucide="user-plus" class="w-5 h-5"></i> Adicionar Novo Auxiliar
                 </h3>
                 <button onclick="fecharModalAdd()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="space-y-4">
+                <input type="hidden" id="edit-id" value="">
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Nome Completo</label>
                     <input type="text" id="novo-nome" placeholder="Ex: Carlos Silva" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
                 </div>
-                <div>
+                <div id="div-funcao-inicial">
                     <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Função Inicial (Dia 1)</label>
                     <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
                         <!-- Preenchido via JS -->
@@ -127,7 +128,7 @@
                 </div>
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
                     <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2 rounded-xl text-sm transition">Cancelar</button>
-                    <button onclick="salvarNovoColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2 rounded-xl text-sm transition">Salvar Auxiliar</button>
+                    <button onclick="salvarColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2 rounded-xl text-sm transition">Salvar</button>
                 </div>
             </div>
         </div>
@@ -187,6 +188,7 @@
             {
                 id: 1,
                 nome: "Carlos Silva",
+                dataCriacao: "01/09/2026",
                 historicoDias: [
                     "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro",
                     "Sort 1", "Sort 1", "Etiquetagem", "Etiquetagem", "Bipagem Recebimento", "Bipagem Recebimento", "Insumos"
@@ -195,21 +197,12 @@
             {
                 id: 2,
                 nome: "Ana Souza",
+                dataCriacao: "02/09/2026",
                 historicoDias: [
                     "Bipagem Recebimento", "Bipagem Recebimento", "Sort 1", "Sort 1", "Insumos", "Insumos", "Etiquetagem", "Etiquetagem"
                 ]
-            },
-            {
-                id: 3,
-                nome: "Marcos Lima",
-                historicoDias: [
-                    "Bipagem de Volumosos XPT", "Bipagem de Volumosos XPT", "Bipagem de Volumosos XPT", "Bipagem de Volumosos XPT", 
-                    "Bipagem de Volumosos XPT", "Bipagem de Volumosos XPT", "Bipagem de Volumosos XPT", "Bipagem de Volumosos XPT"
-                ]
             }
         ];
-
-        let idColabEditando = null;
 
         function init() {
             popularSelectFuncoes();
@@ -220,6 +213,14 @@
         function popularSelectFuncoes() {
             const select = document.getElementById('novo-funcao');
             select.innerHTML = FUNCOES_LOGISTICA.map(f => `<option value="${f}">${f}</option>`).join('');
+        }
+
+        function getDataAtualFormatada() {
+            const hoje = new Date();
+            const dia = String(hoje.getDate()).padStart(2, '0');
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            const ano = hoje.getFullYear();
+            return `${dia}/${mes}/${ano}`;
         }
 
         function verificarDiasConsecutivos(historico) {
@@ -275,9 +276,10 @@
                             <div>
                                 <div class="flex items-center gap-3 flex-wrap">
                                     <h3 class="text-lg font-bold text-slate-100">${c.nome}</h3>
+                                    <span class="text-[11px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">Criado em: ${c.dataCriacao || '01/09/2026'}</span>
                                     ${emAlerta ? `
                                         <span class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-3 py-1 rounded-full uppercase tracking-wider font-extrabold flex items-center gap-1.5 animate-pulse">
-                                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Alerta: ${status.dias} dias seguidos na função!
+                                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Alerta: ${status.dias} dias seguidos!
                                         </span>
                                     ` : ''}
                                 </div>
@@ -288,7 +290,10 @@
                                     <span class="bg-slate-800 px-2.5 py-0.5 rounded-md text-slate-300 font-mono">${status.dias} ${status.dias === 1 ? 'dia consecutivo' : 'dias consecutivos'}</span>
                                 </p>
                             </div>
-                            <div class="flex items-center gap-2 self-end lg:self-center">
+                            <div class="flex items-center gap-2 self-end lg:self-center flex-wrap">
+                                <button onclick="abrirModalEditar(${c.id})" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-500/20 flex items-center gap-1.5 transition">
+                                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Alterar
+                                </button>
                                 <button onclick="abrirHistorico(${c.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-700 flex items-center gap-1.5 transition">
                                     <i data-lucide="calendar" class="w-3.5 h-3.5 text-amber-400"></i> Editar Dias
                                 </button>
@@ -325,35 +330,64 @@
         }
 
         function abrirModalAdd() {
+            document.getElementById('edit-id').value = '';
             document.getElementById('novo-nome').value = '';
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-5 h-5"></i> Adicionar Novo Auxiliar`;
+            document.getElementById('div-funcao-inicial').style.display = 'block';
             document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function abrirModalEditar(id) {
+            const colab = colaboradores.find(c => c.id === id);
+            if (!colab) return;
+            
+            document.getElementById('edit-id').value = colab.id;
+            document.getElementById('novo-nome').value = colab.nome;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-5 h-5"></i> Alterar Dados do Auxiliar`;
+            // Esconde a seleção de função inicial na edição para não sobrescrever o histórico por engano
+            document.getElementById('div-funcao-inicial').style.display = 'none';
+            
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
         }
 
         function fecharModalAdd() {
             document.getElementById('modal-add').classList.add('hidden');
         }
 
-        function salvarNovoColaborador() {
+        function salvarColaborador() {
+            const idEdit = document.getElementById('edit-id').value;
             const nome = document.getElementById('novo-nome').value.trim();
-            const funcao = document.getElementById('novo-funcao').value;
 
             if (!nome) {
                 alert('Por favor, informe o nome do auxiliar.');
                 return;
             }
 
-            colaboradores.push({
-                id: Date.now(),
-                nome: nome,
-                historicoDias: [funcao]
-            });
+            if (idEdit) {
+                // Modo Edição / Alteração
+                const colab = colaboradores.find(c => c.id == idEdit);
+                if (colab) {
+                    colab.nome = nome;
+                }
+            } else {
+                // Modo Novo Cadastro (Criação automática da data atual)
+                const funcao = document.getElementById('novo-funcao').value;
+                colaboradores.push({
+                    id: Date.now(),
+                    nome: nome,
+                    dataCriacao: getDataAtualFormatada(),
+                    historicoDias: [funcao]
+                });
+            }
 
             fecharModalAdd();
             renderizar();
         }
 
         function removerColaborador(id) {
-            if (confirm('Deseja realmente remover este auxiliar?')) {
+            if (confirm('Deseja realmente excluir este auxiliar do sistema?')) {
                 colaboradores = colaboradores.filter(c => c.id !== id);
                 renderizar();
             }
@@ -371,7 +405,6 @@
         }
 
         function abrirHistorico(id) {
-            idColabEditando = id;
             const colab = colaboradores.find(c => c.id === id);
             document.getElementById('titulo-modal-hist').innerText = `Editar Dias: ${colab.nome}`;
             
@@ -398,7 +431,6 @@
 
         function fecharModalHistorico() {
             document.getElementById('modal-historico').classList.add('hidden');
-            idColabEditando = null;
         }
 
         function abrirModalMatriz() {
@@ -441,5 +473,3 @@
     </script>
 </body>
 </html>
-
-
