@@ -92,6 +92,7 @@
             </div>
             <div class="space-y-3">
                 <input type="hidden" id="edit-id" value="">
+                <input type="hidden" id="input-setor-alvo" value="">
                 
                 <!-- Modo Adicionar (Select da Lista Teste) -->
                 <div id="div-select-nome">
@@ -103,12 +104,6 @@
                 <div id="div-input-nome-edicao" class="hidden">
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome do Colaborador</label>
                     <input type="text" id="input-nome-edicao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
-                </div>
-
-                <!-- Função Inicial (Apenas visível ao adicionar) -->
-                <div id="div-funcao-inicial">
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função Inicial (Dia 1)</label>
-                    <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
@@ -212,29 +207,9 @@
 
         function init() {
             document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
-            popularSelectFuncoesPorSetor();
             popularSelectNomesTeste();
             renderizar();
             lucide.createIcons();
-        }
-
-        function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
-            const select = document.getElementById('novo-funcao');
-            select.innerHTML = "";
-            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
-                let optgroup = document.createElement('optgroup');
-                optgroup.label = `📍 Setor: ${setor}`;
-                funcoes.forEach(f => {
-                    let option = document.createElement('option');
-                    option.value = f;
-                    option.textContent = f;
-                    if (f === funcaoSelecionadaDefault) {
-                        option.selected = true;
-                    }
-                    optgroup.appendChild(option);
-                });
-                select.appendChild(optgroup);
-            }
         }
 
         function popularSelectNomesTeste() {
@@ -376,25 +351,21 @@
 
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
+            document.getElementById('input-setor-alvo').value = SETORES_E_FUNCOES["Recebimento"][0]; // Padrão
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
             document.getElementById('div-select-nome').classList.remove('hidden');
             document.getElementById('div-input-nome-edicao').classList.add('hidden');
-            document.getElementById('div-funcao-inicial').style.display = 'block';
-            popularSelectFuncoesPorSetor();
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
 
         function abrirModalAddPorSetor(nomeSetor) {
             document.getElementById('edit-id').value = '';
+            // Define automaticamente a primeira função do setor selecionado como função inicial do dia 1
+            document.getElementById('input-setor-alvo').value = SETORES_E_FUNCOES[nomeSetor][0];
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar em ${nomeSetor}`;
             document.getElementById('div-select-nome').classList.remove('hidden');
             document.getElementById('div-input-nome-edicao').classList.add('hidden');
-            document.getElementById('div-funcao-inicial').style.display = 'block';
-            
-            const primeiraFuncaoDoSetor = SETORES_E_FUNCOES[nomeSetor][0];
-            popularSelectFuncoesPorSetor(primeiraFuncaoDoSetor);
-
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -407,7 +378,6 @@
             document.getElementById('div-select-nome').classList.add('hidden');
             document.getElementById('div-input-nome-edicao').classList.remove('hidden');
             document.getElementById('input-nome-edicao').value = colab.nome;
-            document.getElementById('div-funcao-inicial').style.display = 'none'; // Esconde a função para não alterar o histórico
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -418,7 +388,6 @@
             const idEdit = document.getElementById('edit-id').value;
 
             if (idEdit) {
-                // Modo Edição: Altera apenas o nome mantendo intacto o histórico e funções
                 const novoNome = document.getElementById('input-nome-edicao').value.trim();
                 if (!novoNome) {
                     alert('Por favor, informe o nome.');
@@ -431,9 +400,8 @@
                 fecharModalAdd();
                 renderizar();
             } else {
-                // Modo Adicionar Novo
                 const nome = document.getElementById('select-nome-teste').value;
-                const funcao = document.getElementById('novo-funcao').value;
+                const funcaoInicial = document.getElementById('input-setor-alvo').value || FUNCOES_LOGISTICA[0];
 
                 if (colaboradores.some(c => c.nome === nome)) {
                     alert(`⚠️ O colaborador "${nome}" já está cadastrado.`);
@@ -444,7 +412,7 @@
                     id: Date.now(),
                     nome: nome,
                     dataCriacao: getDataAtualFormatada(),
-                    historicoDias: [funcao]
+                    historicoDias: [funcaoInicial]
                 });
                 fecharModalAdd();
                 renderizar();
