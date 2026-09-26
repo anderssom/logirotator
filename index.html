@@ -92,9 +92,13 @@
             </div>
             <div class="space-y-3">
                 <input type="hidden" id="edit-id" value="">
-                <div>
+                <div id="div-input-nome">
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Completo</label>
                     <input type="text" id="novo-nome" placeholder="Ex: Carlos Silva" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                </div>
+                <div id="div-select-nome" class="hidden">
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Selecionar da Lista Teste (70 colaboradores)</label>
+                    <select id="select-nome-teste" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
                 <div id="div-funcao-inicial">
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função Inicial (Dia 1)</label>
@@ -195,6 +199,17 @@
             FUNCOES_LOGISTICA.push(...lista);
         });
 
+        // Lista com 70 nomes de teste para simulação
+        const LISTA_TESTE_70_NOMES = [
+            "Alice Souza", "Bruno Lima", "Carlos Silva", "Daniela Rocha", "Eduardo Santos", "Fernanda Costa", "Gabriel Alves", "Helena Martins", "Igor Ribeiro", "Juliana Mendes",
+            "Kleber Pereira", "Larissa Farias", "Marcos Vinicius", "Natalia Cardoso", "Otavio Medeiros", "Patricia Ramos", "Quintino Dias", "Rafaela Araujo", "Samuel Moreira", "Tatiane Barbosa",
+            "Ubiratan Cruz", "Vanessa Lima", "Wagner Nunes", "Ximena Torres", "Yago Pires", "Zuleica Freitas", "Alexandre Magno", "Bianca Oliveira", "Caio Vinicius", "Debora Duarte",
+            "Erickson Silva", "Flavia Guedes", "Gilberto Gil", "Humberto Junior", "Isabela Bicalho", "Jonas Brothers", "Karina Bacchi", "Leandro Hassum", "Mariana Rios", "Nelson Rodrigues",
+            "Osvaldo Cruz", "Priscilla Alcantara", "Queila Miranda", "Renato Russo", "Simone Mendes", "Ticiane Pinheiro", "Uelinton Souza", "Viviane Araujo", "Wesley Safadao", "Xuxa Meneghel",
+            "Yuri Alberto", "Zeca Pagodinho", "Amanda Schunk", "Bernardo Veloso", "Camila Pitanga", "Diego Hypolito", "Eliana Michaelichen", "Fagner Conserva", "Gisele Bundchen", "Hugo Gloss",
+            "Iza Cantora", "Jojo Todynho", "Kaka Ricardinho", "Lucas Lucco", "Marcelo D2", "Neymar Junior", "Paolla Oliveira", "Richarlison Pombo", "Sabrina Sato", "Thiago Silva"
+        ];
+
         const dataAtualSistema = new Date();
         const anoAtual = dataAtualSistema.getFullYear();
         const mesAtualIndex = dataAtualSistema.getMonth();
@@ -212,21 +227,22 @@
         const nomeMesAtual = nomesMeses[mesAtualIndex];
         const SENHA_ADM = "admin123";
 
-        let colaboradores = [
-            {
-                id: 1,
-                nome: "Carlos Silva",
+        // Inicializa a lista de colaboradores com os 70 nomes distribuídos aleatoriamente pelos 11 setores
+        let colaboradores = [];
+        LISTA_TESTE_70_NOMES.forEach((nome, index) => {
+            const funcAleatoria = FUNCOES_LOGISTICA[index % FUNCOES_LOGISTICA.length];
+            colaboradores.push({
+                id: 1000 + index,
+                nome: nome,
                 dataCriacao: "01/09/2026",
-                historicoDias: [
-                    "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro",
-                    "Sorting 1 Fly LM", "Sorting 1 Fly LM", "Etequitador", "Etequitador", "Bipador Recebimento"
-                ]
-            }
-        ];
+                historicoDias: [funcAleatoria]
+            });
+        });
 
         function init() {
             document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             popularSelectFuncoesPorSetor();
+            popularSelectNomesTeste();
             renderizar();
             lucide.createIcons();
         }
@@ -248,6 +264,11 @@
                 });
                 select.appendChild(optgroup);
             }
+        }
+
+        function popularSelectNomesTeste() {
+            const select = document.getElementById('select-nome-teste');
+            select.innerHTML = LISTA_TESTE_70_NOMES.map(nome => `<option value="${nome}">${nome}</option>`).join('');
         }
 
         function getDataAtualFormatada() {
@@ -384,8 +405,9 @@
 
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
-            document.getElementById('novo-nome').value = '';
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
+            document.getElementById('div-input-nome').classList.add('hidden');
+            document.getElementById('div-select-nome').classList.remove('hidden');
             document.getElementById('div-funcao-inicial').style.display = 'block';
             popularSelectFuncoesPorSetor();
             document.getElementById('modal-add').classList.remove('hidden');
@@ -394,11 +416,11 @@
 
         function abrirModalAddPorSetor(nomeSetor) {
             document.getElementById('edit-id').value = '';
-            document.getElementById('novo-nome').value = '';
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar em ${nomeSetor}`;
+            document.getElementById('div-input-nome').classList.add('hidden');
+            document.getElementById('div-select-nome').classList.remove('hidden');
             document.getElementById('div-funcao-inicial').style.display = 'block';
             
-            // Seleciona por padrão a primeira função deste setor
             const primeiraFuncaoDoSetor = SETORES_E_FUNCOES[nomeSetor][0];
             popularSelectFuncoesPorSetor(primeiraFuncaoDoSetor);
 
@@ -410,8 +432,9 @@
             const colab = colaboradores.find(c => c.id === id);
             if (!colab) return;
             document.getElementById('edit-id').value = colab.id;
-            document.getElementById('novo-nome').value = colab.nome;
-            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Dados`;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Dados (${colab.nome})`;
+            document.getElementById('div-input-nome').classList.add('hidden');
+            document.getElementById('div-select-nome').classList.add('hidden');
             document.getElementById('div-funcao-inicial').style.display = 'none';
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
@@ -421,23 +444,30 @@
 
         function salvarColaborador() {
             const idEdit = document.getElementById('edit-id').value;
-            const nome = document.getElementById('novo-nome').value.trim();
-            if (!nome) { alert('Por favor, informe o nome do auxiliar.'); return; }
 
             if (idEdit) {
-                const colab = colaboradores.find(c => c.id == idEdit);
-                if (colab) colab.nome = nome;
+                // Modo edição (apenas renomear ou ajustar se necessário)
+                fecharModalAdd();
+                renderizar();
             } else {
+                const nome = document.getElementById('select-nome-teste').value;
                 const funcao = document.getElementById('novo-funcao').value;
+
+                // Verifica se já existe
+                if (colaboradores.some(c => c.nome === nome)) {
+                    alert(`⚠️ O colaborador "${nome}" já está cadastrado.`);
+                    return;
+                }
+
                 colaboradores.push({
                     id: Date.now(),
                     nome: nome,
                     dataCriacao: getDataAtualFormatada(),
                     historicoDias: [funcao]
                 });
+                fecharModalAdd();
+                renderizar();
             }
-            fecharModalAdd();
-            renderizar();
         }
 
         function removerColaborador(id) {
@@ -517,8 +547,6 @@
             document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setores: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             const containerTabelas = document.getElementById('container-tabelas-setores-matriz');
             containerTabelas.innerHTML = "";
-
-            let primeiroSetorComTabela = null;
 
             for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
                 const colabsDoSetor = colaboradores.filter(c => {
