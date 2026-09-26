@@ -108,7 +108,7 @@
         </div>
     </div>
 
-    <!-- Modal Grade/Matriz Mensal Dividida por Setor (Mesmo formato da tela inicial) -->
+    <!-- Modal Grade/Matriz Mensal Dividida por Setor -->
     <div id="modal-matriz" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-6xl w-full h-[90vh] flex flex-col p-4 sm:p-6 shadow-2xl">
             <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -120,7 +120,6 @@
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            <!-- Container onde as tabelas separadas por setor serão geradas -->
             <div id="container-tabelas-setores-matriz" class="flex-grow overflow-auto my-3 space-y-6 pr-2"></div>
             <div class="flex justify-end pt-2 border-t border-slate-800">
                 <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
@@ -232,7 +231,7 @@
             lucide.createIcons();
         }
 
-        function popularSelectFuncoesPorSetor() {
+        function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
             const select = document.getElementById('novo-funcao');
             select.innerHTML = "";
             for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
@@ -242,6 +241,9 @@
                     let option = document.createElement('option');
                     option.value = f;
                     option.textContent = f;
+                    if (f === funcaoSelecionadaDefault) {
+                        option.selected = true;
+                    }
                     optgroup.appendChild(option);
                 });
                 select.appendChild(optgroup);
@@ -310,11 +312,17 @@
                 blocoSetor.className = "bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl";
                 
                 let cabecalhoSetor = `
-                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2">
                         <h2 class="text-sm sm:text-base font-bold text-amber-400 flex items-center gap-2">
                             <i class="fa-solid fa-folder-open text-amber-500"></i> ${setor}
                         </h2>
-                        <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
+                            <button onclick="abrirModalAddPorSetor('${setor}')" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-amber-500/30 flex items-center gap-1.5 transition active:scale-95" title="Adicionar Auxiliar neste Setor">
+                                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                                <span class="hidden sm:inline">Adicionar</span>
+                            </button>
+                        </div>
                     </div>
                 `;
 
@@ -379,6 +387,21 @@
             document.getElementById('novo-nome').value = '';
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
             document.getElementById('div-funcao-inicial').style.display = 'block';
+            popularSelectFuncoesPorSetor();
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function abrirModalAddPorSetor(nomeSetor) {
+            document.getElementById('edit-id').value = '';
+            document.getElementById('novo-nome').value = '';
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar em ${nomeSetor}`;
+            document.getElementById('div-funcao-inicial').style.display = 'block';
+            
+            // Seleciona por padrão a primeira função deste setor
+            const primeiraFuncaoDoSetor = SETORES_E_FUNCOES[nomeSetor][0];
+            popularSelectFuncoesPorSetor(primeiraFuncaoDoSetor);
+
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -526,7 +549,6 @@
 
                 let tabelaHtml = `<table class="w-full text-left border-collapse text-xs">`;
                 
-                // Cabeçalho da Tabela dos Dias
                 let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2 font-bold sticky left-0 bg-slate-900 z-40 min-w-[130px]">Auxiliar</th>`;
                 for (let d = 1; d <= totalDiasDoMes; d++) {
                     const eHoje = d === diaHoje;
@@ -559,7 +581,6 @@
                         let estiloCelulaSelect = 'bg-slate-950 border-slate-800 text-slate-300';
                         if (eHoje) {
                             estiloCelulaSelect = 'bg-amber-950/40 border-amber-500 text-amber-200 font-bold ring-2 ring-amber-500/60';
-                            if (!primeiroSetorComTabela) primeiroSetorComTabela = d; // Marca a coluna de hoje para scroll automático
                         } else if (ePassado) {
                             estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
                         }
@@ -589,7 +610,6 @@
             document.getElementById('modal-matriz').classList.remove('hidden');
             lucide.createIcons();
 
-            // Sincroniza a rolagem horizontal de todas as tabelas de setores para o dia de hoje
             setTimeout(() => {
                 const wrappers = containerTabelas.querySelectorAll('.overflow-x-auto');
                 wrappers.forEach(w => {
