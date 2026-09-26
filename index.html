@@ -113,19 +113,23 @@
         </div>
     </div>
 
-    <!-- Modal Grade/Matriz Mensal Dividida por Setor -->
+    <!-- Modal Matriz Mensal Única -->
     <div id="modal-matriz" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-6xl w-full h-[90vh] flex flex-col p-4 sm:p-6 shadow-2xl">
             <div class="flex justify-between items-center pb-3 border-b border-slate-800">
                 <div>
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
-                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setores
+                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa
                     </h3>
-                    <p class="text-[11px] text-slate-400">Cada setor possui a sua tabela independente. Dia atual em destaque fixo (⭐).</p>
+                    <p class="text-[11px] text-slate-400">Todos os colaboradores e dias do mês em uma única tabela. Dia atual em destaque fixo (⭐).</p>
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            <div id="container-tabelas-setores-matriz" class="flex-grow overflow-auto my-3 space-y-6 pr-2"></div>
+            
+            <div class="flex-grow overflow-auto my-3 relative rounded-lg border border-slate-800">
+                <table id="tabela-matriz-unica" class="w-full text-left border-collapse text-xs"></table>
+            </div>
+
             <div class="flex justify-end pt-2 border-t border-slate-800">
                 <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
             </div>
@@ -393,10 +397,7 @@
             document.getElementById('edit-id').value = colab.id;
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar e Função`;
             
-            // Seleciona o nome atual do colaborador na lista teste
             popularSelectNomesTeste(colab.nome);
-            
-            // Seleciona a função atual (do dia de hoje ou última registrada)
             const funcaoAtual = colab.historicoDias[diaHoje - 1] || colab.historicoDias[colab.historicoDias.length - 1];
             popularSelectFuncoesPorSetor(funcaoAtual);
 
@@ -412,7 +413,6 @@
             const funcaoSelecionada = document.getElementById('novo-funcao').value;
 
             if (idEdit) {
-                // Modo Edição: Atualiza o nome e atualiza a função do dia de hoje
                 const colab = colaboradores.find(c => c.id == idEdit);
                 if (colab) {
                     colab.nome = nomeSelecionado;
@@ -422,7 +422,6 @@
                 fecharModalAdd();
                 renderizar();
             } else {
-                // Modo Adicionar Novo
                 if (colaboradores.some(c => c.nome === nomeSelecionado)) {
                     alert(`⚠️ O colaborador "${nomeSelecionado}" já está cadastrado.`);
                     return;
@@ -517,108 +516,72 @@
         function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         function abrirModalMatriz() {
-            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setores: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
-            const containerTabelas = document.getElementById('container-tabelas-setores-matriz');
-            containerTabelas.innerHTML = "";
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
+            const tabelaUnica = document.getElementById('tabela-matriz-unica');
+            tabelaUnica.innerHTML = "";
 
-            for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
-                const colabsDoSetor = colaboradores.filter(c => {
-                    const funcAtual = c.historicoDias[diaHoje - 1] || c.historicoDias[c.historicoDias.length - 1];
-                    return funcoesDoSetor.includes(funcAtual);
-                });
-
-                let blocoTabelaSetor = document.createElement('div');
-                blocoTabelaSetor.className = "bg-slate-950/60 border border-slate-800 rounded-xl p-3 shadow-md";
-
-                let cabecalhoBloco = `
-                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
-                        <h4 class="text-xs sm:text-sm font-bold text-amber-400 flex items-center gap-2">
-                            <i class="fa-solid fa-folder-open text-amber-500"></i> ${setor}
-                        </h4>
-                        <span class="bg-slate-900 text-slate-300 text-[10px] px-2 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
-                    </div>
-                `;
-
-                if (colabsDoSetor.length === 0) {
-                    blocoTabelaSetor.innerHTML = cabecalhoBloco + `<p class="text-xs text-slate-500 italic py-2">Nenhum operador alocado neste setor.</p>`;
-                    containerTabelas.appendChild(blocoTabelaSetor);
-                    continue;
-                }
-
-                let wrapperTabela = document.createElement('div');
-                wrapperTabela.className = "overflow-x-auto relative rounded-lg border border-slate-800/80";
-
-                let tabelaHtml = `<table class="w-full text-left border-collapse text-xs">`;
+            let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[150px]">Auxiliar</th>`;
+            for (let d = 1; d <= totalDiasDoMes; d++) {
+                const eHoje = d === diaHoje;
+                const ePassado = d < diaHoje;
                 
-                let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2 font-bold sticky left-0 bg-slate-900 z-40 min-w-[130px]">Auxiliar</th>`;
-                for (let d = 1; d <= totalDiasDoMes; d++) {
-                    const eHoje = d === diaHoje;
-                    const ePassado = d < diaHoje;
-                    
-                    let classeCabecalho = 'text-slate-300';
-                    let rotuloDia = `Dia ${d}`;
-                    if (eHoje) {
-                        classeCabecalho = 'text-amber-400 bg-amber-500/20 font-extrabold border-b-2 border-amber-400';
-                        rotuloDia = `⭐ Dia ${d} (Hoje)`;
-                    } else if (ePassado) {
-                        classeCabecalho = 'text-red-400 opacity-70';
-                        rotuloDia = `Dia ${d} 🔒`;
-                    }
-
-                    thead += `<th class="p-2 text-center font-semibold min-w-[120px] ${classeCabecalho}">${rotuloDia}</th>`;
+                let classeCabecalho = 'text-slate-300';
+                let rotuloDia = `Dia ${d}`;
+                if (eHoje) {
+                    classeCabecalho = 'text-amber-400 bg-amber-500/20 font-extrabold border-b-2 border-amber-400';
+                    rotuloDia = `⭐ Dia ${d} (Hoje)`;
+                } else if (ePassado) {
+                    classeCabecalho = 'text-red-400 opacity-70';
+                    rotuloDia = `Dia ${d} 🔒`;
                 }
-                thead += `</tr></thead>`;
 
-                let tbody = `<tbody>`;
-                colabsDoSetor.forEach(c => {
-                    while(c.historicoDias.length < totalDiasDoMes) c.historicoDias.push("-");
-                    tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30"><td class="p-2 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800">${c.nome}</td>`;
-                    for (let d = 0; d < totalDiasDoMes; d++) {
-                        const funcDia = c.historicoDias[d] || "-";
-                        const numeroDia = d + 1;
-                        const eHoje = numeroDia === diaHoje;
-                        const ePassado = numeroDia < diaHoje;
-
-                        let estiloCelulaSelect = 'bg-slate-950 border-slate-800 text-slate-300';
-                        if (eHoje) {
-                            estiloCelulaSelect = 'bg-amber-950/40 border-amber-500 text-amber-200 font-bold ring-2 ring-amber-500/60';
-                        } else if (ePassado) {
-                            estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
-                        }
-
-                        let optionsHtml = `<option value="" ${funcDia === "-" ? "selected" : ""}>-</option>`;
-                        for (const [sName, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
-                            optionsHtml += `<optgroup label="📍 ${sName}">`;
-                            funcoes.forEach(f => {
-                                optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`;
-                            });
-                            optionsHtml += `</optgroup>`;
-                        }
-
-                        tbody += `<td class="p-1.5 text-center"><select onchange="tentarAlterarDia(${c.id}, ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${estiloCelulaSelect}">${optionsHtml}</select></td>`;
-                    }
-                    tbody += `</tr>`;
-                });
-                tbody += `</tbody>`;
-
-                tabelaHtml += thead + tbody + `</table>`;
-                wrapperTabela.innerHTML = tabelaHtml;
-                blocoTabelaSetor.innerHTML = cabecalhoBloco;
-                blocoTabelaSetor.appendChild(wrapperTabela);
-                containerTabelas.appendChild(blocoTabelaSetor);
+                thead += `<th class="p-2.5 text-center font-semibold min-w-[120px] ${classeCabecalho}">${rotuloDia}</th>`;
             }
+            thead += `</tr></thead>`;
 
+            let tbody = `<tbody>`;
+            colaboradores.forEach(c => {
+                while(c.historicoDias.length < totalDiasDoMes) c.historicoDias.push("-");
+                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30"><td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800">${c.nome}</td>`;
+                
+                for (let d = 0; d < totalDiasDoMes; d++) {
+                    const funcDia = c.historicoDias[d] || "-";
+                    const numeroDia = d + 1;
+                    const eHoje = numeroDia === diaHoje;
+                    const ePassado = numeroDia < diaHoje;
+
+                    let estiloCelulaSelect = 'bg-slate-950 border-slate-800 text-slate-300';
+                    if (eHoje) {
+                        estiloCelulaSelect = 'bg-amber-950/40 border-amber-500 text-amber-200 font-bold ring-2 ring-amber-500/60';
+                    } else if (ePassado) {
+                        estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
+                    }
+
+                    let optionsHtml = `<option value="" ${funcDia === "-" ? "selected" : ""}>-</option>`;
+                    for (const [sName, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                        optionsHtml += `<optgroup label="📍 ${sName}">`;
+                        funcoes.forEach(f => {
+                            optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`;
+                        });
+                        optionsHtml += `</optgroup>`;
+                    }
+
+                    tbody += `<td class="p-1.5 text-center"><select onchange="tentarAlterarDia(${c.id}, ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${estiloCelulaSelect}">${optionsHtml}</select></td>`;
+                }
+                tbody += `</tr>`;
+            });
+            tbody += `</tbody>`;
+
+            tabelaUnica.innerHTML = thead + tbody;
             document.getElementById('modal-matriz').classList.remove('hidden');
             lucide.createIcons();
 
             setTimeout(() => {
-                const wrappers = containerTabelas.querySelectorAll('.overflow-x-auto');
-                wrappers.forEach(w => {
-                    const celulaHoje = w.querySelector('th.bg-amber-500\\/20');
-                    if (celulaHoje) {
-                        w.scrollLeft = celulaHoje.offsetLeft - 150;
-                    }
-                });
+                const wrapper = document.querySelector('#modal-matriz .overflow-auto');
+                const celulaHoje = wrapper.querySelector('th.bg-amber-500\\/20');
+                if (celulaHoje) {
+                    wrapper.scrollLeft = celulaHoje.offsetLeft - 150;
+                }
             }, 100);
         }
 
