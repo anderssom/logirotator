@@ -92,18 +92,25 @@
             </div>
             <div class="space-y-3">
                 <input type="hidden" id="edit-id" value="">
-                <div id="div-input-nome">
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Completo</label>
-                    <input type="text" id="novo-nome" placeholder="Ex: Carlos Silva" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
-                </div>
-                <div id="div-select-nome" class="hidden">
+                
+                <!-- Modo Adicionar (Select da Lista Teste) -->
+                <div id="div-select-nome">
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Selecionar da Lista Teste (70 colaboradores)</label>
                     <select id="select-nome-teste" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
+
+                <!-- Modo Editar (Apenas alteração do nome) -->
+                <div id="div-input-nome-edicao" class="hidden">
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome do Colaborador</label>
+                    <input type="text" id="input-nome-edicao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <!-- Função Inicial (Apenas visível ao adicionar) -->
                 <div id="div-funcao-inicial">
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função Inicial (Dia 1)</label>
                     <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
+
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                     <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
                     <button onclick="salvarColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Salvar</button>
@@ -150,48 +157,17 @@
 
     <script>
         const SETORES_E_FUNCOES = {
-            "Recebimento": [
-                "Bipador Recebimento", 
-                "Patoleiro"
-            ],
-            "Bancada de Triagem Fly / XPT": [
-                "Abastecedor Triagem", 
-                "Sorting Triagem Fly"
-            ],
-            "Triagem de Volumoso XPT / LM": [
-                "Bipador Vol XPT", 
-                "Sorting Triagem Vol"
-            ],
-            "Sorting 1 Volumoso LM": [
-                "Bipador Volumoso LM", 
-                "Sorting 1 Volumoso LM"
-            ],
-            "Sorting 1 Fly LM": [
-                "Abastecedor Fly LM", 
-                "Bipador Fly LM", 
-                "Etequitador", 
-                "Sorting 1 Fly LM"
-            ],
-            "Sorting 2 LM": [
-                "Sorting 2 LM"
-            ],
-            "XPT Fly": [
-                "Bipador XPT Fly", 
-                "Abastecedor XPT Fly"
-            ],
-            "Expedição XPT": [
-                "Bipador Expedição XPT", 
-                "Gaioleiro Expedição"
-            ],
-            "Inventário": [
-                "Aux Inventário"
-            ],
-            "Flip": [
-                "Aux Flip"
-            ],
-            "FM": [
-                "Aux FM"
-            ]
+            "Recebimento": ["Bipador Recebimento", "Patoleiro"],
+            "Bancada de Triagem Fly / XPT": ["Abastecedor Triagem", "Sorting Triagem Fly"],
+            "Triagem de Volumoso XPT / LM": ["Bipador Vol XPT", "Sorting Triagem Vol"],
+            "Sorting 1 Volumoso LM": ["Bipador Volumoso LM", "Sorting 1 Volumoso LM"],
+            "Sorting 1 Fly LM": ["Abastecedor Fly LM", "Bipador Fly LM", "Etequitador", "Sorting 1 Fly LM"],
+            "Sorting 2 LM": ["Sorting 2 LM"],
+            "XPT Fly": ["Bipador XPT Fly", "Abastecedor XPT Fly"],
+            "Expedição XPT": ["Bipador Expedição XPT", "Gaioleiro Expedição"],
+            "Inventário": ["Aux Inventário"],
+            "Flip": ["Aux Flip"],
+            "FM": ["Aux FM"]
         };
 
         let FUNCOES_LOGISTICA = [];
@@ -199,7 +175,6 @@
             FUNCOES_LOGISTICA.push(...lista);
         });
 
-        // Lista com 70 nomes de teste para simulação
         const LISTA_TESTE_70_NOMES = [
             "Alice Souza", "Bruno Lima", "Carlos Silva", "Daniela Rocha", "Eduardo Santos", "Fernanda Costa", "Gabriel Alves", "Helena Martins", "Igor Ribeiro", "Juliana Mendes",
             "Kleber Pereira", "Larissa Farias", "Marcos Vinicius", "Natalia Cardoso", "Otavio Medeiros", "Patricia Ramos", "Quintino Dias", "Rafaela Araujo", "Samuel Moreira", "Tatiane Barbosa",
@@ -220,14 +195,10 @@
         }
         const totalDiasDoMes = obterTotalDiasMes(anoAtual, mesAtualIndex);
 
-        const nomesMeses = [
-            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
-            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-        ];
+        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
         const nomeMesAtual = nomesMeses[mesAtualIndex];
         const SENHA_ADM = "admin123";
 
-        // Inicializa a lista de colaboradores com os 70 nomes distribuídos aleatoriamente pelos 11 setores
         let colaboradores = [];
         LISTA_TESTE_70_NOMES.forEach((nome, index) => {
             const funcAleatoria = FUNCOES_LOGISTICA[index % FUNCOES_LOGISTICA.length];
@@ -406,8 +377,8 @@
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
-            document.getElementById('div-input-nome').classList.add('hidden');
             document.getElementById('div-select-nome').classList.remove('hidden');
+            document.getElementById('div-input-nome-edicao').classList.add('hidden');
             document.getElementById('div-funcao-inicial').style.display = 'block';
             popularSelectFuncoesPorSetor();
             document.getElementById('modal-add').classList.remove('hidden');
@@ -417,8 +388,8 @@
         function abrirModalAddPorSetor(nomeSetor) {
             document.getElementById('edit-id').value = '';
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar em ${nomeSetor}`;
-            document.getElementById('div-input-nome').classList.add('hidden');
             document.getElementById('div-select-nome').classList.remove('hidden');
+            document.getElementById('div-input-nome-edicao').classList.add('hidden');
             document.getElementById('div-funcao-inicial').style.display = 'block';
             
             const primeiraFuncaoDoSetor = SETORES_E_FUNCOES[nomeSetor][0];
@@ -432,10 +403,11 @@
             const colab = colaboradores.find(c => c.id === id);
             if (!colab) return;
             document.getElementById('edit-id').value = colab.id;
-            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Dados (${colab.nome})`;
-            document.getElementById('div-input-nome').classList.add('hidden');
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Nome do Auxiliar`;
             document.getElementById('div-select-nome').classList.add('hidden');
-            document.getElementById('div-funcao-inicial').style.display = 'none';
+            document.getElementById('div-input-nome-edicao').classList.remove('hidden');
+            document.getElementById('input-nome-edicao').value = colab.nome;
+            document.getElementById('div-funcao-inicial').style.display = 'none'; // Esconde a função para não alterar o histórico
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -446,14 +418,23 @@
             const idEdit = document.getElementById('edit-id').value;
 
             if (idEdit) {
-                // Modo edição (apenas renomear ou ajustar se necessário)
+                // Modo Edição: Altera apenas o nome mantendo intacto o histórico e funções
+                const novoNome = document.getElementById('input-nome-edicao').value.trim();
+                if (!novoNome) {
+                    alert('Por favor, informe o nome.');
+                    return;
+                }
+                const colab = colaboradores.find(c => c.id == idEdit);
+                if (colab) {
+                    colab.nome = novoNome;
+                }
                 fecharModalAdd();
                 renderizar();
             } else {
+                // Modo Adicionar Novo
                 const nome = document.getElementById('select-nome-teste').value;
                 const funcao = document.getElementById('novo-funcao').value;
 
-                // Verifica se já existe
                 if (colaboradores.some(c => c.nome === nome)) {
                     alert(`⚠️ O colaborador "${nome}" já está cadastrado.`);
                     return;
