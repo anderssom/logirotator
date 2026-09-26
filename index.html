@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LogiRotator - Gestão Logística</title>
+    <title>LogiRotator - Gestão Logística por Setor</title>
     
     <!-- Configurações para PWA / Smartphone -->
     <meta name="theme-color" content="#09090b">
@@ -115,7 +115,7 @@
             <div class="flex justify-between items-center pb-3 border-b border-slate-800">
                 <div>
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
-                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal
+                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setor
                     </h3>
                     <p class="text-[11px] text-slate-400">O dia atual está em destaque fixo (⭐). Dias anteriores trancados (🔒).</p>
                 </div>
@@ -148,12 +148,57 @@
     </div>
 
     <script>
-        const FUNCOES_LOGISTICA = [
-            "Bipagem Recebimento", "Patoleiro", "Abastecedor de Bancadas", "Sort 1", 
-            "Insumos", "Bipagem de Volumosos XPT", "Sort de Volumosos XPT", "Bipagem de Volumosos LM", 
-            "Sorti de Volumosos LM", "Bipagem de LM Fly", "Abastecedor de LM Fly", "Etiquetagem", 
-            "Sortin de LM Fly", "Sortin 2", "Bipagem de XPT", "Abastecedor de XPT"
-        ];
+        // Funções divididas e organizadas por setor conforme solicitado
+        const SETORES_E_FUNCOES = {
+            "Recebimento": [
+                "Bipador Recebimento", 
+                "Patoleiro"
+            ],
+            "Bancada de Triagem Fly / XPT": [
+                "Abastecedor Triagem", 
+                "Sorting Triagem Fly"
+            ],
+            "Triagem de Volumoso XPT / LM": [
+                "Bipador Vol XPT", 
+                "Sorting Triagem Vol"
+            ],
+            "Sorting 1 Volumoso LM": [
+                "Bipador Volumoso LM", 
+                "Sorting 1 Volumoso LM"
+            ],
+            "Sorting 1 Fly LM": [
+                "Abastecedor Fly LM", 
+                "Bipador Fly LM", 
+                "Etequitador", 
+                "Sorting 1 Fly LM"
+            ],
+            "Sorting 2 LM": [
+                "Sorting 2 LM"
+            ],
+            "XPT Fly": [
+                "Bipador XPT Fly", 
+                "Abastecedor XPT Fly"
+            ],
+            "Expedição XPT": [
+                "Bipador Expedição XPT", 
+                "Gaioleiro Expedição"
+            ],
+            "Inventário": [
+                "Aux Inventário"
+            ],
+            "Flip": [
+                "Aux Flip"
+            ],
+            "FM": [
+                "Aux FM"
+            ]
+        };
+
+        // Lista plana para referências de seleção e validação
+        let FUNCOES_LOGISTICA = [];
+        Object.values(SETORES_E_FUNCOES).forEach(lista => {
+            FUNCOES_LOGISTICA.push(...lista);
+        });
 
         const dataAtualSistema = new Date();
         const anoAtual = dataAtualSistema.getFullYear();
@@ -179,21 +224,33 @@
                 dataCriacao: "01/09/2026",
                 historicoDias: [
                     "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro",
-                    "Sort 1", "Sort 1", "Etiquetagem", "Etiquetagem", "Bipagem Recebimento", "Bipagem Recebimento", "Insumos"
+                    "Sorting 1 Fly LM", "Sorting 1 Fly LM", "Etequitador", "Etequitador", "Bipador Recebimento"
                 ]
             }
         ];
 
         function init() {
             document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
-            popularSelectFuncoes();
+            popularSelectFuncoesPorSetor();
             renderizar();
             lucide.createIcons();
         }
 
-        function popularSelectFuncoes() {
+        // Popula o select agrupado por optgroup para facilitar a escolha dos setores
+        function popularSelectFuncoesPorSetor() {
             const select = document.getElementById('novo-funcao');
-            select.innerHTML = FUNCOES_LOGISTICA.map(f => `<option value="${f}">${f}</option>`).join('');
+            select.innerHTML = "";
+            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                let optgroup = document.createElement('optgroup');
+                optgroup.label = `📍 Setor: ${setor}`;
+                funcoes.forEach(f => {
+                    let option = document.createElement('option');
+                    option.value = f;
+                    option.textContent = f;
+                    optgroup.appendChild(option);
+                });
+                select.appendChild(optgroup);
+            }
         }
 
         function getDataAtualFormatada() {
@@ -216,10 +273,6 @@
                 }
             }
             return { funcao: ultimaFuncao, dias: contador };
-        }
-
-        function calcularTotalNoMes(historico, funcaoAlvo) {
-            return historico.filter(f => f === funcaoAlvo).length;
         }
 
         function tentarAlterarDia(idColab, indexDia, elementoSelect) {
@@ -359,6 +412,19 @@
             }
         }
 
+        function gerarSelectSetoresHtml(valorSelecionado) {
+            let html = '<select onchange="tentarAlterarDia(${id},${i}, this)" ...>'; // template gerado dinamicamente abaixo
+            let optionsStr = "";
+            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                optionsStr += `<optgroup label="📍 ${setor}">`;
+                funcoes.forEach(f => {
+                    optionsStr += `<option value="${f}" ${f === valorSelecionado ? 'selected' : ''}>${f}</option>`;
+                });
+                optionsStr += `</optgroup>`;
+            }
+            return optionsStr;
+        }
+
         function abrirHistorico(id) {
             const colab = colaboradores.find(c => c.id === id);
             document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome}`;
@@ -367,7 +433,6 @@
             const container = document.getElementById('conteudo-historico-dias');
             container.innerHTML = "";
             
-            // Reorganiza para colocar o dia atual no topo para fixar o acesso rápido
             let indicesDias = Array.from({length: totalDiasDoMes}, (_, i) => i);
             indicesDias.sort((a, b) => {
                 if ((a + 1) === diaHoje) return -1;
@@ -395,11 +460,20 @@
                     tagStatus = ' 🔒';
                 }
 
+                let optionsHtml = "";
+                for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                    optionsHtml += `<optgroup label="📍 ${setor}">`;
+                    funcoes.forEach(f => {
+                        optionsHtml += `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`;
+                    });
+                    optionsHtml += `</optgroup>`;
+                }
+
                 container.innerHTML += `
                     <div class="flex items-center justify-between p-2.5 rounded-xl border ${estiloBorda} gap-2">
                         <span class="text-[11px] font-bold ${estiloTexto} w-28">Dia ${numeroDia}${tagStatus}</span>
                         <select onchange="tentarAlterarDia(${id}, ${i}, this)" class="bg-slate-900 border ${eHoje ? 'border-amber-500/80 text-amber-200' : 'border-slate-800 text-slate-200'} rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-amber-500 flex-grow">
-                            ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`).join('')}
+                            ${optionsHtml}
                         </select>
                     </div>
                 `;
@@ -418,7 +492,7 @@
         function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         function abrirModalMatriz() {
-            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setor: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             const tabela = document.getElementById('tabela-matriz');
             
             let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-40 min-w-[140px]">Auxiliar</th>`;
@@ -436,7 +510,7 @@
                     rotuloDia = `Dia ${d} 🔒`;
                 }
 
-                thead += `<th class="p-2 text-center font-semibold min-w-[110px] ${classeCabecalho}">${rotuloDia}</th>`;
+                thead += `<th class="p-2 text-center font-semibold min-w-[130px] ${classeCabecalho}">${rotuloDia}</th>`;
             }
             thead += `</tr></thead>`;
 
@@ -457,7 +531,16 @@
                         estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
                     }
 
-                    tbody += `<td class="p-2 text-center"><select onchange="tentarAlterarDia(${c.id}, ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${estiloCelulaSelect}"><option value="" ${funcDia === "-" ? "selected" : ""}>-</option>${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === funcDia ? "selected" : ""}>${f}</option>`).join('')}</select></td>`;
+                    let optionsHtml = `<option value="" ${funcDia === "-" ? "selected" : ""}>-</option>`;
+                    for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                        optionsHtml += `<optgroup label="📍 ${setor}">`;
+                        funcoes.forEach(f => {
+                            optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`;
+                        });
+                        optionsHtml += `</optgroup>`;
+                    }
+
+                    tbody += `<td class="p-2 text-center"><select onchange="tentarAlterarDia(${c.id}, ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${estiloCelulaSelect}">${optionsHtml}</select></td>`;
                 }
                 tbody += `</tr>`;
             });
@@ -467,7 +550,6 @@
             document.getElementById('modal-matriz').classList.remove('hidden');
             lucide.createIcons();
 
-            // Rolagem automática imediata para centralizar/fixar a coluna do dia atual na tela
             setTimeout(() => {
                 const containerTabela = document.getElementById('container-tabela-matriz');
                 const celulaHoje = containerTabela.querySelector('th.bg-amber-500\\/20');
