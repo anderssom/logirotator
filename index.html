@@ -117,11 +117,11 @@
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
                         <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal
                     </h3>
-                    <p class="text-[11px] text-slate-400">O dia atual está em destaque (⭐) e livre para edição. Dias passados requerem senha ADM (🔒).</p>
+                    <p class="text-[11px] text-slate-400">O dia atual está em destaque fixo (⭐). Dias anteriores trancados (🔒).</p>
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            <div class="flex-grow overflow-auto my-3 border border-slate-800 rounded-xl">
+            <div id="container-tabela-matriz" class="flex-grow overflow-auto my-3 border border-slate-800 rounded-xl relative">
                 <table id="tabela-matriz" class="w-full text-left border-collapse text-xs"></table>
             </div>
             <div class="flex justify-end pt-2 border-t border-slate-800">
@@ -136,7 +136,7 @@
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
                 <div>
                     <h3 id="titulo-modal-hist" class="text-sm sm:text-base font-bold text-amber-400">Editar Histórico</h3>
-                    <p class="text-[11px] text-slate-400">Dia atual em destaque (⭐). Dias anteriores trancados (🔒).</p>
+                    <p class="text-[11px] text-slate-400">O dia atual fica fixo no topo para edição rápida.</p>
                 </div>
                 <button onclick="fecharModalHistorico()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
@@ -224,7 +224,6 @@
 
         function tentarAlterarDia(idColab, indexDia, elementoSelect) {
             const numeroDia = indexDia + 1;
-            // Se o dia for menor que o dia atual do sistema, exige senha do ADM
             if (numeroDia < diaHoje) {
                 const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador para liberar a alteração:`);
                 if (senhaInformada !== SENHA_ADM) {
@@ -367,7 +366,16 @@
 
             const container = document.getElementById('conteudo-historico-dias');
             container.innerHTML = "";
-            for (let i = 0; i < totalDiasDoMes; i++) {
+            
+            // Reorganiza para colocar o dia atual no topo para fixar o acesso rápido
+            let indicesDias = Array.from({length: totalDiasDoMes}, (_, i) => i);
+            indicesDias.sort((a, b) => {
+                if ((a + 1) === diaHoje) return -1;
+                if ((b + 1) === diaHoje) return 1;
+                return 0;
+            });
+
+            indicesDias.forEach(i => {
                 const func = colab.historicoDias[i] || FUNCOES_LOGISTICA[0];
                 const numeroDia = i + 1;
                 const eHoje = numeroDia === diaHoje;
@@ -378,9 +386,9 @@
                 let tagStatus = '';
 
                 if (eHoje) {
-                    estiloBorda = 'border-amber-500 bg-amber-500/10 shadow-md ring-1 ring-amber-500/50';
+                    estiloBorda = 'border-amber-500 bg-amber-500/10 shadow-md ring-1 ring-amber-500/50 sticky top-0 z-20';
                     estiloTexto = 'text-amber-300 font-extrabold';
-                    tagStatus = ' ⭐ Hoje';
+                    tagStatus = ' ⭐ Hoje (Fixo)';
                 } else if (ePassado) {
                     estiloBorda = 'border-red-900/50 bg-red-950/10 opacity-75';
                     estiloTexto = 'text-red-400';
@@ -389,13 +397,13 @@
 
                 container.innerHTML += `
                     <div class="flex items-center justify-between p-2.5 rounded-xl border ${estiloBorda} gap-2">
-                        <span class="text-[11px] font-bold ${estiloTexto} w-20">Dia ${numeroDia}${tagStatus}</span>
+                        <span class="text-[11px] font-bold ${estiloTexto} w-28">Dia ${numeroDia}${tagStatus}</span>
                         <select onchange="tentarAlterarDia(${id}, ${i}, this)" class="bg-slate-900 border ${eHoje ? 'border-amber-500/80 text-amber-200' : 'border-slate-800 text-slate-200'} rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-amber-500 flex-grow">
                             ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`).join('')}
                         </select>
                     </div>
                 `;
-            }
+            });
             document.getElementById('modal-historico').classList.remove('hidden');
         }
 
@@ -413,7 +421,7 @@
             document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             const tabela = document.getElementById('tabela-matriz');
             
-            let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0"><th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-10 min-w-[140px]">Auxiliar</th>`;
+            let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-40 min-w-[140px]">Auxiliar</th>`;
             for (let d = 1; d <= totalDiasDoMes; d++) {
                 const eHoje = d === diaHoje;
                 const ePassado = d < diaHoje;
@@ -421,7 +429,7 @@
                 let classeCabecalho = 'text-slate-300';
                 let rotuloDia = `Dia ${d}`;
                 if (eHoje) {
-                    classeCabecalho = 'text-amber-400 bg-amber-500/20 font-extrabold border-b-2 border-amber-400';
+                    classeCabecalho = 'text-amber-400 bg-amber-500/20 font-extrabold border-b-2 border-amber-400 sticky top-0 z-30';
                     rotuloDia = `⭐ Dia ${d} (Hoje)`;
                 } else if (ePassado) {
                     classeCabecalho = 'text-red-400 opacity-70';
@@ -435,7 +443,7 @@
             let tbody = `<tbody>`;
             colaboradores.forEach(c => {
                 while(c.historicoDias.length < totalDiasDoMes) c.historicoDias.push("-");
-                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-950/40"><td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-10 border-r border-slate-800">${c.nome}</td>`;
+                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-950/40"><td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800">${c.nome}</td>`;
                 for (let d = 0; d < totalDiasDoMes; d++) {
                     const funcDia = c.historicoDias[d] || "-";
                     const numeroDia = d + 1;
@@ -444,7 +452,7 @@
 
                     let estiloCelulaSelect = 'bg-slate-950 border-slate-800 text-slate-300';
                     if (eHoje) {
-                        estiloCelulaSelect = 'bg-amber-950/30 border-amber-500/80 text-amber-200 font-bold ring-1 ring-amber-500/40';
+                        estiloCelulaSelect = 'bg-amber-950/40 border-amber-500 text-amber-200 font-bold ring-2 ring-amber-500/60';
                     } else if (ePassado) {
                         estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
                     }
@@ -458,6 +466,15 @@
             tabela.innerHTML = thead + tbody;
             document.getElementById('modal-matriz').classList.remove('hidden');
             lucide.createIcons();
+
+            // Rolagem automática imediata para centralizar/fixar a coluna do dia atual na tela
+            setTimeout(() => {
+                const containerTabela = document.getElementById('container-tabela-matriz');
+                const celulaHoje = containerTabela.querySelector('th.bg-amber-500\\/20');
+                if (celulaHoje) {
+                    containerTabela.scrollLeft = celulaHoje.offsetLeft - 150;
+                }
+            }, 100);
         }
 
         function fecharModalMatriz() { document.getElementById('modal-matriz').classList.add('hidden'); renderizar(); }
