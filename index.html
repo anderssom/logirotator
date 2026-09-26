@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -18,9 +18,10 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased pb-12">
-    <div id="app" class="max-w-md md:max-w-4xl mx-auto p-3 sm:p-6">
+    <div id="app" class="max-w-md md:max-w-6xl mx-auto p-3 sm:p-6">
         <!-- Header -->
         <header class="flex flex-col gap-4 mb-6 pb-4 border-b border-slate-800">
             <div class="flex items-center justify-between">
@@ -30,7 +31,7 @@
                     </div>
                     <div>
                         <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-amber-400">LogiRotator</h1>
-                        <p id="label-mes-ano" class="text-xs text-slate-400">Carregando calendário...</p>
+                        <p id="label-mes-ano" class="text-xs text-slate-400">A carregar calendário...</p>
                     </div>
                 </div>
                 <button onclick="abrirModalAdd()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-2.5 sm:px-4 sm:py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition active:scale-95">
@@ -63,10 +64,10 @@
         </div>
 
         <!-- Busca e Grade Completa -->
-        <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-5 flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div class="relative w-full">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-                <input type="text" id="input-busca" placeholder="Buscar auxiliar..." oninput="filtrarColaboradores()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
+                <input type="text" id="input-busca" placeholder="Pesquisar auxiliar..." oninput="filtrarColaboradores()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
             </div>
             <div class="w-full sm:w-auto flex justify-end">
                 <button onclick="abrirModalMatriz()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm px-4 py-2 rounded-lg border border-slate-700 flex items-center justify-center gap-2 shadow transition">
@@ -76,8 +77,8 @@
             </div>
         </div>
 
-        <!-- Lista de Colaboradores -->
-        <div id="lista-colaboradores" class="space-y-3"></div>
+        <!-- Tela Principal Dividida nos 11 Setores -->
+        <div id="container-setores" class="space-y-6"></div>
     </div>
 
     <!-- Modal Adicionar / Editar Colaborador -->
@@ -113,7 +114,7 @@
             <div class="flex justify-between items-center pb-3 border-b border-slate-800">
                 <div>
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
-                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Dividida por Setor
+                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setor
                     </h3>
                     <p class="text-[11px] text-slate-400">O dia atual está em destaque fixo (⭐). Dias anteriores trancados (🔒).</p>
                 </div>
@@ -277,7 +278,7 @@
                 if (senhaInformada !== SENHA_ADM) {
                     alert('❌ Senha incorreta! Alteração negada.');
                     renderizar();
-                    abrirModalMatriz();
+                    if(!document.getElementById('modal-matriz').classList.contains('hidden')) abrirModalMatriz();
                     return;
                 } else {
                     alert('✅ Senha correta! Dia liberado para esta alteração.');
@@ -288,8 +289,8 @@
 
         function renderizar() {
             const termoBusca = document.getElementById('input-busca').value.toLowerCase();
-            const container = document.getElementById('lista-colaboradores');
-            const filtrados = colaboradores.filter(c => c.nome.toLowerCase().includes(termoBusca));
+            const containerSetores = document.getElementById('container-setores');
+            containerSetores.innerHTML = "";
 
             document.getElementById('kpi-total').innerText = colaboradores.length;
             
@@ -300,57 +301,76 @@
             });
             document.getElementById('kpi-alertas').innerText = totalAlertas;
 
-            if (filtrados.length === 0) {
-                container.innerHTML = `
-                    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl text-center text-slate-400">
-                        <i data-lucide="search-x" class="w-10 h-10 mx-auto mb-2 opacity-40"></i>
-                        <p class="text-xs sm:text-sm font-medium">Nenhum auxiliar encontrado.</p>
-                    </div>`;
-                lucide.createIcons();
-                return;
-            }
+            // Renderiza cada um dos 11 setores separadamente na tela principal
+            for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
+                // Filtra os colaboradores cuja função no dia atual pertence a este setor
+                const colabsDoSetor = colaboradores.filter(c => {
+                    const funcAtual = c.historicoDias[diaHoje - 1] || c.historicoDias[c.historicoDias.length - 1];
+                    return funcoesDoSetor.includes(funcAtual) && c.nome.toLowerCase().includes(termoBusca);
+                });
 
-            container.innerHTML = filtrados.map(c => {
-                const status = verificarDiasConsecutivos(c.historicoDias);
-                const emAlerta = status.dias >= 7;
-
-                return `
-                    <div class="bg-slate-900 border ${emAlerta ? 'border-red-500/60 bg-red-950/10' : 'border-slate-800'} rounded-2xl p-4 shadow-lg transition">
-                        <div class="flex flex-col gap-3">
-                            <div>
-                                <div class="flex items-center justify-between gap-2 flex-wrap">
-                                    <h3 class="text-sm sm:text-base font-bold text-slate-100">${c.nome}</h3>
-                                    <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">Criado: ${c.dataCriacao || '01/09/2026'}</span>
-                                </div>
-                                ${emAlerta ? `
-                                    <div class="mt-2 bg-red-500/10 border border-red-500/30 text-red-400 text-[11px] px-2.5 py-1 rounded-lg uppercase tracking-wider font-extrabold flex items-center gap-1.5 animate-pulse">
-                                        <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Alerta: ${status.dias} dias seguidos!
-                                    </div>
-                                ` : ''}
-                                <div class="text-xs text-slate-400 mt-2 flex flex-col gap-1">
-                                    <span>Função Atual (Dia ${c.historicoDias.length}):</span>
-                                    <div class="flex items-center justify-between gap-2">
-                                        <strong class="text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20 truncate">${status.funcao}</strong>
-                                        <span class="bg-slate-800 px-2 py-1 rounded-md text-slate-300 font-mono text-[11px] whitespace-nowrap">${status.dias} ${status.dias === 1 ? 'dia seg.' : 'dias seg.'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80">
-                                <button onclick="abrirModalEditar(${c.id})" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[11px] font-semibold py-2 px-1 rounded-xl border border-blue-500/20 flex items-center justify-center gap-1 transition">
-                                    <i data-lucide="edit-3" class="w-3 h-3"></i> Alterar
-                                </button>
-                                <button onclick="abrirHistorico(${c.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold py-2 px-1 rounded-xl border border-slate-700 flex items-center justify-center gap-1 transition">
-                                    <i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Dias
-                                </button>
-                                <button onclick="removerColaborador(${c.id})" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-semibold py-2 px-1 rounded-xl border border-red-500/20 flex items-center justify-center gap-1 transition">
-                                    <i data-lucide="trash-2" class="w-3 h-3"></i> Excluir
-                                </button>
-                            </div>
-                        </div>
+                let blocoSetor = document.createElement('div');
+                blocoSetor.className = "bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl";
+                
+                let cabecalhoSetor = `
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+                        <h2 class="text-sm sm:text-base font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-amber-500"></i> ${setor}
+                        </h2>
+                        <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
                     </div>
                 `;
-            }).join('');
+
+                let conteudoCards = "";
+                if (colabsDoSetor.length === 0) {
+                    conteudoCards = `<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar alocado neste setor hoje.</p>`;
+                } else {
+                    conteudoCards = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + colabsDoSetor.map(c => {
+                        const status = verificarDiasConsecutivos(c.historicoDias);
+                        const emAlerta = status.dias >= 7;
+
+                        return `
+                            <div class="bg-slate-900 border ${emAlerta ? 'border-red-500/60 bg-red-950/10' : 'border-slate-800'} rounded-xl p-3.5 shadow transition">
+                                <div class="flex flex-col gap-2">
+                                    <div>
+                                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                                            <h3 class="text-xs sm:text-sm font-bold text-slate-100">${c.nome}</h3>
+                                            <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">Criado: ${c.dataCriacao || '01/09/2026'}</span>
+                                        </div>
+                                        ${emAlerta ? `
+                                            <div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1 animate-pulse">
+                                                <i data-lucide="alert-triangle" class="w-3 h-3"></i> Alerta: ${status.dias} dias seguidos!
+                                            </div>
+                                        ` : ''}
+                                        <div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5">
+                                            <span>Função Atual:</span>
+                                            <div class="flex items-center justify-between gap-1">
+                                                <strong class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate">${status.funcao}</strong>
+                                                <span class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px] whitespace-nowrap">${status.dias}d seg.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-3 gap-1 pt-2 border-t border-slate-800/80">
+                                        <button onclick="abrirModalEditar(${c.id})" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-blue-500/20 flex items-center justify-center gap-1 transition">
+                                            <i data-lucide="edit-3" class="w-3 h-3"></i> Alterar
+                                        </button>
+                                        <button onclick="abrirHistorico(${c.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition">
+                                            <i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Dias
+                                        </button>
+                                        <button onclick="removerColaborador(${c.id})" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-red-500/20 flex items-center justify-center gap-1 transition">
+                                            <i data-lucide="trash-2" class="w-3 h-3"></i> Excluir
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') + `</div>`;
+                }
+
+                blocoSetor.innerHTML = cabecalhoSetor + conteudoCards;
+                containerSetores.appendChild(blocoSetor);
+            }
 
             lucide.createIcons();
         }
@@ -474,7 +494,7 @@
         function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         function abrirModalMatriz() {
-            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Dividida por Setor: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setor: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             const tabela = document.getElementById('tabela-matriz');
             
             let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-40 min-w-[140px]">Auxiliar</th>`;
@@ -498,15 +518,12 @@
 
             let tbody = `<tbody>`;
             
-            // Agrupa os colaboradores na matriz divididos por Setor com base na função atual/do dia
             for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
-                // Filtra os colaboradores cuja função no dia atual (ou última função) pertence a este setor
                 const colabsDoSetor = colaboradores.filter(c => {
                     const funcAtual = c.historicoDias[diaHoje - 1] || c.historicoDias[c.historicoDias.length - 1];
                     return funcoesDoSetor.includes(funcAtual);
                 });
 
-                // Se houver colaboradores neste setor, cria um divisor de seção na tabela
                 tbody += `<tr class="bg-indigo-950/40 border-y border-indigo-500/30">
                     <td colspan="${totalDiasDoMes + 1}" class="p-2 text-indigo-300 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                         <i class="fa-solid fa-folder-open text-amber-400"></i> Setor: ${setor} (${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'})
