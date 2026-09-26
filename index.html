@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LogiRotator - Gestão Logística</title>
+    
+    <!-- Configurações para PWA / Smartphone -->
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LogiRotator">
+    
+    <!-- Ícone de Atalho Personalizado para Tela Inicial -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23f59e0b'/><path d='M130 180 L60 256 L130 332 M382 180 L452 256 L382 332 M275 140 L235 372' stroke='%2309090b' stroke-width='48' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23f59e0b'/><path d='M130 180 L60 256 L130 332 M382 180 L452 256 L382 332 M275 140 L235 372' stroke='%2309090b' stroke-width='48' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22LogiRotator%22%2C%22short_name%22%3A%22LogiRotator%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2309090b%22%2C%22theme_color%22%3A%22%2309090b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527%2520viewBox%253D%25270%25200%2520512%2520512%2527%253E%253Crect%2520width%253D%2527512%2527%2520height%253D%2527512%2527%2520rx%253D%2527120%2527%2520fill%253D%2527%2523f59e0b%2527%2F%253E%253Cpath%2520d%253D%2527M130%2520180%2520L60%2520256%2520L130%2520332%2520M382%2520180%2520L452%2520256%2520L382%2520332%2520M275%2520140%2520L235%2520372%2527%2520stroke%253D%2527%252309090b%2527%2520stroke-width%253D%252748%2527%2520stroke-linecap%253D%2527round%2527%2520stroke-linejoin%253D%2527round%2527%2520fill%253D%2527none%2527%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -65,9 +79,7 @@
         </div>
 
         <!-- Lista de Colaboradores -->
-        <div id="lista-colaboradores" class="space-y-3">
-            <!-- Renderizado via JS -->
-        </div>
+        <div id="lista-colaboradores" class="space-y-3"></div>
     </div>
 
     <!-- Modal Adicionar / Editar Colaborador -->
@@ -87,9 +99,7 @@
                 </div>
                 <div id="div-funcao-inicial">
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função Inicial (Dia 1)</label>
-                    <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
-                        <!-- Preenchido via JS -->
-                    </select>
+                    <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                     <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
@@ -112,9 +122,7 @@
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             <div class="flex-grow overflow-auto my-3 border border-slate-800 rounded-xl">
-                <table id="tabela-matriz" class="w-full text-left border-collapse text-xs">
-                    <!-- Gerado via JS -->
-                </table>
+                <table id="tabela-matriz" class="w-full text-left border-collapse text-xs"></table>
             </div>
             <div class="flex justify-end pt-2 border-t border-slate-800">
                 <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
@@ -132,9 +140,7 @@
                 </div>
                 <button onclick="fecharModalHistorico()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            <div id="conteudo-historico-dias" class="max-h-[55vh] overflow-y-auto space-y-2 pr-1">
-                <!-- Gerado via JS -->
-            </div>
+            <div id="conteudo-historico-dias" class="max-h-[55vh] overflow-y-auto space-y-2 pr-1"></div>
             <div class="flex justify-end pt-3 border-t border-slate-800 mt-3">
                 <button onclick="fecharModalHistorico()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Concluir</button>
             </div>
@@ -149,11 +155,10 @@
             "Sortin de LM Fly", "Sortin 2", "Bipagem de XPT", "Abastecedor de XPT"
         ];
 
-        // Calendário atual do sistema
         const dataAtualSistema = new Date();
         const anoAtual = dataAtualSistema.getFullYear();
         const mesAtualIndex = dataAtualSistema.getMonth();
-        const diaHoje = dataAtualSistema.getDate(); // Dia corrente (ex: 26)
+        const diaHoje = dataAtualSistema.getDate();
         
         function obterTotalDiasMes(ano, mes) {
             return new Date(ano, mes + 1, 0).getDate();
@@ -165,8 +170,6 @@
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
         ];
         const nomeMesAtual = nomesMeses[mesAtualIndex];
-
-        // Senha padrão de Administrador para desbloquear dias passados
         const SENHA_ADM = "admin123";
 
         let colaboradores = [
@@ -177,14 +180,6 @@
                 historicoDias: [
                     "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro", "Patoleiro",
                     "Sort 1", "Sort 1", "Etiquetagem", "Etiquetagem", "Bipagem Recebimento", "Bipagem Recebimento", "Insumos"
-                ]
-            },
-            {
-                id: 2,
-                nome: "Ana Souza",
-                dataCriacao: "02/09/2026",
-                historicoDias: [
-                    "Bipagem Recebimento", "Bipagem Recebimento", "Sort 1", "Sort 1", "Insumos", "Insumos", "Etiquetagem", "Etiquetagem"
                 ]
             }
         ];
@@ -229,26 +224,23 @@
 
         function tentarAlterarDiaPassado(idColab, indexDia, elementoSelect) {
             const numeroDia = indexDia + 1;
-            // Se o dia for menor que o dia atual do sistema, exige senha do ADM
             if (numeroDia < diaHoje) {
                 const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador para liberar a alteração:`);
                 if (senhaInformada !== SENHA_ADM) {
                     alert('❌ Senha incorreta! Alteração negada.');
-                    renderizar(); // Restaura o valor original no select
-                    abrirModalMatriz(); // Recarrega a matriz se estivesse nela
+                    renderizar();
+                    abrirModalMatriz();
                     return;
                 } else {
                     alert('✅ Senha correta! Dia liberado para esta alteração.');
                 }
             }
-            // Prossegue com a alteração
             atualizarDiaColab(idColab, indexDia, elementoSelect.value);
         }
 
         function renderizar() {
             const termoBusca = document.getElementById('input-busca').value.toLowerCase();
             const container = document.getElementById('lista-colaboradores');
-            
             const filtrados = colaboradores.filter(c => c.nome.toLowerCase().includes(termoBusca));
 
             document.getElementById('kpi-total').innerText = colaboradores.length;
@@ -296,7 +288,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Botões de Ação -->
                             <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80">
                                 <button onclick="abrirModalEditar(${c.id})" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[11px] font-semibold py-2 px-1 rounded-xl border border-blue-500/20 flex items-center justify-center gap-1 transition">
                                     <i data-lucide="edit-3" class="w-3 h-3"></i> Alterar
@@ -316,9 +307,7 @@
             lucide.createIcons();
         }
 
-        function filtrarColaboradores() {
-            renderizar();
-        }
+        function filtrarColaboradores() { renderizar(); }
 
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
@@ -332,34 +321,24 @@
         function abrirModalEditar(id) {
             const colab = colaboradores.find(c => c.id === id);
             if (!colab) return;
-            
             document.getElementById('edit-id').value = colab.id;
             document.getElementById('novo-nome').value = colab.nome;
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Dados`;
             document.getElementById('div-funcao-inicial').style.display = 'none';
-            
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
 
-        function fecharModalAdd() {
-            document.getElementById('modal-add').classList.add('hidden');
-        }
+        function fecharModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
 
         function salvarColaborador() {
             const idEdit = document.getElementById('edit-id').value;
             const nome = document.getElementById('novo-nome').value.trim();
-
-            if (!nome) {
-                alert('Por favor, informe o nome do auxiliar.');
-                return;
-            }
+            if (!nome) { alert('Por favor, informe o nome do auxiliar.'); return; }
 
             if (idEdit) {
                 const colab = colaboradores.find(c => c.id == idEdit);
-                if (colab) {
-                    colab.nome = nome;
-                }
+                if (colab) colab.nome = nome;
             } else {
                 const funcao = document.getElementById('novo-funcao').value;
                 colaboradores.push({
@@ -369,7 +348,6 @@
                     historicoDias: [funcao]
                 });
             }
-
             fecharModalAdd();
             renderizar();
         }
@@ -384,14 +362,10 @@
         function abrirHistorico(id) {
             const colab = colaboradores.find(c => c.id === id);
             document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome}`;
-            
-            while(colab.historicoDias.length < totalDiasDoMes) {
-                colab.historicoDias.push(FUNCOES_LOGISTICA[0]);
-            }
+            while(colab.historicoDias.length < totalDiasDoMes) colab.historicoDias.push(FUNCOES_LOGISTICA[0]);
 
             const container = document.getElementById('conteudo-historico-dias');
             container.innerHTML = "";
-            
             for (let i = 0; i < totalDiasDoMes; i++) {
                 const func = colab.historicoDias[i] || FUNCOES_LOGISTICA[0];
                 const numeroDia = i + 1;
@@ -399,16 +373,13 @@
 
                 container.innerHTML += `
                     <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border ${ePassado ? 'border-red-900/50 bg-red-950/10' : 'border-slate-800'} gap-2">
-                        <span class="text-[11px] font-bold ${ePassado ? 'text-red-400' : 'text-slate-300'} w-16">
-                            Dia ${numeroDia} ${ePassado ? '🔒' : ''}
-                        </span>
+                        <span class="text-[11px] font-bold ${ePassado ? 'text-red-400' : 'text-slate-300'} w-16">Dia ${numeroDia} ${ePassado ? '🔒' : ''}</span>
                         <select onchange="tentarAlterarDiaPassado(${id}, ${i}, this)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-amber-500 flex-grow">
                             ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`).join('')}
                         </select>
                     </div>
                 `;
             }
-
             document.getElementById('modal-historico').classList.remove('hidden');
         }
 
@@ -420,16 +391,13 @@
             }
         }
 
-        function fecharModalHistorico() {
-            document.getElementById('modal-historico').classList.add('hidden');
-        }
+        function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         function abrirModalMatriz() {
             document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} 🔒)`;
             const tabela = document.getElementById('tabela-matriz');
             
-            let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0">
-                <th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-10 min-w-[140px]">Auxiliar</th>`;
+            let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0"><th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-10 min-w-[140px]">Auxiliar</th>`;
             for (let d = 1; d <= totalDiasDoMes; d++) {
                 const ePassado = d < diaHoje;
                 thead += `<th class="p-2 text-center font-semibold min-w-[110px] ${ePassado ? 'text-red-400' : ''}">Dia ${d} ${ePassado ? '🔒' : ''}</th>`;
@@ -438,23 +406,13 @@
 
             let tbody = `<tbody>`;
             colaboradores.forEach(c => {
-                while(c.historicoDias.length < totalDiasDoMes) {
-                    c.historicoDias.push("-");
-                }
-
-                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-950/40">
-                    <td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-10 border-r border-slate-800">${c.nome}</td>`;
+                while(c.historicoDias.length < totalDiasDoMes) c.historicoDias.push("-");
+                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-950/40"><td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-10 border-r border-slate-800">${c.nome}</td>`;
                 for (let d = 0; d < totalDiasDoMes; d++) {
                     const funcDia = c.historicoDias[d] || "-";
                     const numeroDia = d + 1;
                     const ePassado = numeroDia < diaHoje;
-
-                    tbody += `<td class="p-2 text-center">
-                        <select onchange="tentarAlterarDiaPassado(${c.id}, ${d}, this)" class="bg-slate-950 border ${ePassado ? 'border-red-900/40 text-red-300' : 'border-slate-800 text-slate-300'} rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate">
-                            <option value="" ${funcDia === "-" ? "selected" : ""}>-</option>
-                            ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === funcDia ? "selected" : ""}>${f}</option>`).join('')}
-                        </select>
-                    </td>`;
+                    tbody += `<td class="p-2 text-center"><select onchange="tentarAlterarDiaPassado(${c.id}, ${d}, this)" class="bg-slate-950 border ${ePassado ? 'border-red-900/40 text-red-300' : 'border-slate-800 text-slate-300'} rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate"><option value="" ${funcDia === "-" ? "selected" : ""}>-</option>${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === funcDia ? "selected" : ""}>${f}</option>`).join('')}</select></td>`;
                 }
                 tbody += `</tr>`;
             });
@@ -465,10 +423,7 @@
             lucide.createIcons();
         }
 
-        function fecharModalMatriz() {
-            document.getElementById('modal-matriz').classList.add('hidden');
-            renderizar();
-        }
+        function fecharModalMatriz() { document.getElementById('modal-matriz').classList.add('hidden'); renderizar(); }
 
         window.onload = init;
     </script>
