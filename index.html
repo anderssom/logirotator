@@ -2,176 +2,141 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LogiRotator - Gestão de Escala e Alertas Mensais</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LogiRotator - Gestão Logística</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
-    <div id="app" class="max-w-7xl mx-auto p-4 md:p-8">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased pb-12">
+    <div id="app" class="max-w-md md:max-w-4xl mx-auto p-3 sm:p-6">
         <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pb-6 border-b border-slate-800">
-            <div>
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 text-amber-400">
-                        <i data-lucide="layers" class="w-7 h-7"></i>
+        <header class="flex flex-col gap-4 mb-6 pb-4 border-b border-slate-800">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="bg-amber-500/10 p-2 rounded-xl border border-amber-500/30 text-amber-400">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-amber-400">LogiRotator</h1>
-                        <p class="text-sm text-slate-400">Gestão de Rodízio, Escala Mensal e Alerta de Fadiga (Limite de 7 dias)</p>
+                        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-amber-400">LogiRotator</h1>
+                        <p class="text-xs text-slate-400">Rodízio e Controle de Fadiga</p>
                     </div>
                 </div>
-            </div>
-            <div class="flex items-center gap-3 w-full md:w-auto">
-                <div class="bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-inner">
-                    <i data-lucide="calendar" class="w-5 h-5 text-amber-400"></i>
-                    <div>
-                        <span class="text-xs text-slate-400 block">Mês Vigente</span>
-                        <select id="select-mes" class="bg-transparent text-sm font-bold text-slate-200 focus:outline-none cursor-pointer">
-                            <option value="2026-09" selected>Setembro / 2026</option>
-                            <option value="2026-10">Outubro / 2026</option>
-                            <option value="2026-11">Novembro / 2026</option>
-                        </select>
-                    </div>
-                </div>
-                <button onclick="abrirModalAdd()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition transform active:scale-95">
+                <button onclick="abrirModalAdd()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-2.5 sm:px-4 sm:py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition active:scale-95">
                     <i data-lucide="user-plus" class="w-5 h-5"></i>
-                    <span>Novo Auxiliar</span>
+                    <span class="hidden sm:inline text-sm">Novo Auxiliar</span>
                 </button>
             </div>
         </header>
 
-        <!-- KPI / Resumo Geral -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div class="bg-slate-900/80 border border-slate-800/80 p-5 rounded-2xl shadow-xl flex items-center justify-between">
+        <!-- KPI / Resumo Geral (Empilhado e otimizado para mobile) -->
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
                 <div>
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total de Auxiliares</span>
-                    <h2 id="kpi-total" class="text-3xl font-extrabold text-slate-100 mt-1">0</h2>
+                    <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Auxiliares</span>
+                    <h2 id="kpi-total" class="text-2xl font-extrabold text-slate-100 mt-0.5">0</h2>
                 </div>
-                <div class="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 text-blue-400">
-                    <i data-lucide="users" class="w-6 h-6"></i>
+                <div class="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400">
+                    <i data-lucide="users" class="w-5 h-5"></i>
                 </div>
             </div>
-            <div class="bg-slate-900/80 border border-slate-800/80 p-5 rounded-2xl shadow-xl flex items-center justify-between">
+            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
                 <div>
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Em Alerta (+7 dias)</span>
-                    <h2 id="kpi-alertas" class="text-3xl font-extrabold text-red-400 mt-1">0</h2>
+                    <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Em Alerta (+7d)</span>
+                    <h2 id="kpi-alertas" class="text-2xl font-extrabold text-red-400 mt-0.5">0</h2>
                 </div>
-                <div class="bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-red-400">
-                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-                </div>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800/80 p-5 rounded-2xl shadow-xl flex items-center justify-between">
-                <div>
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Dias no Mês</span>
-                    <h2 class="text-3xl font-extrabold text-slate-100 mt-1">30</h2>
-                </div>
-                <div class="bg-amber-500/10 p-3 rounded-xl border border-amber-500/20 text-amber-400">
-                    <i data-lucide="clock" class="w-6 h-6"></i>
-                </div>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800/80 p-5 rounded-2xl shadow-xl flex items-center justify-between">
-                <div>
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Funções Mapeadas</span>
-                    <h2 class="text-3xl font-extrabold text-slate-100 mt-1">16</h2>
-                </div>
-                <div class="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-emerald-400">
-                    <i data-lucide="briefcase" class="w-6 h-6"></i>
+                <div class="bg-red-500/10 p-2.5 rounded-lg border border-red-500/20 text-red-400">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Filtros e Busca -->
-        <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div class="relative w-full sm:w-96">
-                <i data-lucide="search" class="w-5 h-5 text-slate-400 absolute left-3.5 top-3"></i>
-                <input type="text" id="input-busca" placeholder="Buscar auxiliar por nome..." oninput="filtrarColaboradores()" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
+        <!-- Busca e Grade Completa -->
+        <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-5 flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div class="relative w-full">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                <input type="text" id="input-busca" placeholder="Buscar auxiliar..." oninput="filtrarColaboradores()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
             </div>
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-                <button onclick="realizarRodizioGeral()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 shadow transition">
-                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                    <span>Rodízio Geral (+1 Dia)</span>
-                </button>
-                <button onclick="abrirModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 border border-slate-700 shadow transition">
+            <div class="w-full sm:w-auto flex justify-end">
+                <button onclick="abrirModalMatriz()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm px-4 py-2 rounded-lg border border-slate-700 flex items-center justify-center gap-2 shadow transition">
                     <i data-lucide="grid" class="w-4 h-4 text-amber-400"></i>
-                    <span>Ver Grade Completa</span>
+                    <span>Ver Grade Mensal</span>
                 </button>
             </div>
         </div>
 
         <!-- Lista de Colaboradores -->
-        <div id="lista-colaboradores" class="space-y-4">
+        <div id="lista-colaboradores" class="space-y-3">
             <!-- Renderizado via JS -->
         </div>
     </div>
 
-    <!-- Modal Adicionar / Editar Colaborador (Projeto) -->
+    <!-- Modal Adicionar / Editar Colaborador -->
     <div id="modal-add" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
-                <h3 id="modal-titulo" class="text-lg font-bold text-amber-400 flex items-center gap-2">
-                    <i data-lucide="user-plus" class="w-5 h-5"></i> Adicionar Novo Auxiliar
+                <h3 id="modal-titulo" class="text-base font-bold text-amber-400 flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar
                 </h3>
                 <button onclick="fecharModalAdd()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            <div class="space-y-4">
+            <div class="space-y-3">
                 <input type="hidden" id="edit-id" value="">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Nome Completo</label>
-                    <input type="text" id="novo-nome" placeholder="Ex: Carlos Silva" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Completo</label>
+                    <input type="text" id="novo-nome" placeholder="Ex: Carlos Silva" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
                 </div>
                 <div id="div-funcao-inicial">
-                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Função Inicial (Dia 1)</label>
-                    <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função Inicial (Dia 1)</label>
+                    <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
                         <!-- Preenchido via JS -->
                     </select>
                 </div>
-                <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                    <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2 rounded-xl text-sm transition">Cancelar</button>
-                    <button onclick="salvarColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2 rounded-xl text-sm transition">Salvar</button>
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                    <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
+                    <button onclick="salvarColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Salvar</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Modal Grade/Matriz Mensal -->
-    <div id="modal-matriz" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-6xl w-full h-[90vh] flex flex-col p-6 shadow-2xl">
-            <div class="flex justify-between items-center pb-4 border-b border-slate-800">
+    <div id="modal-matriz" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-6xl w-full h-[90vh] flex flex-col p-4 sm:p-6 shadow-2xl">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800">
                 <div>
-                    <h3 class="text-xl font-bold text-amber-400 flex items-center gap-2">
-                        <i data-lucide="grid" class="w-6 h-6"></i> Matriz de Escala Mensal (Dias 1 a 30)
+                    <h3 class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
+                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal (Dias 1 a 30)
                     </h3>
-                    <p class="text-xs text-slate-400">Clique em qualquer célula para alterar a função do dia específico.</p>
+                    <p class="text-[11px] text-slate-400">Altere a função de qualquer dia direto na tabela.</p>
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            <div class="flex-grow overflow-auto my-4 border border-slate-800 rounded-xl">
+            <div class="flex-grow overflow-auto my-3 border border-slate-800 rounded-xl">
                 <table id="tabela-matriz" class="w-full text-left border-collapse text-xs">
                     <!-- Gerado via JS -->
                 </table>
             </div>
-            <div class="flex justify-end pt-3 border-t border-slate-800">
-                <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-5 py-2.5 rounded-xl text-sm transition">Fechar</button>
+            <div class="flex justify-end pt-2 border-t border-slate-800">
+                <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Editar Histórico do Auxiliar -->
+    <!-- Modal Editar Histórico -->
     <div id="modal-historico" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl">
-            <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
                 <div>
-                    <h3 id="titulo-modal-hist" class="text-lg font-bold text-amber-400">Editar Histórico</h3>
-                    <p class="text-xs text-slate-400">Ajuste os dias do mês para este colaborador</p>
+                    <h3 id="titulo-modal-hist" class="text-sm sm:text-base font-bold text-amber-400">Editar Histórico</h3>
+                    <p class="text-[11px] text-slate-400">Ajuste os dias do mês para este colaborador</p>
                 </div>
                 <button onclick="fecharModalHistorico()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            <div id="conteudo-historico-dias" class="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+            <div id="conteudo-historico-dias" class="max-h-[55vh] overflow-y-auto space-y-2 pr-1">
                 <!-- Gerado via JS -->
             </div>
-            <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 mt-4">
-                <button onclick="fecharModalHistorico()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2 rounded-xl text-sm transition">Concluir</button>
+            <div class="flex justify-end pt-3 border-t border-slate-800 mt-3">
+                <button onclick="fecharModalHistorico()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Concluir</button>
             </div>
         </div>
     </div>
@@ -258,9 +223,9 @@
 
             if (filtrados.length === 0) {
                 container.innerHTML = `
-                    <div class="bg-slate-900 border border-slate-800 p-12 rounded-2xl text-center text-slate-400">
-                        <i data-lucide="search-x" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
-                        <p class="text-base font-medium">Nenhum auxiliar encontrado.</p>
+                    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl text-center text-slate-400">
+                        <i data-lucide="search-x" class="w-10 h-10 mx-auto mb-2 opacity-40"></i>
+                        <p class="text-xs sm:text-sm font-medium">Nenhum auxiliar encontrado.</p>
                     </div>`;
                 lucide.createIcons();
                 return;
@@ -271,51 +236,38 @@
                 const emAlerta = status.dias >= 7;
 
                 return `
-                    <div class="bg-slate-900 border ${emAlerta ? 'border-red-500/60 bg-red-950/10' : 'border-slate-800'} rounded-2xl p-5 shadow-xl transition hover:border-slate-700">
-                        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div class="bg-slate-900 border ${emAlerta ? 'border-red-500/60 bg-red-950/10' : 'border-slate-800'} rounded-2xl p-4 shadow-lg transition">
+                        <div class="flex flex-col gap-3">
                             <div>
-                                <div class="flex items-center gap-3 flex-wrap">
-                                    <h3 class="text-lg font-bold text-slate-100">${c.nome}</h3>
-                                    <span class="text-[11px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">Criado em: ${c.dataCriacao || '01/09/2026'}</span>
-                                    ${emAlerta ? `
-                                        <span class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-3 py-1 rounded-full uppercase tracking-wider font-extrabold flex items-center gap-1.5 animate-pulse">
-                                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Alerta: ${status.dias} dias seguidos!
-                                        </span>
-                                    ` : ''}
+                                <div class="flex items-center justify-between gap-2 flex-wrap">
+                                    <h3 class="text-sm sm:text-base font-bold text-slate-100">${c.nome}</h3>
+                                    <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">Criado: ${c.dataCriacao || '01/09/2026'}</span>
                                 </div>
-                                <p class="text-xs text-slate-400 mt-1.5 flex items-center gap-2 flex-wrap">
+                                ${emAlerta ? `
+                                    <div class="mt-2 bg-red-500/10 border border-red-500/30 text-red-400 text-[11px] px-2.5 py-1 rounded-lg uppercase tracking-wider font-extrabold flex items-center gap-1.5 animate-pulse">
+                                        <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Alerta: ${status.dias} dias seguidos!
+                                    </div>
+                                ` : ''}
+                                <div class="text-xs text-slate-400 mt-2 flex flex-col gap-1">
                                     <span>Função Atual (Dia ${c.historicoDias.length}):</span>
-                                    <strong class="text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/20">${status.funcao}</strong>
-                                    <span class="text-slate-500">•</span>
-                                    <span class="bg-slate-800 px-2.5 py-0.5 rounded-md text-slate-300 font-mono">${status.dias} ${status.dias === 1 ? 'dia consecutivo' : 'dias consecutivos'}</span>
-                                </p>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <strong class="text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20 truncate">${status.funcao}</strong>
+                                        <span class="bg-slate-800 px-2 py-1 rounded-md text-slate-300 font-mono text-[11px] whitespace-nowrap">${status.dias} ${status.dias === 1 ? 'dia seg.' : 'dias seg.'}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2 self-end lg:self-center flex-wrap">
-                                <button onclick="abrirModalEditar(${c.id})" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-500/20 flex items-center gap-1.5 transition">
-                                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Alterar
+                            
+                            <!-- Botões de Ação (Ajustados para toque mobile) -->
+                            <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80">
+                                <button onclick="abrirModalEditar(${c.id})" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[11px] font-semibold py-2 px-1 rounded-xl border border-blue-500/20 flex items-center justify-center gap-1 transition">
+                                    <i data-lucide="edit-3" class="w-3 h-3"></i> Alterar
                                 </button>
-                                <button onclick="abrirHistorico(${c.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-700 flex items-center gap-1.5 transition">
-                                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-amber-400"></i> Editar Dias
+                                <button onclick="abrirHistorico(${c.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold py-2 px-1 rounded-xl border border-slate-700 flex items-center justify-center gap-1 transition">
+                                    <i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Dias
                                 </button>
-                                <button onclick="removerColaborador(${c.id})" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold px-3.5 py-2 rounded-xl border border-red-500/20 flex items-center gap-1.5 transition">
-                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir
+                                <button onclick="removerColaborador(${c.id})" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-semibold py-2 px-1 rounded-xl border border-red-500/20 flex items-center justify-center gap-1 transition">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i> Excluir
                                 </button>
-                            </div>
-                        </div>
-
-                        <!-- Resumo do Mês -->
-                        <div class="mt-4 pt-4 border-t border-slate-800/80">
-                            <span class="text-xs font-semibold text-slate-400 block mb-2">Total de dias no mês por função:</span>
-                            <div class="flex flex-wrap gap-1.5">
-                                ${FUNCOES_LOGISTICA.map(func => {
-                                    const total = calcularTotalNoMes(c.historicoDias, func);
-                                    if (total === 0) return '';
-                                    return `
-                                        <span class="text-xs bg-slate-950 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-800/80">
-                                            ${func}: <strong class="text-amber-400">${total}d</strong>
-                                        </span>
-                                    `;
-                                }).join('')}
                             </div>
                         </div>
                     </div>
@@ -332,7 +284,7 @@
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
             document.getElementById('novo-nome').value = '';
-            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-5 h-5"></i> Adicionar Novo Auxiliar`;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
             document.getElementById('div-funcao-inicial').style.display = 'block';
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
@@ -344,8 +296,7 @@
             
             document.getElementById('edit-id').value = colab.id;
             document.getElementById('novo-nome').value = colab.nome;
-            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-5 h-5"></i> Alterar Dados do Auxiliar`;
-            // Esconde a seleção de função inicial na edição para não sobrescrever o histórico por engano
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Dados`;
             document.getElementById('div-funcao-inicial').style.display = 'none';
             
             document.getElementById('modal-add').classList.remove('hidden');
@@ -366,13 +317,11 @@
             }
 
             if (idEdit) {
-                // Modo Edição / Alteração
                 const colab = colaboradores.find(c => c.id == idEdit);
                 if (colab) {
                     colab.nome = nome;
                 }
             } else {
-                // Modo Novo Cadastro (Criação automática da data atual)
                 const funcao = document.getElementById('novo-funcao').value;
                 colaboradores.push({
                     id: Date.now(),
@@ -387,21 +336,10 @@
         }
 
         function removerColaborador(id) {
-            if (confirm('Deseja realmente excluir este auxiliar do sistema?')) {
+            if (confirm('Deseja realmente excluir este auxiliar?')) {
                 colaboradores = colaboradores.filter(c => c.id !== id);
                 renderizar();
             }
-        }
-
-        function realizarRodizioGeral() {
-            colaboradores.forEach(c => {
-                const ultimo = c.historicoDias.length > 0 ? c.historicoDias[c.historicoDias.length - 1] : FUNCOES_LOGISTICA[0];
-                const indexAtual = FUNCOES_LOGISTICA.indexOf(ultimo);
-                const proximoIndex = indexAtual !== -1 ? (indexAtual + 1) % FUNCOES_LOGISTICA.length : 0;
-                c.historicoDias.push(FUNCOES_LOGISTICA[proximoIndex]);
-            });
-            renderizar();
-            alert('Rodízio executado! Todos os colaboradores avançaram para o próximo dia e função.');
         }
 
         function abrirHistorico(id) {
@@ -410,9 +348,9 @@
             
             const container = document.getElementById('conteudo-historico-dias');
             container.innerHTML = colab.historicoDias.map((func, index) => `
-                <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
-                    <span class="text-xs font-bold text-slate-300 w-16">Dia ${index + 1}</span>
-                    <select onchange="atualizarDiaColab(${id}, ${index}, this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 flex-grow mx-4">
+                <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 gap-2">
+                    <span class="text-[11px] font-bold text-slate-300 w-14">Dia ${index + 1}</span>
+                    <select onchange="atualizarDiaColab(${id}, ${index}, this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-amber-500 flex-grow">
                         ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`).join('')}
                     </select>
                 </div>
@@ -437,20 +375,20 @@
             const tabela = document.getElementById('tabela-matriz');
             
             let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0">
-                <th class="p-3 font-bold sticky left-0 bg-slate-950 z-10 min-w-[180px]">Auxiliar</th>`;
+                <th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-10 min-w-[140px]">Auxiliar</th>`;
             for (let d = 1; d <= 30; d++) {
-                thead += `<th class="p-2 text-center font-semibold min-w-[120px]">Dia ${d}</th>`;
+                thead += `<th class="p-2 text-center font-semibold min-w-[110px]">Dia ${d}</th>`;
             }
             thead += `</tr></thead>`;
 
             let tbody = `<tbody>`;
             colaboradores.forEach(c => {
                 tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-950/40">
-                    <td class="p-3 font-bold text-slate-200 sticky left-0 bg-slate-900 z-10 border-r border-slate-800">${c.nome}</td>`;
+                    <td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-10 border-r border-slate-800">${c.nome}</td>`;
                 for (let d = 0; d < 30; d++) {
                     const funcDia = c.historicoDias[d] || "-";
                     tbody += `<td class="p-2 text-center">
-                        <select onchange="atualizarDiaColab(${c.id}, ${d}, this.value)" class="bg-slate-950 border border-slate-800 rounded-lg p-1 text-[11px] text-slate-300 focus:outline-none focus:border-amber-500 w-full truncate">
+                        <select onchange="atualizarDiaColab(${c.id}, ${d}, this.value)" class="bg-slate-950 border border-slate-800 rounded-lg p-1 text-[10px] text-slate-300 focus:outline-none focus:border-amber-500 w-full truncate">
                             <option value="" ${funcDia === "-" ? "selected" : ""}>-</option>
                             ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === funcDia ? "selected" : ""}>${f}</option>`).join('')}
                         </select>
