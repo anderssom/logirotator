@@ -107,7 +107,7 @@
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
                         <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal
                     </h3>
-                    <p class="text-[11px] text-slate-400">Grade sincronizada com os dias do calendário atual.</p>
+                    <p class="text-[11px] text-slate-400">Dias anteriores estão trancados. Requer permissão do ADM para alterar.</p>
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
@@ -128,7 +128,7 @@
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
                 <div>
                     <h3 id="titulo-modal-hist" class="text-sm sm:text-base font-bold text-amber-400">Editar Histórico</h3>
-                    <p class="text-[11px] text-slate-400">Ajuste os dias do mês atual para este colaborador</p>
+                    <p class="text-[11px] text-slate-400">Dias anteriores trancados por segurança</p>
                 </div>
                 <button onclick="fecharModalHistorico()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
@@ -149,12 +149,12 @@
             "Sortin de LM Fly", "Sortin 2", "Bipagem de XPT", "Abastecedor de XPT"
         ];
 
-        // Obtém o mês e ano atual do calendário do dispositivo
+        // Calendário atual do sistema
         const dataAtualSistema = new Date();
         const anoAtual = dataAtualSistema.getFullYear();
-        const mesAtualIndex = dataAtualSistema.getMonth(); // 0 a 11
+        const mesAtualIndex = dataAtualSistema.getMonth();
+        const diaHoje = dataAtualSistema.getDate(); // Dia corrente (ex: 26)
         
-        // Descobre quantos dias o mês atual possui (ex: 30 para Setembro)
         function obterTotalDiasMes(ano, mes) {
             return new Date(ano, mes + 1, 0).getDate();
         }
@@ -165,6 +165,9 @@
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
         ];
         const nomeMesAtual = nomesMeses[mesAtualIndex];
+
+        // Senha padrão de Administrador para desbloquear dias passados
+        const SENHA_ADM = "admin123";
 
         let colaboradores = [
             {
@@ -187,7 +190,7 @@
         ];
 
         function init() {
-            document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (${totalDiasDoMes} dias)`;
+            document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje})`;
             popularSelectFuncoes();
             renderizar();
             lucide.createIcons();
@@ -222,6 +225,24 @@
 
         function calcularTotalNoMes(historico, funcaoAlvo) {
             return historico.filter(f => f === funcaoAlvo).length;
+        }
+
+        function tentarAlterarDiaPassado(idColab, indexDia, elementoSelect) {
+            const numeroDia = indexDia + 1;
+            // Se o dia for menor que o dia atual do sistema, exige senha do ADM
+            if (numeroDia < diaHoje) {
+                const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador para liberar a alteração:`);
+                if (senhaInformada !== SENHA_ADM) {
+                    alert('❌ Senha incorreta! Alteração negada.');
+                    renderizar(); // Restaura o valor original no select
+                    abrirModalMatriz(); // Recarrega a matriz se estivesse nela
+                    return;
+                } else {
+                    alert('✅ Senha correta! Dia liberado para esta alteração.');
+                }
+            }
+            // Prossegue com a alteração
+            atualizarDiaColab(idColab, indexDia, elementoSelect.value);
         }
 
         function renderizar() {
@@ -364,7 +385,6 @@
             const colab = colaboradores.find(c => c.id === id);
             document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome}`;
             
-            // Garante que o array de histórico tenha o tamanho exato dos dias do mês atual
             while(colab.historicoDias.length < totalDiasDoMes) {
                 colab.historicoDias.push(FUNCOES_LOGISTICA[0]);
             }
@@ -374,10 +394,15 @@
             
             for (let i = 0; i < totalDiasDoMes; i++) {
                 const func = colab.historicoDias[i] || FUNCOES_LOGISTICA[0];
+                const numeroDia = i + 1;
+                const ePassado = numeroDia < diaHoje;
+
                 container.innerHTML += `
-                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 gap-2">
-                        <span class="text-[11px] font-bold text-slate-300 w-16">Dia ${i + 1}</span>
-                        <select onchange="atualizarDiaColab(${id}, ${i}, this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-amber-500 flex-grow">
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border ${ePassado ? 'border-red-900/50 bg-red-950/10' : 'border-slate-800'} gap-2">
+                        <span class="text-[11px] font-bold ${ePassado ? 'text-red-400' : 'text-slate-300'} w-16">
+                            Dia ${numeroDia} ${ePassado ? '🔒' : ''}
+                        </span>
+                        <select onchange="tentarAlterarDiaPassado(${id}, ${i}, this)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-amber-500 flex-grow">
                             ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`).join('')}
                         </select>
                     </div>
@@ -400,19 +425,19 @@
         }
 
         function abrirModalMatriz() {
-            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal: ${nomeMesAtual} / ${anoAtual} (${totalDiasDoMes} dias)`;
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} 🔒)`;
             const tabela = document.getElementById('tabela-matriz');
             
             let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0">
                 <th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-10 min-w-[140px]">Auxiliar</th>`;
             for (let d = 1; d <= totalDiasDoMes; d++) {
-                thead += `<th class="p-2 text-center font-semibold min-w-[110px]">Dia ${d}</th>`;
+                const ePassado = d < diaHoje;
+                thead += `<th class="p-2 text-center font-semibold min-w-[110px] ${ePassado ? 'text-red-400' : ''}">Dia ${d} ${ePassado ? '🔒' : ''}</th>`;
             }
             thead += `</tr></thead>`;
 
             let tbody = `<tbody>`;
             colaboradores.forEach(c => {
-                // Preenche com valores vazios se o array for menor que os dias do mês
                 while(c.historicoDias.length < totalDiasDoMes) {
                     c.historicoDias.push("-");
                 }
@@ -421,8 +446,11 @@
                     <td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-10 border-r border-slate-800">${c.nome}</td>`;
                 for (let d = 0; d < totalDiasDoMes; d++) {
                     const funcDia = c.historicoDias[d] || "-";
+                    const numeroDia = d + 1;
+                    const ePassado = numeroDia < diaHoje;
+
                     tbody += `<td class="p-2 text-center">
-                        <select onchange="atualizarDiaColab(${c.id}, ${d}, this.value)" class="bg-slate-950 border border-slate-800 rounded-lg p-1 text-[10px] text-slate-300 focus:outline-none focus:border-amber-500 w-full truncate">
+                        <select onchange="tentarAlterarDiaPassado(${c.id}, ${d}, this)" class="bg-slate-950 border ${ePassado ? 'border-red-900/40 text-red-300' : 'border-slate-800 text-slate-300'} rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate">
                             <option value="" ${funcDia === "-" ? "selected" : ""}>-</option>
                             ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === funcDia ? "selected" : ""}>${f}</option>`).join('')}
                         </select>
