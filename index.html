@@ -92,18 +92,17 @@
             </div>
             <div class="space-y-3">
                 <input type="hidden" id="edit-id" value="">
-                <input type="hidden" id="input-setor-alvo" value="">
                 
-                <!-- Modo Adicionar (Select da Lista Teste) -->
-                <div id="div-select-nome">
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Selecionar da Lista Teste (70 colaboradores)</label>
+                <!-- Seleção de Nome (Lista Teste 70 colaboradores) -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Selecionar da Lista Teste</label>
                     <select id="select-nome-teste" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
 
-                <!-- Modo Editar (Apenas alteração do nome) -->
-                <div id="div-input-nome-edicao" class="hidden">
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome do Colaborador</label>
-                    <input type="text" id="input-nome-edicao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                <!-- Seleção de Função (Setores) -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função / Setor</label>
+                    <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
@@ -208,13 +207,33 @@
         function init() {
             document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             popularSelectNomesTeste();
+            popularSelectFuncoesPorSetor();
             renderizar();
             lucide.createIcons();
         }
 
-        function popularSelectNomesTeste() {
+        function popularSelectNomesTeste(nomeSelecionadoDefault = null) {
             const select = document.getElementById('select-nome-teste');
-            select.innerHTML = LISTA_TESTE_70_NOMES.map(nome => `<option value="${nome}">${nome}</option>`).join('');
+            select.innerHTML = LISTA_TESTE_70_NOMES.map(nome => `<option value="${nome}" ${nome === nomeSelecionadoDefault ? 'selected' : ''}>${nome}</option>`).join('');
+        }
+
+        function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
+            const select = document.getElementById('novo-funcao');
+            select.innerHTML = "";
+            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                let optgroup = document.createElement('optgroup');
+                optgroup.label = `📍 Setor: ${setor}`;
+                funcoes.forEach(f => {
+                    let option = document.createElement('option');
+                    option.value = f;
+                    option.textContent = f;
+                    if (f === funcaoSelecionadaDefault) {
+                        option.selected = true;
+                    }
+                    optgroup.appendChild(option);
+                });
+                select.appendChild(optgroup);
+            }
         }
 
         function getDataAtualFormatada() {
@@ -351,21 +370,19 @@
 
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
-            document.getElementById('input-setor-alvo').value = SETORES_E_FUNCOES["Recebimento"][0]; // Padrão
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
-            document.getElementById('div-select-nome').classList.remove('hidden');
-            document.getElementById('div-input-nome-edicao').classList.add('hidden');
+            popularSelectNomesTeste();
+            popularSelectFuncoesPorSetor();
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
 
         function abrirModalAddPorSetor(nomeSetor) {
             document.getElementById('edit-id').value = '';
-            // Define automaticamente a primeira função do setor selecionado como função inicial do dia 1
-            document.getElementById('input-setor-alvo').value = SETORES_E_FUNCOES[nomeSetor][0];
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar em ${nomeSetor}`;
-            document.getElementById('div-select-nome').classList.remove('hidden');
-            document.getElementById('div-input-nome-edicao').classList.add('hidden');
+            popularSelectNomesTeste();
+            const primeiraFuncaoDoSetor = SETORES_E_FUNCOES[nomeSetor][0];
+            popularSelectFuncoesPorSetor(primeiraFuncaoDoSetor);
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -374,10 +391,15 @@
             const colab = colaboradores.find(c => c.id === id);
             if (!colab) return;
             document.getElementById('edit-id').value = colab.id;
-            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Nome do Auxiliar`;
-            document.getElementById('div-select-nome').classList.add('hidden');
-            document.getElementById('div-input-nome-edicao').classList.remove('hidden');
-            document.getElementById('input-nome-edicao').value = colab.nome;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar e Função`;
+            
+            // Seleciona o nome atual do colaborador na lista teste
+            popularSelectNomesTeste(colab.nome);
+            
+            // Seleciona a função atual (do dia de hoje ou última registrada)
+            const funcaoAtual = colab.historicoDias[diaHoje - 1] || colab.historicoDias[colab.historicoDias.length - 1];
+            popularSelectFuncoesPorSetor(funcaoAtual);
+
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -386,33 +408,35 @@
 
         function salvarColaborador() {
             const idEdit = document.getElementById('edit-id').value;
+            const nomeSelecionado = document.getElementById('select-nome-teste').value;
+            const funcaoSelecionada = document.getElementById('novo-funcao').value;
 
             if (idEdit) {
-                const novoNome = document.getElementById('input-nome-edicao').value.trim();
-                if (!novoNome) {
-                    alert('Por favor, informe o nome.');
-                    return;
-                }
+                // Modo Edição: Atualiza o nome e atualiza a função do dia de hoje
                 const colab = colaboradores.find(c => c.id == idEdit);
                 if (colab) {
-                    colab.nome = novoNome;
+                    colab.nome = nomeSelecionado;
+                    while(colab.historicoDias.length < diaHoje) colab.historicoDias.push(funcaoSelecionada);
+                    colab.historicoDias[diaHoje - 1] = funcaoSelecionada;
                 }
                 fecharModalAdd();
                 renderizar();
             } else {
-                const nome = document.getElementById('select-nome-teste').value;
-                const funcaoInicial = document.getElementById('input-setor-alvo').value || FUNCOES_LOGISTICA[0];
-
-                if (colaboradores.some(c => c.nome === nome)) {
-                    alert(`⚠️ O colaborador "${nome}" já está cadastrado.`);
+                // Modo Adicionar Novo
+                if (colaboradores.some(c => c.nome === nomeSelecionado)) {
+                    alert(`⚠️ O colaborador "${nomeSelecionado}" já está cadastrado.`);
                     return;
                 }
 
+                let historicoInicial = [];
+                for(let i = 0; i < diaHoje - 1; i++) historicoInicial.push(funcaoSelecionada);
+                historicoInicial.push(funcaoSelecionada);
+
                 colaboradores.push({
                     id: Date.now(),
-                    nome: nome,
+                    nome: nomeSelecionado,
                     dataCriacao: getDataAtualFormatada(),
-                    historicoDias: [funcaoInicial]
+                    historicoDias: historicoInicial
                 });
                 fecharModalAdd();
                 renderizar();
