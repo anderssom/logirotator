@@ -117,7 +117,7 @@
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
                         <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal
                     </h3>
-                    <p class="text-[11px] text-slate-400">Dias anteriores estão trancados. Requer permissão do ADM para alterar.</p>
+                    <p class="text-[11px] text-slate-400">O dia atual está em destaque (⭐) e livre para edição. Dias passados requerem senha ADM (🔒).</p>
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
@@ -136,7 +136,7 @@
             <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
                 <div>
                     <h3 id="titulo-modal-hist" class="text-sm sm:text-base font-bold text-amber-400">Editar Histórico</h3>
-                    <p class="text-[11px] text-slate-400">Dias anteriores trancados por segurança</p>
+                    <p class="text-[11px] text-slate-400">Dia atual em destaque (⭐). Dias anteriores trancados (🔒).</p>
                 </div>
                 <button onclick="fecharModalHistorico()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
@@ -185,7 +185,7 @@
         ];
 
         function init() {
-            document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje})`;
+            document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             popularSelectFuncoes();
             renderizar();
             lucide.createIcons();
@@ -222,8 +222,9 @@
             return historico.filter(f => f === funcaoAlvo).length;
         }
 
-        function tentarAlterarDiaPassado(idColab, indexDia, elementoSelect) {
+        function tentarAlterarDia(idColab, indexDia, elementoSelect) {
             const numeroDia = indexDia + 1;
+            // Se o dia for menor que o dia atual do sistema, exige senha do ADM
             if (numeroDia < diaHoje) {
                 const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador para liberar a alteração:`);
                 if (senhaInformada !== SENHA_ADM) {
@@ -369,12 +370,27 @@
             for (let i = 0; i < totalDiasDoMes; i++) {
                 const func = colab.historicoDias[i] || FUNCOES_LOGISTICA[0];
                 const numeroDia = i + 1;
+                const eHoje = numeroDia === diaHoje;
                 const ePassado = numeroDia < diaHoje;
 
+                let estiloBorda = 'border-slate-800 bg-slate-950';
+                let estiloTexto = 'text-slate-300';
+                let tagStatus = '';
+
+                if (eHoje) {
+                    estiloBorda = 'border-amber-500 bg-amber-500/10 shadow-md ring-1 ring-amber-500/50';
+                    estiloTexto = 'text-amber-300 font-extrabold';
+                    tagStatus = ' ⭐ Hoje';
+                } else if (ePassado) {
+                    estiloBorda = 'border-red-900/50 bg-red-950/10 opacity-75';
+                    estiloTexto = 'text-red-400';
+                    tagStatus = ' 🔒';
+                }
+
                 container.innerHTML += `
-                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border ${ePassado ? 'border-red-900/50 bg-red-950/10' : 'border-slate-800'} gap-2">
-                        <span class="text-[11px] font-bold ${ePassado ? 'text-red-400' : 'text-slate-300'} w-16">Dia ${numeroDia} ${ePassado ? '🔒' : ''}</span>
-                        <select onchange="tentarAlterarDiaPassado(${id}, ${i}, this)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-amber-500 flex-grow">
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border ${estiloBorda} gap-2">
+                        <span class="text-[11px] font-bold ${estiloTexto} w-20">Dia ${numeroDia}${tagStatus}</span>
+                        <select onchange="tentarAlterarDia(${id}, ${i}, this)" class="bg-slate-900 border ${eHoje ? 'border-amber-500/80 text-amber-200' : 'border-slate-800 text-slate-200'} rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-amber-500 flex-grow">
                             ${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`).join('')}
                         </select>
                     </div>
@@ -394,13 +410,25 @@
         function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         function abrirModalMatriz() {
-            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} 🔒)`;
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             const tabela = document.getElementById('tabela-matriz');
             
             let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0"><th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-10 min-w-[140px]">Auxiliar</th>`;
             for (let d = 1; d <= totalDiasDoMes; d++) {
+                const eHoje = d === diaHoje;
                 const ePassado = d < diaHoje;
-                thead += `<th class="p-2 text-center font-semibold min-w-[110px] ${ePassado ? 'text-red-400' : ''}">Dia ${d} ${ePassado ? '🔒' : ''}</th>`;
+                
+                let classeCabecalho = 'text-slate-300';
+                let rotuloDia = `Dia ${d}`;
+                if (eHoje) {
+                    classeCabecalho = 'text-amber-400 bg-amber-500/20 font-extrabold border-b-2 border-amber-400';
+                    rotuloDia = `⭐ Dia ${d} (Hoje)`;
+                } else if (ePassado) {
+                    classeCabecalho = 'text-red-400 opacity-70';
+                    rotuloDia = `Dia ${d} 🔒`;
+                }
+
+                thead += `<th class="p-2 text-center font-semibold min-w-[110px] ${classeCabecalho}">${rotuloDia}</th>`;
             }
             thead += `</tr></thead>`;
 
@@ -411,8 +439,17 @@
                 for (let d = 0; d < totalDiasDoMes; d++) {
                     const funcDia = c.historicoDias[d] || "-";
                     const numeroDia = d + 1;
+                    const eHoje = numeroDia === diaHoje;
                     const ePassado = numeroDia < diaHoje;
-                    tbody += `<td class="p-2 text-center"><select onchange="tentarAlterarDiaPassado(${c.id}, ${d}, this)" class="bg-slate-950 border ${ePassado ? 'border-red-900/40 text-red-300' : 'border-slate-800 text-slate-300'} rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate"><option value="" ${funcDia === "-" ? "selected" : ""}>-</option>${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === funcDia ? "selected" : ""}>${f}</option>`).join('')}</select></td>`;
+
+                    let estiloCelulaSelect = 'bg-slate-950 border-slate-800 text-slate-300';
+                    if (eHoje) {
+                        estiloCelulaSelect = 'bg-amber-950/30 border-amber-500/80 text-amber-200 font-bold ring-1 ring-amber-500/40';
+                    } else if (ePassado) {
+                        estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
+                    }
+
+                    tbody += `<td class="p-2 text-center"><select onchange="tentarAlterarDia(${c.id}, ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${estiloCelulaSelect}"><option value="" ${funcDia === "-" ? "selected" : ""}>-</option>${FUNCOES_LOGISTICA.map(f => `<option value="${f}" ${f === funcDia ? "selected" : ""}>${f}</option>`).join('')}</select></td>`;
                 }
                 tbody += `</tr>`;
             });
