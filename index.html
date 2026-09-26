@@ -11,11 +11,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="LogiRotator">
     
-    <!-- Ícone de Atalho Personalizado para Tela Inicial -->
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23f59e0b'/><path d='M130 180 L60 256 L130 332 M382 180 L452 256 L382 332 M275 140 L235 372' stroke='%2309090b' stroke-width='48' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23f59e0b'/><path d='M130 180 L60 256 L130 332 M382 180 L452 256 L382 332 M275 140 L235 372' stroke='%2309090b' stroke-width='48' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
 
-    <!-- Web App Manifest -->
     <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22LogiRotator%22%2C%22short_name%22%3A%22LogiRotator%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2309090b%22%2C%22theme_color%22%3A%22%2309090b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527%2520viewBox%253D%25270%25200%2520512%2520512%2527%253E%253Crect%2520width%253D%2527512%2527%2520height%253D%2527512%2527%2520rx%253D%2527120%2527%2520fill%253D%2527%2523f59e0b%2527%2F%253E%253Cpath%2520d%253D%2527M130%2520180%2520L60%2520256%2520L130%2520332%2520M382%2520180%2520L452%2520256%2520L382%2520332%2520M275%2520140%2520L235%2520372%2527%2520stroke%253D%2527%252309090b%2527%2520stroke-width%253D%252748%2527%2520stroke-linecap%253D%2527round%2527%2520stroke-linejoin%253D%2527round%2527%2520fill%253D%2527none%2527%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -109,13 +107,13 @@
         </div>
     </div>
 
-    <!-- Modal Grade/Matriz Mensal Sincronizada -->
+    <!-- Modal Grade/Matriz Mensal Dividida por Setor -->
     <div id="modal-matriz" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-6xl w-full h-[90vh] flex flex-col p-4 sm:p-6 shadow-2xl">
             <div class="flex justify-between items-center pb-3 border-b border-slate-800">
                 <div>
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
-                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setor
+                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Dividida por Setor
                     </h3>
                     <p class="text-[11px] text-slate-400">O dia atual está em destaque fixo (⭐). Dias anteriores trancados (🔒).</p>
                 </div>
@@ -148,7 +146,6 @@
     </div>
 
     <script>
-        // Funções divididas e organizadas por setor conforme solicitado
         const SETORES_E_FUNCOES = {
             "Recebimento": [
                 "Bipador Recebimento", 
@@ -194,7 +191,6 @@
             ]
         };
 
-        // Lista plana para referências de seleção e validação
         let FUNCOES_LOGISTICA = [];
         Object.values(SETORES_E_FUNCOES).forEach(lista => {
             FUNCOES_LOGISTICA.push(...lista);
@@ -236,7 +232,6 @@
             lucide.createIcons();
         }
 
-        // Popula o select agrupado por optgroup para facilitar a escolha dos setores
         function popularSelectFuncoesPorSetor() {
             const select = document.getElementById('novo-funcao');
             select.innerHTML = "";
@@ -412,19 +407,6 @@
             }
         }
 
-        function gerarSelectSetoresHtml(valorSelecionado) {
-            let html = '<select onchange="tentarAlterarDia(${id},${i}, this)" ...>'; // template gerado dinamicamente abaixo
-            let optionsStr = "";
-            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
-                optionsStr += `<optgroup label="📍 ${setor}">`;
-                funcoes.forEach(f => {
-                    optionsStr += `<option value="${f}" ${f === valorSelecionado ? 'selected' : ''}>${f}</option>`;
-                });
-                optionsStr += `</optgroup>`;
-            }
-            return optionsStr;
-        }
-
         function abrirHistorico(id) {
             const colab = colaboradores.find(c => c.id === id);
             document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome}`;
@@ -492,7 +474,7 @@
         function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         function abrirModalMatriz() {
-            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal por Setor: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Dividida por Setor: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             const tabela = document.getElementById('tabela-matriz');
             
             let thead = `<thead><tr class="bg-slate-950 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-950 z-40 min-w-[140px]">Auxiliar</th>`;
@@ -515,35 +497,58 @@
             thead += `</tr></thead>`;
 
             let tbody = `<tbody>`;
-            colaboradores.forEach(c => {
-                while(c.historicoDias.length < totalDiasDoMes) c.historicoDias.push("-");
-                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-950/40"><td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800">${c.nome}</td>`;
-                for (let d = 0; d < totalDiasDoMes; d++) {
-                    const funcDia = c.historicoDias[d] || "-";
-                    const numeroDia = d + 1;
-                    const eHoje = numeroDia === diaHoje;
-                    const ePassado = numeroDia < diaHoje;
+            
+            // Agrupa os colaboradores na matriz divididos por Setor com base na função atual/do dia
+            for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
+                // Filtra os colaboradores cuja função no dia atual (ou última função) pertence a este setor
+                const colabsDoSetor = colaboradores.filter(c => {
+                    const funcAtual = c.historicoDias[diaHoje - 1] || c.historicoDias[c.historicoDias.length - 1];
+                    return funcoesDoSetor.includes(funcAtual);
+                });
 
-                    let estiloCelulaSelect = 'bg-slate-950 border-slate-800 text-slate-300';
-                    if (eHoje) {
-                        estiloCelulaSelect = 'bg-amber-950/40 border-amber-500 text-amber-200 font-bold ring-2 ring-amber-500/60';
-                    } else if (ePassado) {
-                        estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
-                    }
+                // Se houver colaboradores neste setor, cria um divisor de seção na tabela
+                tbody += `<tr class="bg-indigo-950/40 border-y border-indigo-500/30">
+                    <td colspan="${totalDiasDoMes + 1}" class="p-2 text-indigo-300 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                        <i class="fa-solid fa-folder-open text-amber-400"></i> Setor: ${setor} (${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'})
+                    </td>
+                </tr>`;
 
-                    let optionsHtml = `<option value="" ${funcDia === "-" ? "selected" : ""}>-</option>`;
-                    for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
-                        optionsHtml += `<optgroup label="📍 ${setor}">`;
-                        funcoes.forEach(f => {
-                            optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`;
-                        });
-                        optionsHtml += `</optgroup>`;
-                    }
-
-                    tbody += `<td class="p-2 text-center"><select onchange="tentarAlterarDia(${c.id}, ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${estiloCelulaSelect}">${optionsHtml}</select></td>`;
+                if (colabsDoSetor.length === 0) {
+                    tbody += `<tr class="border-b border-slate-800/40"><td colspan="${totalDiasDoMes + 1}" class="p-2 text-slate-500 italic text-center text-[11px]">Nenhum auxiliar alocado neste setor hoje.</td></tr>`;
+                    continue;
                 }
-                tbody += `</tr>`;
-            });
+
+                colabsDoSetor.forEach(c => {
+                    while(c.historicoDias.length < totalDiasDoMes) c.historicoDias.push("-");
+                    tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-950/40"><td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 pl-4">${c.nome}</td>`;
+                    for (let d = 0; d < totalDiasDoMes; d++) {
+                        const funcDia = c.historicoDias[d] || "-";
+                        const numeroDia = d + 1;
+                        const eHoje = numeroDia === diaHoje;
+                        const ePassado = numeroDia < diaHoje;
+
+                        let estiloCelulaSelect = 'bg-slate-950 border-slate-800 text-slate-300';
+                        if (eHoje) {
+                            estiloCelulaSelect = 'bg-amber-950/40 border-amber-500 text-amber-200 font-bold ring-2 ring-amber-500/60';
+                        } else if (ePassado) {
+                            estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
+                        }
+
+                        let optionsHtml = `<option value="" ${funcDia === "-" ? "selected" : ""}>-</option>`;
+                        for (const [sName, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                            optionsHtml += `<optgroup label="📍 ${sName}">`;
+                            funcoes.forEach(f => {
+                                optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`;
+                            });
+                            optionsHtml += `</optgroup>`;
+                        }
+
+                        tbody += `<td class="p-2 text-center"><select onchange="tentarAlterarDia(${c.id}, ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${estiloCelulaSelect}">${optionsHtml}</select></td>`;
+                    }
+                    tbody += `</tr>`;
+                });
+            }
+
             tbody += `</tbody>`;
 
             tabela.innerHTML = thead + tbody;
