@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LogiRotator - HUB-LCE-04 Juazeiro do Norte (Supabase)</title>
     
-    <!-- Configurações para PWA / Smartphone -->
     <meta name="theme-color" content="#09090b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -17,13 +16,11 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Supabase JS Client UMD -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased pb-12">
     <div id="app" class="max-w-md md:max-w-6xl mx-auto p-3 sm:p-6">
-        <!-- Header -->
         <header class="flex flex-col gap-4 mb-6 pb-4 border-b border-slate-800">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
@@ -52,7 +49,6 @@
             </div>
         </header>
 
-        <!-- KPI / Resumo Geral -->
         <div class="grid grid-cols-2 gap-3 mb-6">
             <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
                 <div>
@@ -74,7 +70,6 @@
             </div>
         </div>
 
-        <!-- Busca e Grade Completa -->
         <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div class="relative w-full">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
@@ -88,7 +83,6 @@
             </div>
         </div>
 
-        <!-- Tela Principal Dividida nos Setores -->
         <div id="container-setores" class="space-y-6"></div>
     </div>
 
@@ -103,12 +97,10 @@
             </div>
             <div class="space-y-3">
                 <input type="hidden" id="edit-id" value="">
-                
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Completo</label>
                     <input type="text" id="input-nome-colab" placeholder="Nome do colaborador..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
                 </div>
-
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Escala</label>
@@ -134,17 +126,14 @@
                         </select>
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Horário</label>
                     <input type="text" id="input-horario" value="08:00 - 17:00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
                 </div>
-
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função / Setor Inicial</label>
                     <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
-
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                     <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
                     <button onclick="salvarColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Salvar</button>
@@ -165,11 +154,9 @@
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
-            
             <div class="flex-grow overflow-auto my-3 relative rounded-lg border border-slate-800">
                 <table id="tabela-matriz-unica" class="w-full text-left border-collapse text-xs"></table>
             </div>
-
             <div class="flex justify-end pt-2 border-t border-slate-800">
                 <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
             </div>
@@ -194,11 +181,16 @@
     </div>
 
     <script>
-        // Credenciais Supabase configuradas
+        // =====================================================================
+        // CONFIGURAÇÃO SUPABASE
+        // =====================================================================
         const SUPABASE_URL = 'https://usnxltlieybmdcococvz.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_jOkKrjI4nbacu3413U897A_ijUvRqJe';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // =====================================================================
+        // SETORES E FUNÇÕES
+        // =====================================================================
         const SETORES_E_FUNCOES = {
             "Recebimento": ["Bipador Recebimento", "Patoleiro"],
             "Bancada de Triagem Fly / XPT": ["Abastecedor Triagem", "Sorting Triagem Fly"],
@@ -217,11 +209,9 @@
         Object.values(SETORES_E_FUNCOES).forEach(lista => FUNCOES_LOGISTICA.push(...lista));
 
         // =====================================================================
-        // LISTA REAL DE COLABORADORES EXTRAÍDA DA PLANILHA
-        // HUB-LCE-04 - Juazeiro do Norte
+        // LISTA REAL DE COLABORADORES - HUB-LCE-04 JUAZEIRO DO NORTE
         // =====================================================================
         const COLABORADORES_REAIS = [
-            // === Operação AM - Escala 6X1 QUI A TER 01:00 ÀS 08:54 ===
             { nome: "JUSCILENE PEREIRA DIAS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
             { nome: "ROBERTA CARVALHO DE SOUSA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
             { nome: "MADYSON KELVIN SILVA DE LIMA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
@@ -279,11 +269,7 @@
             { nome: "JAMILLY PRISCILA DO NASCIMENTO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
             { nome: "Amanda Aiara Teixeira Morais", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
             { nome: "JOAO VICTOR VILARDE ARAUJO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            
-            // === Operação FM - Escala 5x2 ===
             { nome: "FELIPE GONCALVES DE OLIVEIRA", escala: "5x2", horario: "18:00 - 03:02", dsr: "Sábado e Domingo" },
-            
-            // === Escala 3x4 - SEX A DOM 00:00 às 09:05 ===
             { nome: "ADRIAN NUNES LIMA SOARES", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
             { nome: "JOAO LUIS DA SILVA FILHO", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
             { nome: "DENNYS RICHARDSON ALVES FREIRE", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
@@ -297,6 +283,9 @@
             { nome: "ISRAEL ALENCAR DO VALE", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" }
         ];
 
+        // =====================================================================
+        // VARIÁVEIS GLOBAIS
+        // =====================================================================
         const dataAtualSistema = new Date();
         const anoAtual = dataAtualSistema.getFullYear();
         const mesAtualIndex = dataAtualSistema.getMonth();
@@ -311,15 +300,17 @@
 
         let colaboradores = [];
 
+        // =====================================================================
+        // INICIALIZAÇÃO
+        // =====================================================================
         async function init() {
             document.getElementById('label-mes-ano').innerText = `HUB-LCE-04 • Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             
-            // Testar conexão com Supabase
             try {
                 const { error: testeError } = await supabaseClient.from('colaboradores').select('id').limit(1);
                 if (testeError) {
                     console.error("Erro de conexão Supabase:", testeError);
-                    alert("⚠️ Não foi possível conectar ao Supabase.\nVerifique as credenciais e se as tabelas existem.\n\nErro: " + testeError.message);
+                    alert("⚠️ Não foi possível conectar ao Supabase.\n\nErro: " + testeError.message);
                 }
             } catch (e) {
                 console.error("Erro de conexão:", e);
@@ -329,6 +320,480 @@
             await carregarDadosSupabase();
             
             if (colaboradores.length === 0) {
-                const confirmar = confirm(`📋 Nenhum colaborador encontrado no banco.\n\nDeseja importar automaticamente os ${COLABORADORES_REAIS.length} colaboradores reais do HUB-LCE-04?`);
+                const confirmar = confirm(`📋 Nenhum colaborador encontrado.\n\nDeseja importar os ${COLABORADORES_REAIS.length} colaboradores reais do HUB-LCE-04?`);
                 if (confirmar) {
-                    await importarColabor
+                    await importarColaboradores();
+                }
+            }
+            
+            renderizar();
+            lucide.createIcons();
+        }
+
+        // =====================================================================
+        // IMPORTAÇÃO DE COLABORADORES REAIS
+        // =====================================================================
+        async function importarColaboradores() {
+            const { data: existentes } = await supabaseClient.from('colaboradores').select('nome');
+            const nomesExistentes = new Set((existentes || []).map(c => c.nome.toLowerCase().trim()));
+            
+            let inseridos = 0;
+            let ignorados = 0;
+            let erros = 0;
+
+            for (const colab of COLABORADORES_REAIS) {
+                if (nomesExistentes.has(colab.nome.toLowerCase().trim())) {
+                    ignorados++;
+                    continue;
+                }
+
+                const { data, error } = await supabaseClient.from('colaboradores').insert([{
+                    nome: colab.nome,
+                    escala: colab.escala,
+                    horario: colab.horario,
+                    dsr: colab.dsr
+                }]).select();
+
+                if (!error && data && data.length > 0) {
+                    const funcaoInit = FUNCOES_LOGISTICA[inseridos % FUNCOES_LOGISTICA.length];
+                    await atualizarDiaSupabase(data[0].id, diaHoje, funcaoInit);
+                    inseridos++;
+                } else {
+                    console.error("Erro ao inserir:", colab.nome, error);
+                    erros++;
+                }
+            }
+            
+            await carregarDadosSupabase();
+            renderizar();
+            alert(`✅ Importação concluída!\n\n📥 Inseridos: ${inseridos}\n⏭️ Já existiam: ${ignorados}\n❌ Erros: ${erros}`);
+        }
+
+        async function popularColaboradoresReaisSupabase() {
+            if (!confirm("Deseja importar os colaboradores reais do HUB-LCE-04 Juazeiro do Norte?")) return;
+            await importarColaboradores();
+        }
+
+        // =====================================================================
+        // LIMPAR DUPLICATAS
+        // =====================================================================
+        async function limparDuplicatasSupabase() {
+            if (!confirm("⚠️ Isso removerá colaboradores duplicados (mesmo nome). Continuar?")) return;
+            
+            const { data: todos, error } = await supabaseClient.from('colaboradores').select('*');
+            if (error || !todos) {
+                alert("Erro ao buscar colaboradores: " + (error ? error.message : "vazio"));
+                return;
+            }
+            
+            const vistos = new Map();
+            const idsParaRemover = [];
+            
+            todos.forEach(c => {
+                const chave = c.nome.toLowerCase().trim();
+                if (vistos.has(chave)) {
+                    idsParaRemover.push(c.id);
+                } else {
+                    vistos.set(chave, c.id);
+                }
+            });
+            
+            if (idsParaRemover.length === 0) {
+                alert("✅ Nenhuma duplicata encontrada!");
+                return;
+            }
+            
+            for (const id of idsParaRemover) {
+                await supabaseClient.from('historico_escala').delete().eq('colaborador_id', id);
+                await supabaseClient.from('colaboradores').delete().eq('id', id);
+            }
+            
+            await carregarDadosSupabase();
+            renderizar();
+            alert(`✅ ${idsParaRemover.length} duplicatas removidas.`);
+        }
+
+        // =====================================================================
+        // CARREGAR DADOS DO SUPABASE
+        // =====================================================================
+        async function carregarDadosSupabase() {
+            try {
+                const { data: cols, error: errCols } = await supabaseClient.from('colaboradores').select('*').order('nome');
+                if (errCols) throw errCols;
+
+                const { data: hist, error: errHist } = await supabaseClient.from('historico_escala').select('*');
+                if (errHist) throw errHist;
+
+                colaboradores = (cols || []).map(c => {
+                    const historicoDias = new Array(totalDiasDoMes).fill("-");
+                    const registrosColab = (hist || []).filter(h => h.colaborador_id === c.id);
+                    
+                    registrosColab.forEach(r => {
+                        const diaNum = new Date(r.data + 'T00:00:00').getDate();
+                        if (diaNum >= 1 && diaNum <= totalDiasDoMes) {
+                            historicoDias[diaNum - 1] = r.funcao;
+                        }
+                    });
+
+                    return {
+                        id: c.id,
+                        nome: c.nome,
+                        escala: c.escala || "6x1",
+                        horario: c.horario || "08:00 - 17:00",
+                        dsr: c.dsr || "Domingo",
+                        dataCriacao: c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT') : '',
+                        historicoDias: historicoDias
+                    };
+                });
+            } catch (error) {
+                console.error("Erro ao sincronizar com Supabase:", error);
+                alert("Erro ao carregar dados do Supabase.\n\n" + error.message);
+            }
+        }
+
+        // =====================================================================
+        // POPULAR SELECT DE FUNÇÕES
+        // =====================================================================
+        function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
+            const select = document.getElementById('novo-funcao');
+            select.innerHTML = "";
+            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                let optgroup = document.createElement('optgroup');
+                optgroup.label = `📍 Setor: ${setor}`;
+                funcoes.forEach(f => {
+                    let option = document.createElement('option');
+                    option.value = f;
+                    option.textContent = f;
+                    if (f === funcaoSelecionadaDefault) option.selected = true;
+                    optgroup.appendChild(option);
+                });
+                select.appendChild(optgroup);
+            }
+        }
+
+        // =====================================================================
+        // VERIFICAR DIAS CONSECUTIVOS
+        // =====================================================================
+        function verificarDiasConsecutivos(historico) {
+            if (!historico || historico.length === 0) return { funcao: "Nenhuma", dias: 0 };
+            const ultimaFuncao = historico[diaHoje - 1] || historico[historico.length - 1];
+            if (!ultimaFuncao || ultimaFuncao === "-") return { funcao: "Nenhuma", dias: 0 };
+            
+            let contador = 0;
+            for (let i = diaHoje - 1; i >= 0; i--) {
+                if (historico[i] === ultimaFuncao && historico[i] !== "-") {
+                    contador++;
+                } else {
+                    break;
+                }
+            }
+            return { funcao: ultimaFuncao, dias: contador };
+        }
+
+        // =====================================================================
+        // ALTERAR DIA (COM SENHA PARA DIAS PASSADOS)
+        // =====================================================================
+        async function tentarAlterarDia(idColab, indexDia, elementoSelect) {
+            const numeroDia = indexDia + 1;
+            if (numeroDia < diaHoje) {
+                const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador:`);
+                if (senhaInformada !== SENHA_ADM) {
+                    alert('❌ Senha incorreta! Alteração negada.');
+                    renderizar();
+                    return;
+                }
+            }
+            await atualizarDiaSupabase(idColab, numeroDia, elementoSelect.value);
+            const colab = colaboradores.find(c => c.id === idColab);
+            if (colab) colab.historicoDias[indexDia] = elementoSelect.value;
+            renderizar();
+        }
+
+        // =====================================================================
+        // ATUALIZAR DIA NO SUPABASE
+        // =====================================================================
+        async function atualizarDiaSupabase(colaboradorId, dia, funcao) {
+            const dataStr = `${anoAtual}-${String(mesAtualIndex + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+            let setorCorrespondente = "Recebimento";
+            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                if (funcoes.includes(funcao)) { setorCorrespondente = setor; break; }
+            }
+
+            if (funcao === "-") {
+                await supabaseClient.from('historico_escala')
+                    .delete()
+                    .eq('colaborador_id', colaboradorId)
+                    .eq('data', dataStr);
+                return;
+            }
+
+            const { error } = await supabaseClient.from('historico_escala').upsert({
+                colaborador_id: colaboradorId,
+                data: dataStr,
+                setor: setorCorrespondente,
+                funcao: funcao
+            }, { onConflict: 'colaborador_id,data' });
+
+            if (error) {
+                console.error("Erro ao atualizar histórico:", error);
+            }
+        }
+
+        // =====================================================================
+        // RENDERIZAR INTERFACE PRINCIPAL
+        // =====================================================================
+        function renderizar() {
+            const termoBusca = document.getElementById('input-busca').value.toLowerCase();
+            const containerSetores = document.getElementById('container-setores');
+            containerSetores.innerHTML = "";
+
+            document.getElementById('kpi-total').innerText = colaboradores.length;
+            let totalAlertas = 0;
+            colaboradores.forEach(c => { if (verificarDiasConsecutivos(c.historicoDias).dias >= 7) totalAlertas++; });
+            document.getElementById('kpi-alertas').innerText = totalAlertas;
+
+            for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
+                const colabsDoSetor = colaboradores.filter(c => {
+                    const funcAtual = c.historicoDias[diaHoje - 1] || "-";
+                    const matchBusca = c.nome.toLowerCase().includes(termoBusca) || 
+                                       c.escala.toLowerCase().includes(termoBusca) || 
+                                       c.dsr.toLowerCase().includes(termoBusca);
+                    return funcoesDoSetor.includes(funcAtual) && matchBusca;
+                });
+
+                let blocoSetor = document.createElement('div');
+                blocoSetor.className = "bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl";
+                
+                let cabecalhoSetor = `
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2">
+                        <h2 class="text-sm sm:text-base font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-amber-500"></i> ${setor}
+                        </h2>
+                        <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
+                    </div>
+                `;
+
+                let conteudoCards = colabsDoSetor.length === 0 
+                    ? `<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar alocado neste setor hoje.</p>`
+                    : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + colabsDoSetor.map(c => {
+                        const status = verificarDiasConsecutivos(c.historicoDias);
+                        const emAlerta = status.dias >= 7;
+                        return `
+                            <div class="bg-slate-900 border ${emAlerta ? 'border-red-500/60 bg-red-950/10' : 'border-slate-800'} rounded-xl p-3.5 shadow transition">
+                                <div class="flex flex-col gap-2">
+                                    <div>
+                                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                                            <h3 class="text-xs sm:text-sm font-bold text-slate-100">${c.nome}</h3>
+                                            <span class="text-[9px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/20 font-mono">Escala: ${c.escala}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                                            <span>🕒 ${c.horario}</span>
+                                            <span>•</span>
+                                            <span>🌴 DSR: ${c.dsr}</span>
+                                        </div>
+                                        ${emAlerta ? `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Alerta: ${status.dias} dias seguidos!</div>` : ''}
+                                        <div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5">
+                                            <span>Função Atual:</span>
+                                            <div class="flex items-center justify-between gap-1">
+                                                <strong class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate">${status.funcao}</strong>
+                                                <span class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px] whitespace-nowrap">${status.dias}d seg.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-1 pt-2 border-t border-slate-800/80">
+                                        <button onclick="abrirModalEditar('${c.id}')" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-blue-500/20 flex items-center justify-center gap-1 transition"><i data-lucide="edit-3" class="w-3 h-3"></i> Alterar</button>
+                                        <button onclick="abrirHistorico('${c.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition"><i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Dias</button>
+                                        <button onclick="removerColaborador('${c.id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-red-500/20 flex items-center justify-center gap-1 transition"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') + `</div>`;
+
+                blocoSetor.innerHTML = cabecalhoSetor + conteudoCards;
+                containerSetores.appendChild(blocoSetor);
+            }
+            lucide.createIcons();
+        }
+
+        // =====================================================================
+        // MODAL ADICIONAR
+        // =====================================================================
+        function abrirModalAdd() {
+            document.getElementById('edit-id').value = '';
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
+            document.getElementById('input-nome-colab').value = '';
+            document.getElementById('select-escala').value = '6x1';
+            document.getElementById('select-dsr').value = 'Domingo';
+            document.getElementById('input-horario').value = '08:00 - 17:00';
+            popularSelectFuncoesPorSetor();
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        // =====================================================================
+        // MODAL EDITAR
+        // =====================================================================
+        async function abrirModalEditar(id) {
+            const colab = colaboradores.find(c => c.id === id);
+            if (!colab) return;
+            document.getElementById('edit-id').value = colab.id;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar, Escala e Função`;
+            document.getElementById('input-nome-colab').value = colab.nome;
+            document.getElementById('select-escala').value = colab.escala;
+            document.getElementById('select-dsr').value = colab.dsr;
+            document.getElementById('input-horario').value = colab.horario;
+
+            const funcaoAtual = colab.historicoDias[diaHoje - 1] || FUNCOES_LOGISTICA[0];
+            popularSelectFuncoesPorSetor(funcaoAtual);
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function fecharModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
+
+        // =====================================================================
+        // SALVAR COLABORADOR
+        // =====================================================================
+        async function salvarColaborador() {
+            const idEdit = document.getElementById('edit-id').value;
+            const nomeColab = document.getElementById('input-nome-colab').value.trim();
+            const escalaColab = document.getElementById('select-escala').value;
+            const dsrColab = document.getElementById('select-dsr').value;
+            const horarioColab = document.getElementById('input-horario').value;
+            const funcaoSelecionada = document.getElementById('novo-funcao').value;
+
+            if (!nomeColab) {
+                alert("⚠️ Por favor, insira o nome do colaborador.");
+                return;
+            }
+
+            if (idEdit) {
+                await supabaseClient.from('colaboradores').update({ 
+                    nome: nomeColab,
+                    escala: escalaColab,
+                    dsr: dsrColab,
+                    horario: horarioColab
+                }).eq('id', idEdit);
+                await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
+            } else {
+                const { data, error } = await supabaseClient.from('colaboradores').insert([{ 
+                    nome: nomeColab,
+                    escala: escalaColab,
+                    dsr: dsrColab,
+                    horario: horarioColab
+                }]).select();
+                if (!error && data && data.length > 0) {
+                    await atualizarDiaSupabase(data[0].id, diaHoje, funcaoSelecionada);
+                }
+            }
+            fecharModalAdd();
+            await carregarDadosSupabase();
+            renderizar();
+        }
+
+        // =====================================================================
+        // REMOVER COLABORADOR
+        // =====================================================================
+        async function removerColaborador(id) {
+            if (confirm('Deseja realmente excluir este auxiliar?')) {
+                await supabaseClient.from('historico_escala').delete().eq('colaborador_id', id);
+                await supabaseClient.from('colaboradores').delete().eq('id', id);
+                await carregarDadosSupabase();
+                renderizar();
+            }
+        }
+
+        // =====================================================================
+        // ABRIR HISTÓRICO (MODAL DIAS)
+        // =====================================================================
+        function abrirHistorico(id) {
+            const colab = colaboradores.find(c => c.id === id);
+            if (!colab) return;
+            document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome} (${colab.escala} | DSR: ${colab.dsr})`;
+            const container = document.getElementById('conteudo-historico-dias');
+            container.innerHTML = "";
+            
+            let indicesDias = Array.from({length: totalDiasDoMes}, (_, i) => i);
+            indicesDias.sort((a, b) => ((a + 1) === diaHoje ? -1 : (b + 1) === diaHoje ? 1 : 0));
+
+            indicesDias.forEach(i => {
+                const func = colab.historicoDias[i] || "-";
+                const numeroDia = i + 1;
+                const eHoje = numeroDia === diaHoje;
+                const ePassado = numeroDia < diaHoje;
+
+                let optionsHtml = `<option value="-" ${func === "-" ? "selected" : ""}>- (Folga/DSR)</option>`;
+                for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                    optionsHtml += `<optgroup label="📍 ${setor}">`;
+                    funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`; });
+                    optionsHtml += `</optgroup>`;
+                }
+
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border ${eHoje ? 'border-amber-500 bg-amber-500/10' : 'border-slate-800 bg-slate-950'} gap-2">
+                        <span class="text-[11px] font-bold ${eHoje ? 'text-amber-300' : 'text-slate-300'} w-28">Dia ${numeroDia} ${eHoje ? '⭐' : ePassado ? '🔒' : ''}</span>
+                        <select onchange="tentarAlterarDia('${id}', ${i}, this)" class="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-amber-500 flex-grow">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `;
+            });
+            document.getElementById('modal-historico').classList.remove('hidden');
+        }
+
+        function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
+
+        // =====================================================================
+        // ABRIR MATRIZ MENSAL
+        // =====================================================================
+        function abrirModalMatriz() {
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual} (HUB-LCE-04)`;
+            const tabelaUnica = document.getElementById('tabela-matriz-unica');
+            tabelaUnica.innerHTML = "";
+
+            let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[180px]">Colaborador (Escala / DSR)</th>`;
+            for (let d = 1; d <= totalDiasDoMes; d++) {
+                const eHoje = d === diaHoje;
+                thead += `<th class="p-2.5 text-center font-semibold min-w-[120px] ${eHoje ? 'text-amber-400 bg-amber-500/20 font-extrabold' : 'text-slate-300'}">Dia ${d} ${eHoje ? '⭐' : ''}</th>`;
+            }
+            thead += `</tr></thead>`;
+
+            let tbody = `<tbody>`;
+            colaboradores.forEach(c => {
+                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30">
+                            <td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800">
+                                <div>${c.nome}</div>
+                                <div class="text-[10px] text-amber-400 font-normal">${c.escala} | DSR: ${c.dsr}</div>
+                            </td>`;
+                for (let d = 0; d < totalDiasDoMes; d++) {
+                    const funcDia = c.historicoDias[d] || "-";
+                    let optionsHtml = `<option value="-" ${funcDia === "-" ? "selected" : ""}>-</option>`;
+                    for (const [sName, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                        optionsHtml += `<optgroup label="📍 ${sName}">`;
+                        funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`; });
+                        optionsHtml += `</optgroup>`;
+                    }
+                    tbody += `<td class="p-1.5 text-center"><select onchange="tentarAlterarDia('${c.id}', ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate bg-slate-950 border-slate-800 text-slate-300">${optionsHtml}</select></td>`;
+                }
+                tbody += `</tr>`;
+            });
+            tbody += `</tbody>`;
+
+            tabelaUnica.innerHTML = thead + tbody;
+            document.getElementById('modal-matriz').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function fecharModalMatriz() { 
+            document.getElementById('modal-matriz').classList.add('hidden'); 
+            renderizar(); 
+        }
+
+        // =====================================================================
+        // INICIAR APLICAÇÃO
+        // =====================================================================
+        window.onload = init;
+    </script>
+</body>
+</html>
