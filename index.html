@@ -21,6 +21,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased pb-12">
     <div id="app" class="max-w-md md:max-w-6xl mx-auto p-3 sm:p-6">
+        <!-- Header -->
         <header class="flex flex-col gap-4 mb-6 pb-4 border-b border-slate-800">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
@@ -32,15 +33,7 @@
                         <p id="label-mes-ano" class="text-xs text-slate-400">A carregar calendário e dados do Supabase...</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 flex-wrap justify-end">
-                    <button onclick="popularColaboradoresReaisSupabase()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold p-2.5 sm:px-3 sm:py-2.5 rounded-xl flex items-center gap-1.5 text-xs border border-slate-700 shadow transition" title="Importar Colaboradores Reais da Planilha">
-                        <i data-lucide="database" class="w-4 h-4"></i>
-                        <span class="hidden md:inline">Importar Reais</span>
-                    </button>
-                    <button onclick="limparDuplicatasSupabase()" class="bg-red-600/10 hover:bg-red-600/20 text-red-400 font-semibold p-2.5 sm:px-3 sm:py-2.5 rounded-xl flex items-center gap-1.5 text-xs border border-red-500/30 shadow transition" title="Remover Colaboradores Duplicados">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        <span class="hidden md:inline">Limpar Duplicatas</span>
-                    </button>
+                <div class="flex items-center gap-2">
                     <button onclick="abrirModalAdd()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-2.5 sm:px-4 sm:py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition active:scale-95">
                         <i data-lucide="user-plus" class="w-5 h-5"></i>
                         <span class="hidden sm:inline text-sm">Novo Auxiliar</span>
@@ -49,6 +42,7 @@
             </div>
         </header>
 
+        <!-- KPI -->
         <div class="grid grid-cols-2 gap-3 mb-6">
             <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
                 <div>
@@ -70,6 +64,7 @@
             </div>
         </div>
 
+        <!-- Busca e Grade -->
         <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div class="relative w-full">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
@@ -83,6 +78,7 @@
             </div>
         </div>
 
+        <!-- Setores -->
         <div id="container-setores" class="space-y-6"></div>
     </div>
 
@@ -97,43 +93,51 @@
             </div>
             <div class="space-y-3">
                 <input type="hidden" id="edit-id" value="">
+                
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Completo</label>
                     <input type="text" id="input-nome-colab" placeholder="Nome do colaborador..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Escala</label>
-                        <select id="select-escala" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
-                            <option value="6x1">6x1</option>
-                            <option value="5x2">5x2</option>
-                            <option value="12x36">12x36</option>
-                            <option value="3x4">3x4</option>
-                        </select>
+
+                <!-- Campos de escala/dsr/horário — só aparecem no modo ADICIONAR -->
+                <div id="campos-add-extras" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Escala</label>
+                            <select id="select-escala" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
+                                <option value="6x1">6x1</option>
+                                <option value="5x2">5x2</option>
+                                <option value="12x36">12x36</option>
+                                <option value="3x4">3x4</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">DSR</label>
+                            <select id="select-dsr" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
+                                <option value="Domingo">Domingo</option>
+                                <option value="Sábado">Sábado</option>
+                                <option value="Segunda-feira">Segunda-feira</option>
+                                <option value="Terça-feira">Terça-feira</option>
+                                <option value="Quarta-feira">Quarta-feira</option>
+                                <option value="Quinta-feira">Quinta-feira</option>
+                                <option value="Sexta-feira">Sexta-feira</option>
+                                <option value="Seg, Ter, Qua, Qui">Seg, Ter, Qua, Qui</option>
+                                <option value="Sábado e Domingo">Sábado e Domingo</option>
+                            </select>
+                        </div>
                     </div>
+
                     <div>
-                        <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">DSR</label>
-                        <select id="select-dsr" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
-                            <option value="Domingo">Domingo</option>
-                            <option value="Sábado">Sábado</option>
-                            <option value="Segunda-feira">Segunda-feira</option>
-                            <option value="Terça-feira">Terça-feira</option>
-                            <option value="Quarta-feira">Quarta-feira</option>
-                            <option value="Quinta-feira">Quinta-feira</option>
-                            <option value="Sexta-feira">Sexta-feira</option>
-                            <option value="Seg, Ter, Qua, Qui">Seg, Ter, Qua, Qui</option>
-                            <option value="Sábado e Domingo">Sábado e Domingo</option>
-                        </select>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Horário</label>
+                        <input type="text" id="input-horario" value="08:00 - 17:00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
                     </div>
                 </div>
+
                 <div>
-                    <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Horário</label>
-                    <input type="text" id="input-horario" value="08:00 - 17:00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função / Setor Inicial</label>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função / Setor</label>
                     <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
+
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                     <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
                     <button onclick="salvarColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Salvar</button>
@@ -154,9 +158,11 @@
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
+            
             <div class="flex-grow overflow-auto my-3 relative rounded-lg border border-slate-800">
                 <table id="tabela-matriz-unica" class="w-full text-left border-collapse text-xs"></table>
             </div>
+
             <div class="flex justify-end pt-2 border-t border-slate-800">
                 <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
             </div>
@@ -209,81 +215,6 @@
         Object.values(SETORES_E_FUNCOES).forEach(lista => FUNCOES_LOGISTICA.push(...lista));
 
         // =====================================================================
-        // LISTA REAL DE COLABORADORES - HUB-LCE-04 JUAZEIRO DO NORTE
-        // =====================================================================
-        const COLABORADORES_REAIS = [
-            { nome: "JUSCILENE PEREIRA DIAS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "ROBERTA CARVALHO DE SOUSA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "MADYSON KELVIN SILVA DE LIMA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "NATANAEL GHEOVANI BORGES DE FREITAS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "SERGIO DOS SANTOS SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "PAULO HENRIQUE DOS SANTOS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "EMANUELE ROCHA BARBOSA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "DENILSON REGINALDO BATISTA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "ADEMIR DOS SANTOS SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "MATEUS VIEIRA NOGUEIRA GAMA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "DANILO DE JESUS SANTOS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "CAUA LIMA FERNANDES MACEDO MATOS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "CICERO CELIO JANUARIO DA SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "KLEBER SOUSA ARAUJO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "LUANA MARTINIANO GONÇALO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "RICARDO PEREIRA DA SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "LUIZ RAFAEL COELHO DO NASCIMENTO SANTOS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "FLAVIO HENRIQUE DE SOUSA SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "ANA CLARA ALVES RODRIGUES", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "ANDERSON DA SILVA NASCIMENTO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "AURIANE BENEDITA DOS SANTOS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "TAINARA MARTINS DE OLIVEIRA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "GEISY LEITE TAVARES PEREIRA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "HENRIQUE SILVA FARIA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "JARDEL RODRIGUES ALVES", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "EDINALDO GOMES PEREIRA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "JOSE ALEXANDRE ALVES SOBREIRA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "LEONARDO DA SILVA BARBOSA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "ALUIZIO NERI ROCHA NETO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "CICERO LUCAS RODRIGUES MOREIRA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "EVERSON GILLIARD DE QUEROIS PEQUENO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "JOSE AIRTON DA SILVA COSMO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "JOHNATHAN INALDO RODRIGUES DE SOUZA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "CICERO GABRIEL SANTOS DE SA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "FRANCISCO HELTON ALVES DA SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "HERNANDES FERREIRA GONCALVES", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "JONAILSON DOS SANTOS FARIAS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "LEANDRO DA CUNHA RIBEIRO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "LEANDRO DE SOUZA GOMES", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "ALISSON IURECOSTA ALVES", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "PEDRO VICTOR RIBEIRO DE ANDRADE", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "JOANA CARLOS DOS SANTOS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "Adriano Rodrigues flor", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "RAIANE ALVINO GONÇALVES", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "FRANCISCA VARLA FELIX DA SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "JOSUE IRAILDES COSTA SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "LARISSA SANTOS TELES", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "JOSE WATHYLLA DOS SANTOS SOUZA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "ITANAEL NUNES DE MOURA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "MILENA ALVES DA SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "HODIAS NASCIMENTO DOS SANTOS", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "EVERALDO ALVES OLIVEIRA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "JOAO PAULO DE OLIVEIRA SILVA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "CLEIDIANA PESSOA FERREIRA", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "JAMILLY PRISCILA DO NASCIMENTO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quarta-feira" },
-            { nome: "Amanda Aiara Teixeira Morais", escala: "6x1", horario: "01:00 - 08:54", dsr: "Quinta-feira" },
-            { nome: "JOAO VICTOR VILARDE ARAUJO", escala: "6x1", horario: "01:00 - 08:54", dsr: "Sexta-feira" },
-            { nome: "FELIPE GONCALVES DE OLIVEIRA", escala: "5x2", horario: "18:00 - 03:02", dsr: "Sábado e Domingo" },
-            { nome: "ADRIAN NUNES LIMA SOARES", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "JOAO LUIS DA SILVA FILHO", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "DENNYS RICHARDSON ALVES FREIRE", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "SAUL APOLINARIO DE SOUSA NASCIMENTO", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "ITALO CLETO DE SOUSA", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "ESMAEL AUGUSTO SILVA FERREIRA", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "PEDRO ZEILDO PEREIRA DA SILVA", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "HELOÍSA KELLY DA SILVA NASCIMENTO", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "LUIZ FERNANDO FERREIRA BATISTA", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "JOSE NEILSON ALVES GOMES", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" },
-            { nome: "ISRAEL ALENCAR DO VALE", escala: "3x4", horario: "00:00 - 09:05", dsr: "Seg, Ter, Qua, Qui" }
-        ];
-
-        // =====================================================================
         // VARIÁVEIS GLOBAIS
         // =====================================================================
         const dataAtualSistema = new Date();
@@ -318,99 +249,8 @@
             
             popularSelectFuncoesPorSetor();
             await carregarDadosSupabase();
-            
-            if (colaboradores.length === 0) {
-                const confirmar = confirm(`📋 Nenhum colaborador encontrado.\n\nDeseja importar os ${COLABORADORES_REAIS.length} colaboradores reais do HUB-LCE-04?`);
-                if (confirmar) {
-                    await importarColaboradores();
-                }
-            }
-            
             renderizar();
             lucide.createIcons();
-        }
-
-        // =====================================================================
-        // IMPORTAÇÃO DE COLABORADORES REAIS
-        // =====================================================================
-        async function importarColaboradores() {
-            const { data: existentes } = await supabaseClient.from('colaboradores').select('nome');
-            const nomesExistentes = new Set((existentes || []).map(c => c.nome.toLowerCase().trim()));
-            
-            let inseridos = 0;
-            let ignorados = 0;
-            let erros = 0;
-
-            for (const colab of COLABORADORES_REAIS) {
-                if (nomesExistentes.has(colab.nome.toLowerCase().trim())) {
-                    ignorados++;
-                    continue;
-                }
-
-                const { data, error } = await supabaseClient.from('colaboradores').insert([{
-                    nome: colab.nome,
-                    escala: colab.escala,
-                    horario: colab.horario,
-                    dsr: colab.dsr
-                }]).select();
-
-                if (!error && data && data.length > 0) {
-                    const funcaoInit = FUNCOES_LOGISTICA[inseridos % FUNCOES_LOGISTICA.length];
-                    await atualizarDiaSupabase(data[0].id, diaHoje, funcaoInit);
-                    inseridos++;
-                } else {
-                    console.error("Erro ao inserir:", colab.nome, error);
-                    erros++;
-                }
-            }
-            
-            await carregarDadosSupabase();
-            renderizar();
-            alert(`✅ Importação concluída!\n\n📥 Inseridos: ${inseridos}\n⏭️ Já existiam: ${ignorados}\n❌ Erros: ${erros}`);
-        }
-
-        async function popularColaboradoresReaisSupabase() {
-            if (!confirm("Deseja importar os colaboradores reais do HUB-LCE-04 Juazeiro do Norte?")) return;
-            await importarColaboradores();
-        }
-
-        // =====================================================================
-        // LIMPAR DUPLICATAS
-        // =====================================================================
-        async function limparDuplicatasSupabase() {
-            if (!confirm("⚠️ Isso removerá colaboradores duplicados (mesmo nome). Continuar?")) return;
-            
-            const { data: todos, error } = await supabaseClient.from('colaboradores').select('*');
-            if (error || !todos) {
-                alert("Erro ao buscar colaboradores: " + (error ? error.message : "vazio"));
-                return;
-            }
-            
-            const vistos = new Map();
-            const idsParaRemover = [];
-            
-            todos.forEach(c => {
-                const chave = c.nome.toLowerCase().trim();
-                if (vistos.has(chave)) {
-                    idsParaRemover.push(c.id);
-                } else {
-                    vistos.set(chave, c.id);
-                }
-            });
-            
-            if (idsParaRemover.length === 0) {
-                alert("✅ Nenhuma duplicata encontrada!");
-                return;
-            }
-            
-            for (const id of idsParaRemover) {
-                await supabaseClient.from('historico_escala').delete().eq('colaborador_id', id);
-                await supabaseClient.from('colaboradores').delete().eq('id', id);
-            }
-            
-            await carregarDadosSupabase();
-            renderizar();
-            alert(`✅ ${idsParaRemover.length} duplicatas removidas.`);
         }
 
         // =====================================================================
@@ -617,7 +457,7 @@
         }
 
         // =====================================================================
-        // MODAL ADICIONAR
+        // ABRIR MODAL ADICIONAR (Novo Auxiliar - mostra todos os campos)
         // =====================================================================
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
@@ -626,26 +466,32 @@
             document.getElementById('select-escala').value = '6x1';
             document.getElementById('select-dsr').value = 'Domingo';
             document.getElementById('input-horario').value = '08:00 - 17:00';
+            
+            // Mostrar campos extras (escala, DSR, horário) no modo ADICIONAR
+            document.getElementById('campos-add-extras').classList.remove('hidden');
+            
             popularSelectFuncoesPorSetor();
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
 
         // =====================================================================
-        // MODAL EDITAR
+        // ABRIR MODAL EDITAR (Alterar - apenas Nome e Função)
         // =====================================================================
         async function abrirModalEditar(id) {
             const colab = colaboradores.find(c => c.id === id);
             if (!colab) return;
+            
             document.getElementById('edit-id').value = colab.id;
-            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar, Escala e Função`;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar`;
             document.getElementById('input-nome-colab').value = colab.nome;
-            document.getElementById('select-escala').value = colab.escala;
-            document.getElementById('select-dsr').value = colab.dsr;
-            document.getElementById('input-horario').value = colab.horario;
+
+            // Ocultar campos extras (escala, DSR, horário) no modo EDITAR
+            document.getElementById('campos-add-extras').classList.add('hidden');
 
             const funcaoAtual = colab.historicoDias[diaHoje - 1] || FUNCOES_LOGISTICA[0];
             popularSelectFuncoesPorSetor(funcaoAtual);
+            
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -653,14 +499,11 @@
         function fecharModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
 
         // =====================================================================
-        // SALVAR COLABORADOR
+        // SALVAR COLABORADOR (Adicionar ou Editar)
         // =====================================================================
         async function salvarColaborador() {
             const idEdit = document.getElementById('edit-id').value;
             const nomeColab = document.getElementById('input-nome-colab').value.trim();
-            const escalaColab = document.getElementById('select-escala').value;
-            const dsrColab = document.getElementById('select-dsr').value;
-            const horarioColab = document.getElementById('input-horario').value;
             const funcaoSelecionada = document.getElementById('novo-funcao').value;
 
             if (!nomeColab) {
@@ -669,22 +512,28 @@
             }
 
             if (idEdit) {
+                // ====== MODO EDITAR: apenas nome + função ======
                 await supabaseClient.from('colaboradores').update({ 
-                    nome: nomeColab,
-                    escala: escalaColab,
-                    dsr: dsrColab,
-                    horario: horarioColab
+                    nome: nomeColab
                 }).eq('id', idEdit);
                 await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
             } else {
+                // ====== MODO ADICIONAR: nome + escala + dsr + horário + função ======
+                const escalaColab = document.getElementById('select-escala').value;
+                const dsrColab = document.getElementById('select-dsr').value;
+                const horarioColab = document.getElementById('input-horario').value;
+
                 const { data, error } = await supabaseClient.from('colaboradores').insert([{ 
                     nome: nomeColab,
                     escala: escalaColab,
                     dsr: dsrColab,
                     horario: horarioColab
                 }]).select();
+                
                 if (!error && data && data.length > 0) {
                     await atualizarDiaSupabase(data[0].id, diaHoje, funcaoSelecionada);
+                } else if (error) {
+                    alert("Erro ao salvar: " + error.message);
                 }
             }
             fecharModalAdd();
