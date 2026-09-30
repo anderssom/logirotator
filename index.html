@@ -47,6 +47,10 @@
                     <span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Em Operação</span>
                     <span id="badge-operacao" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
                 </button>
+                <button onclick="setFiltro('diaristas')" id="menu-diaristas" class="menu-item w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
+                    <span class="flex items-center gap-2"><i data-lucide="hard-hat" class="w-4 h-4 text-cyan-400"></i> Diaristas</span>
+                    <span id="badge-diaristas" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+                </button>
                 <button onclick="setFiltro('dsr')" id="menu-dsr" class="menu-item w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
                     <span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span>
                     <span id="badge-dsr" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
@@ -95,8 +99,8 @@
                     </div>
                 </header>
 
-                <!-- KPIs clicáveis -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                <!-- KPIs clicáveis (6 cards) -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
                     <button onclick="setFiltro('todos')" class="text-left bg-slate-900/80 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-3.5 rounded-xl shadow-md flex items-center justify-between transition active:scale-[0.98]">
                         <div>
                             <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</span>
@@ -114,6 +118,16 @@
                         </div>
                         <div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400">
                             <i data-lucide="activity" class="w-5 h-5"></i>
+                        </div>
+                    </button>
+
+                    <button onclick="setFiltro('diaristas')" class="text-left bg-slate-900/80 border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-950/20 p-3.5 rounded-xl shadow-md flex items-center justify-between transition active:scale-[0.98]">
+                        <div>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-cyan-400">Diaristas</span>
+                            <h2 id="kpi-diaristas" class="text-2xl font-extrabold text-cyan-400 mt-0.5">0</h2>
+                        </div>
+                        <div class="bg-cyan-500/10 p-2.5 rounded-lg border border-cyan-500/20 text-cyan-400">
+                            <i data-lucide="hard-hat" class="w-5 h-5"></i>
                         </div>
                     </button>
 
@@ -190,6 +204,10 @@
             <button onclick="setFiltro('operacao');toggleSidebarMobile()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
                 <span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Em Operação</span>
                 <span id="badge-operacao-m" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+            </button>
+            <button onclick="setFiltro('diaristas');toggleSidebarMobile()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
+                <span class="flex items-center gap-2"><i data-lucide="hard-hat" class="w-4 h-4 text-cyan-400"></i> Diaristas</span>
+                <span id="badge-diaristas-m" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
             </button>
             <button onclick="setFiltro('dsr');toggleSidebarMobile()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
                 <span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span>
@@ -329,7 +347,7 @@
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
                         <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa
                     </h3>
-                    <p class="text-[11px] text-slate-400">⭐ Dia atual · 🔒 Passado (senha) · 🚫 DSR permite status especiais · ⚠️ Falta/Atestado/DSR Extra</p>
+                    <p class="text-[11px] text-slate-400">⭐ Dia atual · 🔒 Passado (senha) · 🚫 DSR permite status especiais · ⚠️ Falta/Atestado/DSR Extra/Diarista</p>
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
@@ -345,6 +363,7 @@
                     <span class="text-orange-400">🚫 DSR</span>
                     <span class="text-yellow-400">⚠️ Falta</span>
                     <span class="text-red-400">🏥 Atestado</span>
+                    <span class="text-cyan-400">🧑‍🔧 Diarista</span>
                 </div>
                 <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
             </div>
@@ -412,15 +431,24 @@
             "FM": ["Aux FM"]
         };
 
+        // =====================================================================
+        // STATUS ESPECIAIS
+        // =====================================================================
         const STATUS_ESPECIAIS = [
-            { valor: "-",         label: "- (Folga/DSR normal)" },
-            { valor: "DSR_EXTRA", label: "🌴 DSR Extra (folga ganha)" },
-            { valor: "FALTA",     label: "⚠️ FALTA" },
-            { valor: "ATESTADO",  label: "🏥 ATESTADO" }
+            { valor: "-",                 label: "- (Folga/DSR normal)" },
+            { valor: "DSR_EXTRA",         label: "🌴 DSR Extra (folga ganha)" },
+            { valor: "FALTA",             label: "⚠️ FALTA" },
+            { valor: "ATESTADO",          label: "🏥 ATESTADO" },
+            { valor: "DIARISTA_PRESENTE", label: "🧑‍🔧 DIARISTA (presente)" },
+            { valor: "DIARISTA_FALTOU",   label: "🧑‍🔧 DIARISTA (faltou)" }
         ];
 
         function isStatusEspecial(valor) {
             return STATUS_ESPECIAIS.some(s => s.valor === valor);
+        }
+
+        function isDiarista(valor) {
+            return valor === "DIARISTA_PRESENTE" || valor === "DIARISTA_FALTOU";
         }
 
         let FUNCOES_LOGISTICA = [];
@@ -512,6 +540,8 @@
             const raw = colab.historicoDias[diaHoje - 1] || "-";
             if (raw === "FALTA") return 'falta';
             if (raw === "ATESTADO") return 'atestado';
+            if (raw === "DIARISTA_PRESENTE") return 'diarista_presente';
+            if (raw === "DIARISTA_FALTOU") return 'diarista_faltou';
             if (raw === "-" || raw === "DSR_EXTRA") return 'sem_escala';
             return 'operacao';
         }
@@ -576,6 +606,7 @@
             const labels = {
                 'todos': 'Todos',
                 'operacao': 'Em Operação',
+                'diaristas': 'Diaristas',
                 'dsr': 'Em DSR Hoje',
                 'faltas': 'Faltas Hoje',
                 'atestados': 'Atestados Hoje'
@@ -583,6 +614,7 @@
             const icons = {
                 'todos': 'layout-grid',
                 'operacao': 'users',
+                'diaristas': 'hard-hat',
                 'dsr': 'palmtree',
                 'faltas': 'alert-triangle',
                 'atestados': 'stethoscope'
@@ -809,6 +841,14 @@
                 bordaCor = 'border-red-500/40';
                 tituloCor = 'text-red-200';
                 badge = `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">🏥 ATESTADO registrado</div>`;
+            } else if (tipo === 'diarista_presente') {
+                bordaCor = 'border-cyan-500/40';
+                tituloCor = 'text-cyan-200';
+                badge = `<div class="mt-1.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">🧑‍🔧 DIARISTA — Presente</div>`;
+            } else if (tipo === 'diarista_faltou') {
+                bordaCor = 'border-red-500/40';
+                tituloCor = 'text-red-200';
+                badge = `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">🧑‍🔧 DIARISTA — Faltou</div>`;
             } else if (tipo === 'operacao') {
                 if (emBloqueio) bordaCor = 'border-orange-500/60';
                 else if (emAlerta) bordaCor = 'border-red-500/60';
@@ -892,13 +932,18 @@
             const containerSetores = document.getElementById('container-setores');
             containerSetores.innerHTML = "";
 
-            const grupos = { operacao: [], dsr: [], falta: [], atestado: [] };
+            // Agrupa
+            const grupos = {
+                operacao: [],
+                dsr: [],
+                falta: [],
+                atestado: [],
+                diarista_presente: [],
+                diarista_faltou: []
+            };
             colaboradores.forEach(c => {
                 const tipo = obterStatusHoje(c);
-                if (tipo === 'operacao') grupos.operacao.push(c);
-                else if (tipo === 'dsr') grupos.dsr.push(c);
-                else if (tipo === 'falta') grupos.falta.push(c);
-                else if (tipo === 'atestado') grupos.atestado.push(c);
+                if (grupos[tipo]) grupos[tipo].push(c);
             });
 
             const filtrar = lista => lista.filter(c =>
@@ -909,19 +954,28 @@
             const dsrF = filtrar(grupos.dsr);
             const faltaF = filtrar(grupos.falta);
             const atestadoF = filtrar(grupos.atestado);
+            const diaristaPresenteF = filtrar(grupos.diarista_presente);
+            const diaristaFaltouF = filtrar(grupos.diarista_faltou);
+
+            // KPIs
+            const totalDiaristas = grupos.diarista_presente.length + grupos.diarista_faltou.length;
+            const emOperacaoTotal = grupos.operacao.length + grupos.diarista_presente.length;
 
             document.getElementById('kpi-total').innerText = colaboradores.length;
-            document.getElementById('kpi-operacao').innerText = grupos.operacao.length;
+            document.getElementById('kpi-operacao').innerText = emOperacaoTotal;
             document.getElementById('kpi-dsr').innerText = grupos.dsr.length;
-            document.getElementById('kpi-faltas').innerText = grupos.falta.length;
+            document.getElementById('kpi-faltas').innerText = grupos.falta.length + grupos.diarista_faltou.length;
             document.getElementById('kpi-atestados').innerText = grupos.atestado.length;
+            document.getElementById('kpi-diaristas').innerText = totalDiaristas;
 
+            // Badges
             const badges = {
                 'badge-todos': colaboradores.length,
-                'badge-operacao': grupos.operacao.length,
+                'badge-operacao': emOperacaoTotal,
                 'badge-dsr': grupos.dsr.length,
-                'badge-faltas': grupos.falta.length,
-                'badge-atestados': grupos.atestado.length
+                'badge-faltas': grupos.falta.length + grupos.diarista_faltou.length,
+                'badge-atestados': grupos.atestado.length,
+                'badge-diaristas': totalDiaristas
             };
             Object.entries(badges).forEach(([id, val]) => {
                 const el = document.getElementById(id);
@@ -931,26 +985,29 @@
             });
 
             // =====================================================================
-            // MODO BUSCA ATIVA — sobe os resultados pro topo
+            // MODO BUSCA ATIVA
             // =====================================================================
             if (termoBuscaNorm) {
                 const todosMatch = [
                     ...dsrF.map(c => ({ c, tipo: 'dsr' })),
                     ...faltaF.map(c => ({ c, tipo: 'falta' })),
                     ...atestadoF.map(c => ({ c, tipo: 'atestado' })),
+                    ...diaristaFaltouF.map(c => ({ c, tipo: 'diarista_faltou' })),
+                    ...diaristaPresenteF.map(c => ({ c, tipo: 'diarista_presente' })),
                     ...operacaoF.map(c => ({ c, tipo: 'operacao' }))
                 ];
 
                 const filtroMap = {
                     'todos': null,
                     'operacao': 'operacao',
+                    'diaristas': ['diarista_presente', 'diarista_faltou'],
                     'dsr': 'dsr',
                     'faltas': 'falta',
                     'atestados': 'atestado'
                 };
                 const tipoPermitido = filtroMap[filtroAtivo];
                 const filtrados = tipoPermitido
-                    ? todosMatch.filter(x => x.tipo === tipoPermitido)
+                    ? todosMatch.filter(x => Array.isArray(tipoPermitido) ? tipoPermitido.includes(x.tipo) : x.tipo === tipoPermitido)
                     : todosMatch;
 
                 if (filtrados.length === 0) {
@@ -980,7 +1037,7 @@
             }
 
             // =====================================================================
-            // MODO NORMAL — sem busca
+            // MODO NORMAL
             // =====================================================================
             const blocoDSR = criarBloco('Colaboradores em DSR Hoje', '— não podem ser escalados', dsrF, 'orange', '🌴', `${dsrF.length} em descanso`);
             const blocoFalta = criarBloco('Faltas Hoje', '— ausências não justificadas', faltaF, 'yellow', '⚠️', `${faltaF.length} falta${faltaF.length === 1 ? '' : 's'}`);
@@ -990,9 +1047,17 @@
                 if (blocoDSR) containerSetores.appendChild(blocoDSR);
                 if (blocoFalta) containerSetores.appendChild(blocoFalta);
                 if (blocoAtestado) containerSetores.appendChild(blocoAtestado);
+                if (totalDiaristas > 0) containerSetores.appendChild(criarBlocoDiaristas(grupos.diarista_presente.length, grupos.diarista_faltou.length, diaristaPresenteF, diaristaFaltouF));
                 renderizarSetores(operacaoF, containerSetores);
             } else if (filtroAtivo === 'operacao') {
                 renderizarSetores(operacaoF, containerSetores);
+            } else if (filtroAtivo === 'diaristas') {
+                const listaDiaristas = [...diaristaPresenteF, ...diaristaFaltouF];
+                if (listaDiaristas.length === 0) {
+                    containerSetores.innerHTML = `<p class="text-center text-slate-500 italic py-8">Nenhum diarista registrado hoje.</p>`;
+                } else {
+                    containerSetores.appendChild(criarBlocoDiaristas(grupos.diarista_presente.length, grupos.diarista_faltou.length, diaristaPresenteF, diaristaFaltouF, true));
+                }
             } else if (filtroAtivo === 'dsr') {
                 if (blocoDSR) containerSetores.appendChild(blocoDSR);
                 else containerSetores.innerHTML = `<p class="text-center text-slate-500 italic py-8">Nenhum colaborador em DSR hoje.</p>`;
@@ -1005,6 +1070,58 @@
             }
 
             lucide.createIcons();
+        }
+
+        // =====================================================================
+        // BLOCO DE DIARISTAS
+        // =====================================================================
+        function criarBlocoDiaristas(qtdPresentes, qtdFaltou, listaPresentes, listaFaltou, mostrarNomes = false) {
+            const total = qtdPresentes + qtdFaltou;
+            const bloco = document.createElement('div');
+            bloco.className = "bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl";
+
+            let corpo = `
+                <div class="grid grid-cols-2 gap-3 max-w-md">
+                    <div class="bg-slate-900 border border-emerald-500/40 rounded-xl p-3.5">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
+                            <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Presentes</span>
+                        </div>
+                        <div class="text-3xl font-extrabold text-emerald-300 mt-1">${qtdPresentes}</div>
+                    </div>
+                    <div class="bg-slate-900 border border-red-500/40 rounded-xl p-3.5">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="user-x" class="w-4 h-4 text-red-400"></i>
+                            <span class="text-[10px] uppercase tracking-wider text-red-400 font-bold">Faltaram</span>
+                        </div>
+                        <div class="text-3xl font-extrabold text-red-300 mt-1">${qtdFaltou}</div>
+                    </div>
+                </div>
+            `;
+
+            if (mostrarNomes) {
+                const cards = [
+                    ...listaPresentes.map(c => ({ c, tipo: 'diarista_presente' })),
+                    ...listaFaltou.map(c => ({ c, tipo: 'diarista_faltou' }))
+                ];
+                corpo += `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4 pt-4 border-t border-cyan-500/20">
+                        ${cards.map(({ c, tipo }) => cardColaborador(c, tipo)).join('')}
+                    </div>
+                `;
+            }
+
+            bloco.innerHTML = `
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-cyan-500/30 flex-wrap gap-2">
+                    <h2 class="text-sm sm:text-base font-bold text-cyan-400 flex items-center gap-2">
+                        🧑‍🔧 Diaristas Hoje
+                        <span class="text-[10px] font-normal opacity-70">— não alocados em setor fixo</span>
+                    </h2>
+                    <span class="bg-cyan-500/20 text-cyan-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${total} diarista${total === 1 ? '' : 's'}</span>
+                </div>
+                ${corpo}
+            `;
+            return bloco;
         }
 
         // =====================================================================
