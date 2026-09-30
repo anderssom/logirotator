@@ -78,7 +78,6 @@
         <main class="flex-1 min-w-0">
             <div id="app" class="max-w-md md:max-w-6xl mx-auto p-3 sm:p-6 pb-12">
 
-                <!-- Header mobile -->
                 <header class="flex flex-col gap-4 mb-6 pb-4 border-b border-slate-800">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
@@ -209,9 +208,11 @@
         </nav>
     </aside>
 
-    <!-- MODAIS -->
+    <!-- ========================================================= -->
+    <!-- MODAIS                                                    -->
+    <!-- ========================================================= -->
 
-    <!-- Modal Adicionar / Editar -->
+    <!-- Modal Adicionar / Editar (cadastro novo) -->
     <div id="modal-add" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
@@ -269,6 +270,46 @@
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                     <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
                     <button onclick="salvarColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Alocar em Setor (novo) -->
+    <div id="modal-alocar" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="alocar-titulo" class="text-base font-bold text-amber-400 flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Alocar em Setor
+                </h3>
+                <button onclick="fecharModalAlocar()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-3">
+                <input type="hidden" id="alocar-setor" value="">
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Buscar Colaborador</label>
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                        <input type="text" id="alocar-busca" placeholder="Digite o nome do colaborador..." autocomplete="off"
+                            oninput="filtrarColabsAlocar()"
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Colaborador</label>
+                    <div id="alocar-lista" class="bg-slate-950 border border-slate-800 rounded-xl max-h-56 overflow-y-auto"></div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função no Setor</label>
+                    <select id="alocar-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                    <button onclick="fecharModalAlocar()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
+                    <button onclick="confirmarAlocacao()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Alocar</button>
                 </div>
             </div>
         </div>
@@ -365,9 +406,6 @@
             "FM": ["Aux FM"]
         };
 
-        // =====================================================================
-        // STATUS ESPECIAIS
-        // =====================================================================
         const STATUS_ESPECIAIS = [
             { valor: "-",         label: "- (Folga/DSR normal)" },
             { valor: "DSR_EXTRA", label: "🌴 DSR Extra (folga ganha)" },
@@ -400,6 +438,7 @@
 
         let colaboradores = [];
         let filtroAtivo = 'todos';
+        let alocarColabSelecionadoId = null;
 
         // =====================================================================
         // NORMALIZAÇÃO
@@ -654,7 +693,7 @@
         }
 
         // =====================================================================
-        // ALTERAR DIA (com toast + anti-duplo)
+        // ALTERAR DIA
         // =====================================================================
         async function tentarAlterarDia(idColab, indexDia, elementoSelect) {
             const numeroDia = indexDia + 1;
@@ -911,7 +950,7 @@
         }
 
         // =====================================================================
-        // RENDERIZAR SETORES (com botão + Adicionar)
+        // RENDERIZAR SETORES (com botão Alocar)
         // =====================================================================
         function renderizarSetores(colabsOperacao, container) {
             for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
@@ -931,16 +970,16 @@
                         </h2>
                         <div class="flex items-center gap-2">
                             <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
-                            <button onclick="abrirModalAdd('${setorEscapado}')"
+                            <button onclick="abrirModalAlocar('${setorEscapado}')"
                                     class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95"
-                                    title="Adicionar auxiliar em ${setorEscapado}">
+                                    title="Alocar colaborador em ${setorEscapado}">
                                 <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
                                 <span>Adicionar</span>
                             </button>
                         </div>
                     </div>
                     ${colabsDoSetor.length === 0
-                        ? `<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar alocado neste setor hoje. Clique em <strong class="text-amber-400">Adicionar</strong> para incluir o primeiro.</p>`
+                        ? `<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar alocado neste setor hoje. Clique em <strong class="text-amber-400">Adicionar</strong> para alocar alguém.</p>`
                         : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">${colabsDoSetor.map(c => cardColaborador(c, 'operacao')).join('')}</div>`
                     }
                 `;
@@ -949,25 +988,17 @@
         }
 
         // =====================================================================
-        // MODAIS
+        // MODAL ADICIONAR (cadastro novo)
         // =====================================================================
-        function abrirModalAdd(setorPreSelecionado = null) {
+        function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
-            document.getElementById('modal-titulo').innerHTML = setorPreSelecionado
-                ? `<i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar — ${setorPreSelecionado}`
-                : `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
             document.getElementById('input-nome-colab').value = '';
             document.getElementById('select-escala').value = '6x1';
             document.getElementById('select-dsr').value = 'Domingo';
             document.getElementById('input-horario').value = '08:00 - 17:00';
             document.getElementById('campos-add-extras').classList.remove('hidden');
-
-            let funcaoDefault = null;
-            if (setorPreSelecionado && SETORES_E_FUNCOES[setorPreSelecionado]) {
-                funcaoDefault = SETORES_E_FUNCOES[setorPreSelecionado][0];
-            }
-            popularSelectFuncoesPorSetor(funcaoDefault);
-
+            popularSelectFuncoesPorSetor();
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -991,7 +1022,144 @@
         function fecharModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
 
         // =====================================================================
-        // SALVAR (com validações + toast + anti-duplo)
+        // MODAL ALOCAR EM SETOR (busca em colaboradores existentes)
+        // =====================================================================
+        function abrirModalAlocar(setor) {
+            document.getElementById('alocar-setor').value = setor;
+            document.getElementById('alocar-titulo').innerHTML =
+                `<i data-lucide="user-plus" class="w-4 h-4"></i> Alocar em ${setor}`;
+
+            document.getElementById('alocar-busca').value = '';
+            alocarColabSelecionadoId = null;
+
+            const selectFuncao = document.getElementById('alocar-funcao');
+            selectFuncao.innerHTML = '';
+            (SETORES_E_FUNCOES[setor] || []).forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.textContent = f;
+                selectFuncao.appendChild(opt);
+            });
+
+            filtrarColabsAlocar();
+
+            document.getElementById('modal-alocar').classList.remove('hidden');
+            lucide.createIcons();
+            setTimeout(() => document.getElementById('alocar-busca').focus(), 100);
+        }
+
+        function fecharModalAlocar() {
+            document.getElementById('modal-alocar').classList.add('hidden');
+            alocarColabSelecionadoId = null;
+        }
+
+        function filtrarColabsAlocar() {
+            const termo = normalizarTexto(document.getElementById('alocar-busca').value);
+            const container = document.getElementById('alocar-lista');
+
+            const lista = colaboradores
+                .filter(c => matchBuscaAvancada(termo, c.nome))
+                .map(c => {
+                    const statusHoje = obterStatusHoje(c);
+                    let indisponivel = false;
+                    let motivo = '';
+                    if (statusHoje === 'dsr') { indisponivel = true; motivo = 'DSR hoje'; }
+                    else if (statusHoje === 'falta') { indisponivel = true; motivo = 'Falta hoje'; }
+                    else if (statusHoje === 'atestado') { indisponivel = true; motivo = 'Atestado hoje'; }
+                    return { colab: c, indisponivel, motivo };
+                })
+                .sort((a, b) => {
+                    if (a.indisponivel !== b.indisponivel) return a.indisponivel ? 1 : -1;
+                    return a.colab.nome.localeCompare(b.colab.nome);
+                });
+
+            if (lista.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 italic p-3">Nenhum colaborador encontrado.</p>`;
+                return;
+            }
+
+            container.innerHTML = lista.map(({ colab, indisponivel, motivo }) => {
+                const selecionado = colab.id === alocarColabSelecionadoId;
+                const funcaoAtual = colab.historicoDias[diaHoje - 1] || "-";
+                const funcaoAtualTxt = (funcaoAtual !== "-" && !isStatusEspecial(funcaoAtual)) ? funcaoAtual : '';
+
+                return `
+                    <button type="button"
+                        ${indisponivel ? 'disabled' : ''}
+                        onclick="selecionarColabAlocar('${colab.id}')"
+                        class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 transition ${
+                            indisponivel
+                                ? 'opacity-40 cursor-not-allowed'
+                                : selecionado
+                                    ? 'bg-amber-500/15 border-l-2 border-l-amber-500'
+                                    : 'hover:bg-slate-900/60'
+                        }">
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-200 truncate">${colab.nome}</div>
+                            <div class="text-[10px] text-slate-400 truncate">
+                                ${colab.escala} · DSR: ${colab.dsr}
+                                ${funcaoAtualTxt ? ` · Hoje: <span class="text-amber-400">${funcaoAtualTxt}</span>` : ''}
+                            </div>
+                        </div>
+                        ${indisponivel
+                            ? `<span class="text-[9px] bg-orange-500/20 border border-orange-500/30 text-orange-300 px-2 py-0.5 rounded-full whitespace-nowrap">${motivo}</span>`
+                            : selecionado
+                                ? `<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>`
+                                : `<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>`
+                        }
+                    </button>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function selecionarColabAlocar(id) {
+            alocarColabSelecionadoId = id;
+            filtrarColabsAlocar();
+        }
+
+        async function confirmarAlocacao() {
+            const funcao = document.getElementById('alocar-funcao').value;
+
+            if (!alocarColabSelecionadoId) {
+                toast("⚠️ Selecione um colaborador na lista.", 'warn');
+                return;
+            }
+
+            const colab = colaboradores.find(c => c.id === alocarColabSelecionadoId);
+            if (!colab) return;
+
+            const btn = document.querySelector('#modal-alocar button[onclick="confirmarAlocacao()"]');
+            if (btn?.disabled) return;
+            if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+
+            try {
+                const statusHoje = obterStatusHoje(colab);
+                if (statusHoje === 'dsr' || statusHoje === 'falta' || statusHoje === 'atestado') {
+                    toast(`🚫 ${colab.nome} não pode ser alocado(a) hoje (${statusHoje}).`, 'warn');
+                    return;
+                }
+
+                await atualizarDiaSupabase(colab.id, diaHoje, funcao);
+                colab.historicoDias[diaHoje - 1] = funcao;
+
+                toast(`✅ ${colab.nome} alocado(a) em "${funcao}".`, 'ok');
+
+                fecharModalAlocar();
+                renderizar();
+            }
+            catch (e) {
+                console.error("Erro ao alocar:", e);
+                toast("❌ Erro ao alocar: " + (e.message || e), 'erro');
+            }
+            finally {
+                if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+            }
+        }
+
+        // =====================================================================
+        // SALVAR (cadastro novo / edição de nome)
         // =====================================================================
         async function salvarColaborador() {
             const btn = document.querySelector('#modal-add button[onclick="salvarColaborador()"]');
