@@ -43,7 +43,7 @@
         </header>
 
         <!-- KPI -->
-        <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="grid grid-cols-3 gap-3 mb-6">
             <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Auxiliares</span>
@@ -55,7 +55,16 @@
             </div>
             <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
                 <div>
-                    <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Em Alerta (+7 dias)</span>
+                    <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Em DSR Hoje</span>
+                    <h2 id="kpi-dsr" class="text-2xl font-extrabold text-orange-400 mt-0.5">0</h2>
+                </div>
+                <div class="bg-orange-500/10 p-2.5 rounded-lg border border-orange-500/20 text-orange-400">
+                    <i data-lucide="palmtree" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                <div>
+                    <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Em Alerta (+7d)</span>
                     <h2 id="kpi-alertas" class="text-2xl font-extrabold text-red-400 mt-0.5">0</h2>
                 </div>
                 <div class="bg-red-500/10 p-2.5 rounded-lg border border-red-500/20 text-red-400">
@@ -68,7 +77,7 @@
         <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div class="relative w-full">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-                <input type="text" id="input-busca" placeholder="Pesquisar auxiliar por nome, escala ou DSR..." oninput="renderizar()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
+                <input type="text" id="input-busca" placeholder="Pesquisar por nome, escala ou DSR..." oninput="renderizar()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
             </div>
             <div class="w-full sm:w-auto flex justify-end">
                 <button onclick="abrirModalMatriz()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm px-4 py-2 rounded-lg border border-slate-700 flex items-center justify-center gap-2 shadow transition">
@@ -237,17 +246,25 @@
         let colaboradores = [];
 
         // =====================================================================
-        // NORMALIZAÇÃO DE TEXTO (para busca com acentos)
+        // NORMALIZAÇÃO DE TEXTO (busca robusta)
         // =====================================================================
         function normalizarTexto(texto) {
-            if (!texto) return "";
-            return texto
-                .toString()
+            if (texto === null || texto === undefined) return "";
+            return String(texto)
                 .toLowerCase()
                 .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "") // Remove acentos
-                .replace(/\s+/g, " ") // Espaços múltiplos -> 1
+                .replace(/[\u0300-\u036f]/g, "")   // remove acentos
+                .replace(/[^\w\s]/g, " ")          // remove pontuação
+                .replace(/\s+/g, " ")              // espaços múltiplos -> 1
                 .trim();
+        }
+
+        // Verifica se TODAS as palavras do termo de busca estão presentes no alvo
+        function matchBuscaAvancada(termoBuscaNorm, ...campos) {
+            if (!termoBuscaNorm) return true;
+            const palavras = termoBuscaNorm.split(" ").filter(p => p.length > 0);
+            const alvo = normalizarTexto(campos.filter(c => c).join(" "));
+            return palavras.every(p => alvo.includes(p));
         }
 
         // =====================================================================
@@ -287,6 +304,14 @@
         }
 
         // =====================================================================
+        // VERIFICAR SE HOJE É DSR PARA UM COLABORADOR
+        // =====================================================================
+        function isColabEmDSRHoje(colab) {
+            const dataHoje = new Date(anoAtual, mesAtualIndex, diaHoje);
+            return isDiaDSR(colab.dsr, dataHoje);
+        }
+
+        // =====================================================================
         // CONTAR DIAS NA FUNÇÃO ATUAL
         // =====================================================================
         function contarDiasNaFuncaoAtual(historico) {
@@ -307,17 +332,9 @@
             const dataInicio = new Date(anoAtual, mesAtualIndex, indexInicio + 1);
             const dataFim = new Date(anoAtual, mesAtualIndex, diaHoje);
             
-            return { 
-                funcao: funcaoAtual, 
-                dias: contador, 
-                dataInicio: dataInicio, 
-                dataFim: dataFim 
-            };
+            return { funcao: funcaoAtual, dias: contador, dataInicio: dataInicio, dataFim: dataFim };
         }
 
-        // =====================================================================
-        // FORMATAR DATA COMO DD/MM
-        // =====================================================================
         function formatarDataDDMM(dataObj) {
             if (!dataObj) return '';
             const dia = String(dataObj.getDate()).padStart(2, '0');
@@ -348,7 +365,7 @@
         }
 
         // =====================================================================
-        // CARREGAR DADOS DO SUPABASE
+        // CARREGAR DADOS
         // =====================================================================
         async function carregarDadosSupabase() {
             try {
@@ -386,7 +403,7 @@
         }
 
         // =====================================================================
-        // POPULAR SELECT DE FUNÇÕES
+        // POPULAR SELECT
         // =====================================================================
         function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
             const select = document.getElementById('novo-funcao');
@@ -414,7 +431,18 @@
             if (!colab) return;
 
             const dataDoDia = new Date(anoAtual, mesAtualIndex, numeroDia);
+            const novaFuncao = elementoSelect.value;
 
+            // 1) Bloquear DSR — não pode receber função em dia de DSR
+            if (isDiaDSR(colab.dsr, dataDoDia)) {
+                if (novaFuncao !== "-") {
+                    alert(`🚫 ${colab.nome} está de DSR (${colab.dsr}) no Dia ${numeroDia}.\nNão é possível escalar função neste dia.`);
+                }
+                renderizar();
+                return;
+            }
+
+            // 2) Bloquear dias anteriores
             if (numeroDia < diaHoje) {
                 const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador:`);
                 if (senhaInformada !== SENHA_ADM) {
@@ -424,15 +452,8 @@
                 }
             }
 
-            if (isDiaDSR(colab.dsr, dataDoDia)) {
-                alert(`🚫 O Dia ${numeroDia} é DSR (${colab.dsr}) para ${colab.nome}.\nNão é possível alocar função neste dia.`);
-                renderizar();
-                return;
-            }
-
+            // 3) Bloquear +20 dias na mesma função
             const status = contarDiasNaFuncaoAtual(colab.historicoDias);
-            const novaFuncao = elementoSelect.value;
-            
             if (status.dias >= LIMITE_DIAS_FUNCAO && novaFuncao === status.funcao && novaFuncao !== "-") {
                 alert(`⚠️ ${colab.nome} já está há ${status.dias} dias na função "${status.funcao}".\nÉ necessário alternar a função (limite: ${LIMITE_DIAS_FUNCAO} dias).`);
                 renderizar();
@@ -469,40 +490,96 @@
                 funcao: funcao
             }, { onConflict: 'colaborador_id,data' });
 
-            if (error) {
-                console.error("Erro ao atualizar histórico:", error);
-            }
+            if (error) console.error("Erro ao atualizar histórico:", error);
         }
 
         // =====================================================================
-        // RENDERIZAR INTERFACE PRINCIPAL
+        // RENDERIZAR
         // =====================================================================
         function renderizar() {
-            const termoBuscaOriginal = document.getElementById('input-busca').value;
-            const termoBuscaNorm = normalizarTexto(termoBuscaOriginal);
+            const termoBuscaNorm = normalizarTexto(document.getElementById('input-busca').value);
             
             const containerSetores = document.getElementById('container-setores');
             containerSetores.innerHTML = "";
 
+            // Separar colaboradores: os que estão de DSR hoje vs os que estão escalados
+            const colabsEmDSR = [];
+            const colabsEscalados = [];
+            
+            colaboradores.forEach(c => {
+                if (isColabEmDSRHoje(c)) {
+                    colabsEmDSR.push(c);
+                } else {
+                    colabsEscalados.push(c);
+                }
+            });
+
+            // Aplicar filtro de busca em AMBOS os grupos
+            const dsrFiltrados = colabsEmDSR.filter(c => 
+                matchBuscaAvancada(termoBuscaNorm, c.nome, c.escala, c.dsr, c.horario)
+            );
+            
+            const escaladosFiltrados = colabsEscalados.filter(c => 
+                matchBuscaAvancada(termoBuscaNorm, c.nome, c.escala, c.dsr, c.horario)
+            );
+
+            // KPIs
             document.getElementById('kpi-total').innerText = colaboradores.length;
+            document.getElementById('kpi-dsr').innerText = colabsEmDSR.length;
             let totalAlertas = 0;
             colaboradores.forEach(c => { if (contarDiasNaFuncaoAtual(c.historicoDias).dias >= 7) totalAlertas++; });
             document.getElementById('kpi-alertas').innerText = totalAlertas;
 
+            // =============================================================
+            // SEÇÃO 1: COLABORADORES EM DSR HOJE
+            // =============================================================
+            if (dsrFiltrados.length > 0) {
+                let blocoDSR = document.createElement('div');
+                blocoDSR.className = "bg-orange-950/20 border border-orange-500/40 rounded-2xl p-4 shadow-xl";
+                
+                let cabecalhoDSR = `
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-orange-500/30 flex-wrap gap-2">
+                        <h2 class="text-sm sm:text-base font-bold text-orange-400 flex items-center gap-2">
+                            🌴 Colaboradores em DSR Hoje
+                            <span class="text-[10px] font-normal text-orange-300/70">— não podem ser escalados</span>
+                        </h2>
+                        <span class="bg-orange-500/20 text-orange-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${dsrFiltrados.length} em descanso</span>
+                    </div>
+                `;
+
+                let conteudoDSR = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + dsrFiltrados.map(c => `
+                    <div class="bg-slate-900 border border-orange-500/40 rounded-xl p-3.5 shadow transition opacity-90">
+                        <div class="flex flex-col gap-2">
+                            <div>
+                                <h3 class="text-xs sm:text-sm font-bold text-orange-200">${c.nome}</h3>
+                                <div class="text-[10px] text-orange-400 font-semibold mt-0.5">
+                                    Escala: ${c.escala} · DSR: ${c.dsr}
+                                </div>
+                                <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                                    <span>🕒 ${c.horario}</span>
+                                </div>
+                                <div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">
+                                    🌴 Em DSR — Não pode ser escalado hoje
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-1 pt-2 border-t border-slate-800/80">
+                                <button onclick="abrirHistorico('${c.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition"><i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Ver Dias</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') + `</div>`;
+
+                blocoDSR.innerHTML = cabecalhoDSR + conteudoDSR;
+                containerSetores.appendChild(blocoDSR);
+            }
+
+            // =============================================================
+            // SEÇÃO 2: SETORES (apenas quem NÃO está em DSR)
+            // =============================================================
             for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
-                const colabsDoSetor = colaboradores.filter(c => {
+                const colabsDoSetor = escaladosFiltrados.filter(c => {
                     const funcAtual = c.historicoDias[diaHoje - 1] || "-";
-                    
-                    // Busca com normalização (sem acentos, case-insensitive)
-                    const nomeNorm = normalizarTexto(c.nome);
-                    const escalaNorm = normalizarTexto(c.escala);
-                    const dsrNorm = normalizarTexto(c.dsr);
-                    const matchBusca = termoBuscaNorm === "" ||
-                                       nomeNorm.includes(termoBuscaNorm) || 
-                                       escalaNorm.includes(termoBuscaNorm) || 
-                                       dsrNorm.includes(termoBuscaNorm);
-                    
-                    return funcoesDoSetor.includes(funcAtual) && matchBusca;
+                    return funcoesDoSetor.includes(funcAtual);
                 });
 
                 let blocoSetor = document.createElement('div');
@@ -560,11 +637,12 @@
                 blocoSetor.innerHTML = cabecalhoSetor + conteudoCards;
                 containerSetores.appendChild(blocoSetor);
             }
+
             lucide.createIcons();
         }
 
         // =====================================================================
-        // ABRIR MODAL ADICIONAR
+        // MODAIS
         // =====================================================================
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
@@ -579,9 +657,6 @@
             lucide.createIcons();
         }
 
-        // =====================================================================
-        // ABRIR MODAL EDITAR
-        // =====================================================================
         async function abrirModalEditar(id) {
             const colab = colaboradores.find(c => c.id === id);
             if (!colab) return;
@@ -601,7 +676,7 @@
         function fecharModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
 
         // =====================================================================
-        // SALVAR COLABORADOR
+        // SALVAR
         // =====================================================================
         async function salvarColaborador() {
             const idEdit = document.getElementById('edit-id').value;
@@ -614,10 +689,13 @@
             }
 
             if (idEdit) {
-                await supabaseClient.from('colaboradores').update({ 
-                    nome: nomeColab
-                }).eq('id', idEdit);
-                await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
+                await supabaseClient.from('colaboradores').update({ nome: nomeColab }).eq('id', idEdit);
+                
+                // Só atribui função se hoje NÃO for DSR
+                const colab = colaboradores.find(c => c.id === idEdit);
+                if (colab && !isColabEmDSRHoje(colab)) {
+                    await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
+                }
             } else {
                 const escalaColab = document.getElementById('select-escala').value;
                 const dsrColab = document.getElementById('select-dsr').value;
@@ -645,7 +723,7 @@
         }
 
         // =====================================================================
-        // ABRIR HISTÓRICO
+        // HISTÓRICO
         // =====================================================================
         function abrirHistorico(id) {
             const colab = colaboradores.find(c => c.id === id);
@@ -688,31 +766,26 @@
         function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         // =====================================================================
-        // ABRIR MATRIZ MENSAL (DIA ATUAL FIXO À ESQUERDA)
+        // MATRIZ MENSAL
         // =====================================================================
         function abrirModalMatriz() {
             document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual} (HUB-LCE-04)`;
             const tabelaUnica = document.getElementById('tabela-matriz-unica');
             tabelaUnica.innerHTML = "";
 
-            // === Reordenar os dias: HOJE primeiro, depois os outros em ordem ===
             const todosOsDias = Array.from({length: totalDiasDoMes}, (_, i) => i + 1);
             const diasOrdenados = [diaHoje, ...todosOsDias.filter(d => d !== diaHoje)];
 
-            // === CABEÇALHO ===
             let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30">`;
             thead += `<th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador (Escala / DSR)</th>`;
-            
             diasOrdenados.forEach(d => {
                 const eHoje = d === diaHoje;
                 thead += `<th class="p-2 text-center font-semibold min-w-[100px] text-[10px] ${eHoje ? 'text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500' : 'text-slate-300 border-l border-slate-800/50'}">${eHoje ? '⭐ ' : ''}Dia ${d}</th>`;
             });
             thead += `</tr></thead>`;
 
-            // === CORPO ===
             let tbody = `<tbody>`;
             colaboradores.forEach(c => {
-                // Coluna do colaborador
                 tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30">
                             <td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]">
                                 <div class="text-xs font-bold text-slate-200">${c.nome}</div>
@@ -767,7 +840,7 @@
         }
 
         // =====================================================================
-        // INICIAR APLICAÇÃO
+        // INICIAR
         // =====================================================================
         window.onload = init;
     </script>
