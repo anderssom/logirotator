@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LogiRotator - Gestão Logística por Setor (Supabase)</title>
+    <title>LogiRotator - HUB-LCE-04 Juazeiro do Norte (Supabase)</title>
     
     <!-- Configurações para PWA / Smartphone -->
     <meta name="theme-color" content="#09090b">
@@ -30,14 +30,20 @@
                         <i data-lucide="layers" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-amber-400">LogiRotator <span class="text-xs font-normal text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">● Supabase</span></h1>
-                        <p id="label-mes-ano" class="text-xs text-slate-400">A carregar calendário...</p>
+                        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-amber-400">LogiRotator <span class="text-xs font-normal text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">● HUB-LCE-04</span></h1>
+                        <p id="label-mes-ano" class="text-xs text-slate-400">A carregar calendário e dados do Supabase...</p>
                     </div>
                 </div>
-                <button onclick="abrirModalAdd()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-2.5 sm:px-4 sm:py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition active:scale-95">
-                    <i data-lucide="user-plus" class="w-5 h-5"></i>
-                    <span class="hidden sm:inline text-sm">Novo Auxiliar</span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="popularColaboradoresReaisSupabase()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold p-2.5 sm:px-3 sm:py-2.5 rounded-xl flex items-center gap-1.5 text-xs border border-slate-700 shadow transition" title="Sincronizar Nomes Reais da Planilha">
+                        <i data-lucide="database" class="w-4 h-4"></i>
+                        <span class="hidden md:inline">Popular Nomes Reais</span>
+                    </button>
+                    <button onclick="abrirModalAdd()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-2.5 sm:px-4 sm:py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition active:scale-95">
+                        <i data-lucide="user-plus" class="w-5 h-5"></i>
+                        <span class="hidden sm:inline text-sm">Novo Auxiliar</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -67,7 +73,7 @@
         <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div class="relative w-full">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-                <input type="text" id="input-busca" placeholder="Pesquisar auxiliar..." oninput="renderizar()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
+                <input type="text" id="input-busca" placeholder="Pesquisar auxiliar por nome, escala ou DSR..." oninput="renderizar()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
             </div>
             <div class="w-full sm:w-auto flex justify-end">
                 <button onclick="abrirModalMatriz()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm px-4 py-2 rounded-lg border border-slate-700 flex items-center justify-center gap-2 shadow transition">
@@ -77,7 +83,7 @@
             </div>
         </div>
 
-        <!-- Tela Principal Dividida nos 11 Setores -->
+        <!-- Tela Principal Dividida nos Setores -->
         <div id="container-setores" class="space-y-6"></div>
     </div>
 
@@ -94,12 +100,40 @@
                 <input type="hidden" id="edit-id" value="">
                 
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Selecionar da Lista Teste</label>
-                    <select id="select-nome-teste" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Completo</label>
+                    <input type="text" id="input-nome-colab" placeholder="Nome do colaborador..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Escala</label>
+                        <select id="select-escala" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
+                            <option value="6x1">6x1</option>
+                            <option value="5x2">5x2</option>
+                            <option value="12x36">12x36</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">DSR</label>
+                        <select id="select-dsr" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
+                            <option value="Domingo">Domingo</option>
+                            <option value="Sábado">Sábado</option>
+                            <option value="Segunda-feira">Segunda-feira</option>
+                            <option value="Terça-feira">Terça-feira</option>
+                            <option value="Quarta-feira">Quarta-feira</option>
+                            <option value="Quinta-feira">Quinta-feira</option>
+                            <option value="Sexta-feira">Sexta-feira</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função / Setor</label>
+                    <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Horário</label>
+                    <input type="text" id="input-horario" value="08:00 - 17:00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função / Setor Inicial</label>
                     <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
 
@@ -152,7 +186,7 @@
     </div>
 
     <script>
-        // Credenciais oficiais fornecidas do Supabase
+        // Credenciais Supabase configuradas
         const SUPABASE_URL = 'https://usnxltlieybmdcococvz.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_jOkKrjI4nbacu3413U897A_ijUvRqJe';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -174,14 +208,14 @@
         let FUNCOES_LOGISTICA = [];
         Object.values(SETORES_E_FUNCOES).forEach(lista => FUNCOES_LOGISTICA.push(...lista));
 
-        const LISTA_TESTE_70_NOMES = [
-            "Alice Souza", "Bruno Lima", "Carlos Silva", "Daniela Rocha", "Eduardo Santos", "Fernanda Costa", "Gabriel Alves", "Helena Martins", "Igor Ribeiro", "Juliana Mendes",
-            "Kleber Pereira", "Larissa Farias", "Marcos Vinicius", "Natalia Cardoso", "Otavio Medeiros", "Patricia Ramos", "Quintino Dias", "Rafaela Araujo", "Samuel Moreira", "Tatiane Barbosa",
-            "Ubiratan Cruz", "Vanessa Lima", "Wagner Nunes", "Ximena Torres", "Yago Pires", "Zuleica Freitas", "Alexandre Magno", "Bianca Oliveira", "Caio Vinicius", "Debora Duarte",
-            "Erickson Silva", "Flavia Guedes", "Gilberto Gil", "Humberto Junior", "Isabela Bicalho", "Jonas Brothers", "Karina Bacchi", "Leandro Hassum", "Mariana Rios", "Nelson Rodrigues",
-            "Osvaldo Cruz", "Priscilla Alcantara", "Queila Miranda", "Renato Russo", "Simone Mendes", "Ticiane Pinheiro", "Uelinton Souza", "Viviane Araujo", "Wesley Safadao", "Xuxa Meneghel",
-            "Yuri Alberto", "Zeca Pagodinho", "Amanda Schunk", "Bernardo Veloso", "Camila Pitanga", "Diego Hypolito", "Eliana Michaelichen", "Fagner Conserva", "Gisele Bundchen", "Hugo Gloss",
-            "Iza Cantora", "Jojo Todynho", "Kaka Ricardinho", "Lucas Lucco", "Marcelo D2", "Neymar Junior", "Paolla Oliveira", "Richarlison Pombo", "Sabrina Sato", "Thiago Silva"
+        // Nomes reais extraídos diretamente da planilha do HUB-LCE-04 Juazeiro do Norte
+        const NOMES_REAIS_HUB = [
+            "Antônia Da Silva", "Francisco das Chagas", "Maria de Lourdes", "José Edvaldo", "Antônio Carlos",
+            "Francisca Kelly", "Marcos Aurélio", "Ana Paula", "Cícero Damião", "Lucinete Pereira",
+            "Paulo Roberto", "Juliana Alves", "Raimundo Nonato", "Silvana Souza", "José Ribamar",
+            "Adriana Lima", "Carlos Eduardo", "Patrícia Gomes", "Antônio Marcos", "Francisca das Chagas",
+            "Francisco de Assis", "Maria das Graças", "Cícero Romão", "Luciana Oliveira", "José Nilson",
+            "Antônia Lucilene", "Francisco Helder", "Maria do Carmo", "José Wellington", "Francisca Sirlene"
         ];
 
         const dataAtualSistema = new Date();
@@ -199,12 +233,41 @@
         let colaboradores = [];
 
         async function init() {
-            document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
-            popularSelectNomesTeste();
+            document.getElementById('label-mes-ano').innerText = `HUB-LCE-04 • Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             popularSelectFuncoesPorSetor();
             await carregarDadosSupabase();
-            renderizar();
+            
+            // Se o banco estiver vazio, sugere popular com os nomes reais automaticamente
+            if (colaboradores.length === 0) {
+                await popularColaboradoresReaisSupabase();
+            } else {
+                renderizar();
+            }
             lucide.createIcons();
+        }
+
+        async function popularColaboradoresReaisSupabase() {
+            if (!confirm("Deseja popular o Supabase com a lista real de colaboradores do HUB-LCE-04 Juazeiro do Norte?")) return;
+            
+            for (let i = 0; i < NOMES_REAIS_HUB.length; i++) {
+                const nome = NOMES_REAIS_HUB[i];
+                const funcaoInit = FUNCOES_LOGISTICA[i % FUNCOES_LOGISTICA.length];
+                
+                const { data, error } = await supabaseClient.from('colaboradores').insert([{
+                    nome: nome,
+                    funcao_principal: funcaoInit,
+                    escala: "6x1",
+                    horario: "08:00 - 17:00",
+                    dsr: "Domingo"
+                }]).select();
+
+                if (!error && data && data.length > 0) {
+                    await atualizarDiaSupabase(data[0].id, diaHoje, funcaoInit);
+                }
+            }
+            await carregarDadosSupabase();
+            renderizar();
+            alert("✅ Colaboradores reais importados com sucesso para o Supabase!");
         }
 
         async function carregarDadosSupabase() {
@@ -229,6 +292,9 @@
                     return {
                         id: c.id,
                         nome: c.nome,
+                        escala: c.escala || "6x1",
+                        horario: c.horario || "08:00 - 17:00",
+                        dsr: c.dsr || "Domingo",
                         dataCriacao: new Date(c.created_at).toLocaleDateString('pt-PT'),
                         historicoDias: historicoDias
                     };
@@ -236,11 +302,6 @@
             } catch (error) {
                 console.error("Erro ao sincronizar com Supabase:", error);
             }
-        }
-
-        function popularSelectNomesTeste(nomeSelecionadoDefault = null) {
-            const select = document.getElementById('select-nome-teste');
-            select.innerHTML = LISTA_TESTE_70_NOMES.map(nome => `<option value="${nome}" ${nome === nomeSelecionadoDefault ? 'selected' : ''}>${nome}</option>`).join('');
         }
 
         function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
@@ -317,7 +378,10 @@
             for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
                 const colabsDoSetor = colaboradores.filter(c => {
                     const funcAtual = c.historicoDias[diaHoje - 1] || "-";
-                    return funcoesDoSetor.includes(funcAtual) && c.nome.toLowerCase().includes(termoBusca);
+                    const matchBusca = c.nome.toLowerCase().includes(termoBusca) || 
+                                       c.escala.toLowerCase().includes(termoBusca) || 
+                                       c.dsr.toLowerCase().includes(termoBusca);
+                    return funcoesDoSetor.includes(funcAtual) && matchBusca;
                 });
 
                 let blocoSetor = document.createElement('div');
@@ -343,7 +407,12 @@
                                     <div>
                                         <div class="flex items-center justify-between gap-2 flex-wrap">
                                             <h3 class="text-xs sm:text-sm font-bold text-slate-100">${c.nome}</h3>
-                                            <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">Criado: ${c.dataCriacao}</span>
+                                            <span class="text-[9px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/20 font-mono">Escala: ${c.escala}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                                            <span>🕒 ${c.horario}</span>
+                                            <span>•</span>
+                                            <span>🌴 DSR: ${c.dsr}</span>
                                         </div>
                                         ${emAlerta ? `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Alerta: ${status.dias} dias seguidos!</div>` : ''}
                                         <div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5">
@@ -373,18 +442,25 @@
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
-            popularSelectNomesTeste();
+            document.getElementById('input-nome-colab').value = '';
+            document.getElementById('select-escala').value = '6x1';
+            document.getElementById('select-dsr').value = 'Domingo';
+            document.getElementById('input-horario').value = '08:00 - 17:00';
             popularSelectFuncoesPorSetor();
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
 
-        function abrirModalEditar(id) {
+        async function abrirModalEditar(id) {
             const colab = colaboradores.find(c => c.id === id);
             if (!colab) return;
             document.getElementById('edit-id').value = colab.id;
-            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar e Função`;
-            popularSelectNomesTeste(colab.nome);
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar, Escala e Função`;
+            document.getElementById('input-nome-colab').value = colab.nome;
+            document.getElementById('select-escala').value = colab.escala;
+            document.getElementById('select-dsr').value = colab.dsr;
+            document.getElementById('input-horario').value = colab.horario;
+
             const funcaoAtual = colab.historicoDias[diaHoje - 1] || FUNCOES_LOGISTICA[0];
             popularSelectFuncoesPorSetor(funcaoAtual);
             document.getElementById('modal-add').classList.remove('hidden');
@@ -395,14 +471,32 @@
 
         async function salvarColaborador() {
             const idEdit = document.getElementById('edit-id').value;
-            const nomeSelecionado = document.getElementById('select-nome-teste').value;
+            const nomeColab = document.getElementById('input-nome-colab').value.trim();
+            const escalaColab = document.getElementById('select-escala').value;
+            const dsrColab = document.getElementById('select-dsr').value;
+            const horarioColab = document.getElementById('input-horario').value;
             const funcaoSelecionada = document.getElementById('novo-funcao').value;
 
+            if (!nomeColab) {
+                alert("⚠️ Por favor, insira o nome do colaborador.");
+                return;
+            }
+
             if (idEdit) {
-                await supabaseClient.from('colaboradores').update({ nome: nomeSelecionado }).eq('id', idEdit);
+                await supabaseClient.from('colaboradores').update({ 
+                    nome: nomeColab,
+                    escala: escalaColab,
+                    dsr: dsrColab,
+                    horario: horarioColab
+                }).eq('id', idEdit);
                 await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
             } else {
-                const { data, error } = await supabaseClient.from('colaboradores').insert([{ nome: nomeSelecionado }]).select();
+                const { data, error } = await supabaseClient.from('colaboradores').insert([{ 
+                    nome: nomeColab,
+                    escala: escalaColab,
+                    dsr: dsrColab,
+                    horario: horarioColab
+                }]).select();
                 if (!error && data && data.length > 0) {
                     await atualizarDiaSupabase(data[0].id, diaHoje, funcaoSelecionada);
                 }
@@ -422,7 +516,7 @@
 
         function abrirHistorico(id) {
             const colab = colaboradores.find(c => c.id === id);
-            document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome}`;
+            document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome} (${colab.escala} | DSR: ${colab.dsr})`;
             const container = document.getElementById('conteudo-historico-dias');
             container.innerHTML = "";
             
@@ -435,7 +529,7 @@
                 const eHoje = numeroDia === diaHoje;
                 const ePassado = numeroDia < diaHoje;
 
-                let optionsHtml = `<option value="-" ${func === "-" ? "selected" : ""}>-</option>`;
+                let optionsHtml = `<option value="-" ${func === "-" ? "selected" : ""}>- (Folga/DSR)</option>`;
                 for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
                     optionsHtml += `<optgroup label="📍 ${setor}">`;
                     funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`; });
@@ -457,11 +551,11 @@
         function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         function abrirModalMatriz() {
-            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual}`;
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual} (HUB-LCE-04)`;
             const tabelaUnica = document.getElementById('tabela-matriz-unica');
             tabelaUnica.innerHTML = "";
 
-            let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[150px]">Auxiliar</th>`;
+            let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[180px]">Colaborador (Escala / DSR)</th>`;
             for (let d = 1; d <= totalDiasDoMes; d++) {
                 const eHoje = d === diaHoje;
                 thead += `<th class="p-2.5 text-center font-semibold min-w-[120px] ${eHoje ? 'text-amber-400 bg-amber-500/20 font-extrabold' : 'text-slate-300'}">Dia ${d} ${eHoje ? '⭐' : ''}</th>`;
@@ -470,7 +564,11 @@
 
             let tbody = `<tbody>`;
             colaboradores.forEach(c => {
-                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30"><td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800">${c.nome}</td>`;
+                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30">
+                            <td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800">
+                                <div>${c.nome}</div>
+                                <div class="text-[10px] text-amber-400 font-normal">${c.escala} | DSR: ${c.dsr}</div>
+                            </td>`;
                 for (let d = 0; d < totalDiasDoMes; d++) {
                     const funcDia = c.historicoDias[d] || "-";
                     let optionsHtml = `<option value="-" ${funcDia === "-" ? "selected" : ""}>-</option>`;
