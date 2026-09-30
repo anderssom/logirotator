@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LogiRotator - Gestão Logística por Setor</title>
+    <title>LogiRotator - Gestão Logística por Setor (Supabase)</title>
     
     <!-- Configurações para PWA / Smartphone -->
     <meta name="theme-color" content="#09090b">
@@ -14,10 +14,10 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23f59e0b'/><path d='M130 180 L60 256 L130 332 M382 180 L452 256 L382 332 M275 140 L235 372' stroke='%2309090b' stroke-width='48' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23f59e0b'/><path d='M130 180 L60 256 L130 332 M382 180 L452 256 L382 332 M275 140 L235 372' stroke='%2309090b' stroke-width='48' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
 
-    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22LogiRotator%22%2C%22short_name%22%3A%22LogiRotator%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2309090b%22%2C%22theme_color%22%3A%22%2309090b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527%2520viewBox%253D%25270%25200%2520512%2520512%2527%253E%253Crect%2520width%253D%2527512%2527%2520height%253D%2527512%2527%2520rx%253D%2527120%2527%2520fill%253D%2527%2523f59e0b%2527%2F%253E%253Cpath%2520d%253D%2527M130%2520180%2520L60%2520256%2520L130%2520332%2520M382%2520180%2520L452%2520256%2520L382%2520332%2520M275%2520140%2520L235%2520372%2527%2520stroke%253D%2527%252309090b%2527%2520stroke-width%253D%252748%2527%2520stroke-linecap%253D%2527round%2527%2520stroke-linejoin%253D%2527round%2527%2520fill%253D%2527none%2527%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS Client UMD -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased pb-12">
@@ -30,7 +30,7 @@
                         <i data-lucide="layers" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-amber-400">LogiRotator</h1>
+                        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-amber-400">LogiRotator <span class="text-xs font-normal text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">● Supabase</span></h1>
                         <p id="label-mes-ano" class="text-xs text-slate-400">A carregar calendário...</p>
                     </div>
                 </div>
@@ -67,7 +67,7 @@
         <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div class="relative w-full">
                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-                <input type="text" id="input-busca" placeholder="Pesquisar auxiliar..." oninput="filtrarColaboradores()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
+                <input type="text" id="input-busca" placeholder="Pesquisar auxiliar..." oninput="renderizar()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
             </div>
             <div class="w-full sm:w-auto flex justify-end">
                 <button onclick="abrirModalMatriz()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs sm:text-sm px-4 py-2 rounded-lg border border-slate-700 flex items-center justify-center gap-2 shadow transition">
@@ -93,13 +93,11 @@
             <div class="space-y-3">
                 <input type="hidden" id="edit-id" value="">
                 
-                <!-- Seleção de Nome (Lista Teste 70 colaboradores) -->
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Selecionar da Lista Teste</label>
                     <select id="select-nome-teste" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
                 </div>
 
-                <!-- Seleção de Função (Setores) -->
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função / Setor</label>
                     <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
@@ -154,6 +152,11 @@
     </div>
 
     <script>
+        // Credenciais oficiais fornecidas do Supabase
+        const SUPABASE_URL = 'https://usnxltlieybmdcococvz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_jOkKrjI4nbacu3413U897A_ijUvRqJe';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         const SETORES_E_FUNCOES = {
             "Recebimento": ["Bipador Recebimento", "Patoleiro"],
             "Bancada de Triagem Fly / XPT": ["Abastecedor Triagem", "Sorting Triagem Fly"],
@@ -169,9 +172,7 @@
         };
 
         let FUNCOES_LOGISTICA = [];
-        Object.values(SETORES_E_FUNCOES).forEach(lista => {
-            FUNCOES_LOGISTICA.push(...lista);
-        });
+        Object.values(SETORES_E_FUNCOES).forEach(lista => FUNCOES_LOGISTICA.push(...lista));
 
         const LISTA_TESTE_70_NOMES = [
             "Alice Souza", "Bruno Lima", "Carlos Silva", "Daniela Rocha", "Eduardo Santos", "Fernanda Costa", "Gabriel Alves", "Helena Martins", "Igor Ribeiro", "Juliana Mendes",
@@ -188,9 +189,7 @@
         const mesAtualIndex = dataAtualSistema.getMonth();
         const diaHoje = dataAtualSistema.getDate();
         
-        function obterTotalDiasMes(ano, mes) {
-            return new Date(ano, mes + 1, 0).getDate();
-        }
+        function obterTotalDiasMes(ano, mes) { return new Date(ano, mes + 1, 0).getDate(); }
         const totalDiasDoMes = obterTotalDiasMes(anoAtual, mesAtualIndex);
 
         const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -198,22 +197,45 @@
         const SENHA_ADM = "admin123";
 
         let colaboradores = [];
-        LISTA_TESTE_70_NOMES.forEach((nome, index) => {
-            const funcAleatoria = FUNCOES_LOGISTICA[index % FUNCOES_LOGISTICA.length];
-            colaboradores.push({
-                id: 1000 + index,
-                nome: nome,
-                dataCriacao: "01/09/2026",
-                historicoDias: [funcAleatoria]
-            });
-        });
 
-        function init() {
+        async function init() {
             document.getElementById('label-mes-ano').innerText = `Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
             popularSelectNomesTeste();
             popularSelectFuncoesPorSetor();
+            await carregarDadosSupabase();
             renderizar();
             lucide.createIcons();
+        }
+
+        async function carregarDadosSupabase() {
+            try {
+                const { data: cols, error: errCols } = await supabaseClient.from('colaboradores').select('*');
+                if (errCols) throw errCols;
+
+                const { data: hist, error: errHist } = await supabaseClient.from('historico_escala').select('*');
+                if (errHist) throw errHist;
+
+                colaboradores = cols.map(c => {
+                    const historicoDias = new Array(totalDiasDoMes).fill("-");
+                    const registrosColab = hist.filter(h => h.colaborador_id === c.id);
+                    
+                    registrosColab.forEach(r => {
+                        const diaNum = new Date(r.data).getDate();
+                        if (diaNum >= 1 && diaNum <= totalDiasDoMes) {
+                            historicoDias[diaNum - 1] = r.funcao;
+                        }
+                    });
+
+                    return {
+                        id: c.id,
+                        nome: c.nome,
+                        dataCriacao: new Date(c.created_at).toLocaleDateString('pt-PT'),
+                        historicoDias: historicoDias
+                    };
+                });
+            } catch (error) {
+                console.error("Erro ao sincronizar com Supabase:", error);
+            }
         }
 
         function popularSelectNomesTeste(nomeSelecionadoDefault = null) {
@@ -231,29 +253,19 @@
                     let option = document.createElement('option');
                     option.value = f;
                     option.textContent = f;
-                    if (f === funcaoSelecionadaDefault) {
-                        option.selected = true;
-                    }
+                    if (f === funcaoSelecionadaDefault) option.selected = true;
                     optgroup.appendChild(option);
                 });
                 select.appendChild(optgroup);
             }
         }
 
-        function getDataAtualFormatada() {
-            const hoje = new Date();
-            const dia = String(hoje.getDate()).padStart(2, '0');
-            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-            const ano = hoje.getFullYear();
-            return `${dia}/${mes}/${ano}`;
-        }
-
         function verificarDiasConsecutivos(historico) {
             if (!historico || historico.length === 0) return { funcao: "Nenhuma", dias: 0 };
-            const ultimaFuncao = historico[historico.length - 1];
+            const ultimaFuncao = historico[diaHoje - 1] || historico[historico.length - 1];
             let contador = 0;
-            for (let i = historico.length - 1; i >= 0; i--) {
-                if (historico[i] === ultimaFuncao) {
+            for (let i = diaHoje - 1; i >= 0; i--) {
+                if (historico[i] === ultimaFuncao && historico[i] !== "-") {
                     contador++;
                 } else {
                     break;
@@ -262,20 +274,34 @@
             return { funcao: ultimaFuncao, dias: contador };
         }
 
-        function tentarAlterarDia(idColab, indexDia, elementoSelect) {
+        async function tentarAlterarDia(idColab, indexDia, elementoSelect) {
             const numeroDia = indexDia + 1;
             if (numeroDia < diaHoje) {
-                const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador para liberar a alteração:`);
+                const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador:`);
                 if (senhaInformada !== SENHA_ADM) {
                     alert('❌ Senha incorreta! Alteração negada.');
                     renderizar();
-                    if(!document.getElementById('modal-matriz').classList.contains('hidden')) abrirModalMatriz();
                     return;
-                } else {
-                    alert('✅ Senha correta! Dia liberado para esta alteração.');
                 }
             }
-            atualizarDiaColab(idColab, indexDia, elementoSelect.value);
+            await atualizarDiaSupabase(idColab, numeroDia, elementoSelect.value);
+            colaboradores.find(c => c.id === idColab).historicoDias[indexDia] = elementoSelect.value;
+            renderizar();
+        }
+
+        async function atualizarDiaSupabase(colaboradorId, dia, funcao) {
+            const dataStr = `${anoAtual}-${String(mesAtualIndex + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+            let setorCorrespondente = "Recebimento";
+            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                if (funcoes.includes(funcao)) { setorCorrespondente = setor; break; }
+            }
+
+            await supabaseClient.from('historico_escala').upsert({
+                colaborador_id: colaboradorId,
+                data: dataStr,
+                setor: setorCorrespondente,
+                funcao: funcao
+            }, { onConflict: 'colaborador_id,data' });
         }
 
         function renderizar() {
@@ -284,17 +310,13 @@
             containerSetores.innerHTML = "";
 
             document.getElementById('kpi-total').innerText = colaboradores.length;
-            
             let totalAlertas = 0;
-            colaboradores.forEach(c => {
-                const status = verificarDiasConsecutivos(c.historicoDias);
-                if (status.dias >= 7) totalAlertas++;
-            });
+            colaboradores.forEach(c => { if (verificarDiasConsecutivos(c.historicoDias).dias >= 7) totalAlertas++; });
             document.getElementById('kpi-alertas').innerText = totalAlertas;
 
             for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
                 const colabsDoSetor = colaboradores.filter(c => {
-                    const funcAtual = c.historicoDias[diaHoje - 1] || c.historicoDias[c.historicoDias.length - 1];
+                    const funcAtual = c.historicoDias[diaHoje - 1] || "-";
                     return funcoesDoSetor.includes(funcAtual) && c.nome.toLowerCase().includes(termoBusca);
                 });
 
@@ -306,37 +328,24 @@
                         <h2 class="text-sm sm:text-base font-bold text-amber-400 flex items-center gap-2">
                             <i class="fa-solid fa-folder-open text-amber-500"></i> ${setor}
                         </h2>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
-                            <button onclick="abrirModalAddPorSetor('${setor}')" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-amber-500/30 flex items-center gap-1.5 transition active:scale-95" title="Adicionar Auxiliar neste Setor">
-                                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
-                                <span class="hidden sm:inline">Adicionar</span>
-                            </button>
-                        </div>
+                        <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
                     </div>
                 `;
 
-                let conteudoCards = "";
-                if (colabsDoSetor.length === 0) {
-                    conteudoCards = `<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar alocado neste setor hoje.</p>`;
-                } else {
-                    conteudoCards = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + colabsDoSetor.map(c => {
+                let conteudoCards = colabsDoSetor.length === 0 
+                    ? `<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar alocado neste setor hoje.</p>`
+                    : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + colabsDoSetor.map(c => {
                         const status = verificarDiasConsecutivos(c.historicoDias);
                         const emAlerta = status.dias >= 7;
-
                         return `
                             <div class="bg-slate-900 border ${emAlerta ? 'border-red-500/60 bg-red-950/10' : 'border-slate-800'} rounded-xl p-3.5 shadow transition">
                                 <div class="flex flex-col gap-2">
                                     <div>
                                         <div class="flex items-center justify-between gap-2 flex-wrap">
                                             <h3 class="text-xs sm:text-sm font-bold text-slate-100">${c.nome}</h3>
-                                            <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">Criado: ${c.dataCriacao || '01/09/2026'}</span>
+                                            <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">Criado: ${c.dataCriacao}</span>
                                         </div>
-                                        ${emAlerta ? `
-                                            <div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1 animate-pulse">
-                                                <i data-lucide="alert-triangle" class="w-3 h-3"></i> Alerta: ${status.dias} dias seguidos!
-                                            </div>
-                                        ` : ''}
+                                        ${emAlerta ? `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Alerta: ${status.dias} dias seguidos!</div>` : ''}
                                         <div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5">
                                             <span>Função Atual:</span>
                                             <div class="flex items-center justify-between gap-1">
@@ -345,32 +354,21 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
                                     <div class="grid grid-cols-3 gap-1 pt-2 border-t border-slate-800/80">
-                                        <button onclick="abrirModalEditar(${c.id})" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-blue-500/20 flex items-center justify-center gap-1 transition">
-                                            <i data-lucide="edit-3" class="w-3 h-3"></i> Alterar
-                                        </button>
-                                        <button onclick="abrirHistorico(${c.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition">
-                                            <i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Dias
-                                        </button>
-                                        <button onclick="removerColaborador(${c.id})" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-red-500/20 flex items-center justify-center gap-1 transition">
-                                            <i data-lucide="trash-2" class="w-3 h-3"></i> Excluir
-                                        </button>
+                                        <button onclick="abrirModalEditar('${c.id}')" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-blue-500/20 flex items-center justify-center gap-1 transition"><i data-lucide="edit-3" class="w-3 h-3"></i> Alterar</button>
+                                        <button onclick="abrirHistorico('${c.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition"><i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Dias</button>
+                                        <button onclick="removerColaborador('${c.id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-red-500/20 flex items-center justify-center gap-1 transition"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir</button>
                                     </div>
                                 </div>
                             </div>
                         `;
                     }).join('') + `</div>`;
-                }
 
                 blocoSetor.innerHTML = cabecalhoSetor + conteudoCards;
                 containerSetores.appendChild(blocoSetor);
             }
-
             lucide.createIcons();
         }
-
-        function filtrarColaboradores() { renderizar(); }
 
         function abrirModalAdd() {
             document.getElementById('edit-id').value = '';
@@ -381,70 +379,43 @@
             lucide.createIcons();
         }
 
-        function abrirModalAddPorSetor(nomeSetor) {
-            document.getElementById('edit-id').value = '';
-            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar em ${nomeSetor}`;
-            popularSelectNomesTeste();
-            const primeiraFuncaoDoSetor = SETORES_E_FUNCOES[nomeSetor][0];
-            popularSelectFuncoesPorSetor(primeiraFuncaoDoSetor);
-            document.getElementById('modal-add').classList.remove('hidden');
-            lucide.createIcons();
-        }
-
         function abrirModalEditar(id) {
             const colab = colaboradores.find(c => c.id === id);
             if (!colab) return;
             document.getElementById('edit-id').value = colab.id;
             document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar e Função`;
-            
             popularSelectNomesTeste(colab.nome);
-            const funcaoAtual = colab.historicoDias[diaHoje - 1] || colab.historicoDias[colab.historicoDias.length - 1];
+            const funcaoAtual = colab.historicoDias[diaHoje - 1] || FUNCOES_LOGISTICA[0];
             popularSelectFuncoesPorSetor(funcaoAtual);
-
             document.getElementById('modal-add').classList.remove('hidden');
             lucide.createIcons();
         }
 
         function fecharModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
 
-        function salvarColaborador() {
+        async function salvarColaborador() {
             const idEdit = document.getElementById('edit-id').value;
             const nomeSelecionado = document.getElementById('select-nome-teste').value;
             const funcaoSelecionada = document.getElementById('novo-funcao').value;
 
             if (idEdit) {
-                const colab = colaboradores.find(c => c.id == idEdit);
-                if (colab) {
-                    colab.nome = nomeSelecionado;
-                    while(colab.historicoDias.length < diaHoje) colab.historicoDias.push(funcaoSelecionada);
-                    colab.historicoDias[diaHoje - 1] = funcaoSelecionada;
-                }
-                fecharModalAdd();
-                renderizar();
+                await supabaseClient.from('colaboradores').update({ nome: nomeSelecionado }).eq('id', idEdit);
+                await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
             } else {
-                if (colaboradores.some(c => c.nome === nomeSelecionado)) {
-                    alert(`⚠️ O colaborador "${nomeSelecionado}" já está cadastrado.`);
-                    return;
+                const { data, error } = await supabaseClient.from('colaboradores').insert([{ nome: nomeSelecionado }]).select();
+                if (!error && data && data.length > 0) {
+                    await atualizarDiaSupabase(data[0].id, diaHoje, funcaoSelecionada);
                 }
-
-                let historicoInicial = [];
-                for(let i = 0; i < diaHoje - 1; i++) historicoInicial.push(funcaoSelecionada);
-                historicoInicial.push(funcaoSelecionada);
-
-                colaboradores.push({
-                    id: Date.now(),
-                    nome: nomeSelecionado,
-                    dataCriacao: getDataAtualFormatada(),
-                    historicoDias: historicoInicial
-                });
-                fecharModalAdd();
-                renderizar();
             }
+            fecharModalAdd();
+            await carregarDadosSupabase();
+            renderizar();
         }
 
-        function removerColaborador(id) {
+        async function removerColaborador(id) {
             if (confirm('Deseja realmente excluir este auxiliar?')) {
-                colaboradores = colaboradores.filter(c => c.id !== id);
+                await supabaseClient.from('colaboradores').delete().eq('id', id);
+                await carregarDadosSupabase();
                 renderizar();
             }
         }
@@ -452,51 +423,29 @@
         function abrirHistorico(id) {
             const colab = colaboradores.find(c => c.id === id);
             document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome}`;
-            while(colab.historicoDias.length < totalDiasDoMes) colab.historicoDias.push(FUNCOES_LOGISTICA[0]);
-
             const container = document.getElementById('conteudo-historico-dias');
             container.innerHTML = "";
             
             let indicesDias = Array.from({length: totalDiasDoMes}, (_, i) => i);
-            indicesDias.sort((a, b) => {
-                if ((a + 1) === diaHoje) return -1;
-                if ((b + 1) === diaHoje) return 1;
-                return 0;
-            });
+            indicesDias.sort((a, b) => ((a + 1) === diaHoje ? -1 : (b + 1) === diaHoje ? 1 : 0));
 
             indicesDias.forEach(i => {
-                const func = colab.historicoDias[i] || FUNCOES_LOGISTICA[0];
+                const func = colab.historicoDias[i] || "-";
                 const numeroDia = i + 1;
                 const eHoje = numeroDia === diaHoje;
                 const ePassado = numeroDia < diaHoje;
 
-                let estiloBorda = 'border-slate-800 bg-slate-950';
-                let estiloTexto = 'text-slate-300';
-                let tagStatus = '';
-
-                if (eHoje) {
-                    estiloBorda = 'border-amber-500 bg-amber-500/10 shadow-md ring-1 ring-amber-500/50 sticky top-0 z-20';
-                    estiloTexto = 'text-amber-300 font-extrabold';
-                    tagStatus = ' ⭐ Hoje (Fixo)';
-                } else if (ePassado) {
-                    estiloBorda = 'border-red-900/50 bg-red-950/10 opacity-75';
-                    estiloTexto = 'text-red-400';
-                    tagStatus = ' 🔒';
-                }
-
-                let optionsHtml = "";
+                let optionsHtml = `<option value="-" ${func === "-" ? "selected" : ""}>-</option>`;
                 for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
                     optionsHtml += `<optgroup label="📍 ${setor}">`;
-                    funcoes.forEach(f => {
-                        optionsHtml += `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`;
-                    });
+                    funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`; });
                     optionsHtml += `</optgroup>`;
                 }
 
                 container.innerHTML += `
-                    <div class="flex items-center justify-between p-2.5 rounded-xl border ${estiloBorda} gap-2">
-                        <span class="text-[11px] font-bold ${estiloTexto} w-28">Dia ${numeroDia}${tagStatus}</span>
-                        <select onchange="tentarAlterarDia(${id}, ${i}, this)" class="bg-slate-900 border ${eHoje ? 'border-amber-500/80 text-amber-200' : 'border-slate-800 text-slate-200'} rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-amber-500 flex-grow">
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border ${eHoje ? 'border-amber-500 bg-amber-500/10' : 'border-slate-800 bg-slate-950'} gap-2">
+                        <span class="text-[11px] font-bold ${eHoje ? 'text-amber-300' : 'text-slate-300'} w-28">Dia ${numeroDia} ${eHoje ? '⭐' : ePassado ? '🔒' : ''}</span>
+                        <select onchange="tentarAlterarDia('${id}', ${i}, this)" class="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-amber-500 flex-grow">
                             ${optionsHtml}
                         </select>
                     </div>
@@ -505,68 +454,32 @@
             document.getElementById('modal-historico').classList.remove('hidden');
         }
 
-        function atualizarDiaColab(idColab, indexDia, novaFuncao) {
-            const colab = colaboradores.find(c => c.id === idColab);
-            if (colab) {
-                colab.historicoDias[indexDia] = novaFuncao;
-                renderizar();
-            }
-        }
-
         function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
 
         function abrirModalMatriz() {
-            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual}`;
             const tabelaUnica = document.getElementById('tabela-matriz-unica');
             tabelaUnica.innerHTML = "";
 
             let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[150px]">Auxiliar</th>`;
             for (let d = 1; d <= totalDiasDoMes; d++) {
                 const eHoje = d === diaHoje;
-                const ePassado = d < diaHoje;
-                
-                let classeCabecalho = 'text-slate-300';
-                let rotuloDia = `Dia ${d}`;
-                if (eHoje) {
-                    classeCabecalho = 'text-amber-400 bg-amber-500/20 font-extrabold border-b-2 border-amber-400';
-                    rotuloDia = `⭐ Dia ${d} (Hoje)`;
-                } else if (ePassado) {
-                    classeCabecalho = 'text-red-400 opacity-70';
-                    rotuloDia = `Dia ${d} 🔒`;
-                }
-
-                thead += `<th class="p-2.5 text-center font-semibold min-w-[120px] ${classeCabecalho}">${rotuloDia}</th>`;
+                thead += `<th class="p-2.5 text-center font-semibold min-w-[120px] ${eHoje ? 'text-amber-400 bg-amber-500/20 font-extrabold' : 'text-slate-300'}">Dia ${d} ${eHoje ? '⭐' : ''}</th>`;
             }
             thead += `</tr></thead>`;
 
             let tbody = `<tbody>`;
             colaboradores.forEach(c => {
-                while(c.historicoDias.length < totalDiasDoMes) c.historicoDias.push("-");
                 tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30"><td class="p-2.5 font-bold text-slate-200 sticky left-0 bg-slate-900 z-20 border-r border-slate-800">${c.nome}</td>`;
-                
                 for (let d = 0; d < totalDiasDoMes; d++) {
                     const funcDia = c.historicoDias[d] || "-";
-                    const numeroDia = d + 1;
-                    const eHoje = numeroDia === diaHoje;
-                    const ePassado = numeroDia < diaHoje;
-
-                    let estiloCelulaSelect = 'bg-slate-950 border-slate-800 text-slate-300';
-                    if (eHoje) {
-                        estiloCelulaSelect = 'bg-amber-950/40 border-amber-500 text-amber-200 font-bold ring-2 ring-amber-500/60';
-                    } else if (ePassado) {
-                        estiloCelulaSelect = 'bg-red-950/10 border-red-900/40 text-red-300/80';
-                    }
-
-                    let optionsHtml = `<option value="" ${funcDia === "-" ? "selected" : ""}>-</option>`;
+                    let optionsHtml = `<option value="-" ${funcDia === "-" ? "selected" : ""}>-</option>`;
                     for (const [sName, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
                         optionsHtml += `<optgroup label="📍 ${sName}">`;
-                        funcoes.forEach(f => {
-                            optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`;
-                        });
+                        funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`; });
                         optionsHtml += `</optgroup>`;
                     }
-
-                    tbody += `<td class="p-1.5 text-center"><select onchange="tentarAlterarDia(${c.id}, ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${estiloCelulaSelect}">${optionsHtml}</select></td>`;
+                    tbody += `<td class="p-1.5 text-center"><select onchange="tentarAlterarDia('${c.id}', ${d}, this)" class="border rounded-lg p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate bg-slate-950 border-slate-800 text-slate-300">${optionsHtml}</select></td>`;
                 }
                 tbody += `</tr>`;
             });
@@ -575,14 +488,6 @@
             tabelaUnica.innerHTML = thead + tbody;
             document.getElementById('modal-matriz').classList.remove('hidden');
             lucide.createIcons();
-
-            setTimeout(() => {
-                const wrapper = document.querySelector('#modal-matriz .overflow-auto');
-                const celulaHoje = wrapper.querySelector('th.bg-amber-500\\/20');
-                if (celulaHoje) {
-                    wrapper.scrollLeft = celulaHoje.offsetLeft - 150;
-                }
-            }, 100);
         }
 
         function fecharModalMatriz() { document.getElementById('modal-matriz').classList.add('hidden'); renderizar(); }
