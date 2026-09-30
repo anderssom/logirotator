@@ -43,7 +43,7 @@
         </header>
 
         <!-- KPI -->
-        <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Auxiliares</span>
@@ -60,6 +60,15 @@
                 </div>
                 <div class="bg-orange-500/10 p-2.5 rounded-lg border border-orange-500/20 text-orange-400">
                     <i data-lucide="palmtree" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                <div>
+                    <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Faltas/Atestados</span>
+                    <h2 id="kpi-faltas" class="text-2xl font-extrabold text-yellow-400 mt-0.5">0</h2>
+                </div>
+                <div class="bg-yellow-500/10 p-2.5 rounded-lg border border-yellow-500/20 text-yellow-400">
+                    <i data-lucide="calendar-x" class="w-5 h-5"></i>
                 </div>
             </div>
             <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
@@ -226,7 +235,7 @@
         };
 
         // =====================================================================
-        // STATUS ESPECIAIS (não são funções, mas ocupam o dia)
+        // STATUS ESPECIAIS
         // =====================================================================
         const STATUS_ESPECIAIS = [
             { valor: "-",         label: "- (Folga/DSR normal)" },
@@ -269,7 +278,7 @@
                 .toLowerCase()
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "")
-                .replace(/[^\w\s]/g, " ")
+                .replace(/[^\w\s,]/g, " ")
                 .replace(/\s+/g, " ")
                 .trim();
         }
@@ -282,39 +291,48 @@
         }
 
         // =====================================================================
-        // MAPEAMENTO DIA DA SEMANA
+        // MAPEAMENTO DIA DA SEMANA (com abreviações)
         // =====================================================================
         const DIAS_SEMANA_MAP = {
-            "domingo": 0,
-            "segunda-feira": 1, "segunda": 1,
-            "terça-feira": 2, "terca-feira": 2, "terça": 2, "terca": 2,
-            "quarta-feira": 3, "quarta": 3,
-            "quinta-feira": 4, "quinta": 4,
-            "sexta-feira": 5, "sexta": 5,
-            "sábado": 6, "sabado": 6
+            "dom": 0, "domingo": 0,
+            "seg": 1, "segunda": 1,
+            "ter": 2, "terca": 2, "terca feira": 2,
+            "qua": 3, "quarta": 3, "quarta feira": 3,
+            "qui": 4, "quinta": 4, "quinta feira": 4,
+            "sex": 5, "sexta": 5, "sexta feira": 5,
+            "sab": 6, "sabado": 6, "sabado feira": 6
         };
 
         // =====================================================================
-        // VERIFICAR SE UM DIA É DSR
+        // VERIFICAR SE UM DIA É DSR (CORRIGIDO)
         // =====================================================================
         function isDiaDSR(dsrTexto, dataObj) {
             if (!dsrTexto) return false;
             const diaSemanaNum = dataObj.getDay();
-            const dsrLower = dsrTexto.toLowerCase().trim();
-
-            if (dsrLower.includes(",") || dsrLower.includes(" e ")) {
-                const partes = dsrLower.split(/,|\se\s/).map(p => p.trim()).filter(p => p);
-                for (const p of partes) {
-                    const pNormalizado = p.replace("-feira", "");
-                    if (DIAS_SEMANA_MAP[p] === diaSemanaNum || DIAS_SEMANA_MAP[pNormalizado] === diaSemanaNum) {
-                        return true;
-                    }
-                }
-                return false;
+            
+            // Normaliza: remove acentos, deixa minúsculo, tira "-feira"
+            const dsrNorm = normalizarTexto(dsrTexto).replace(/feira/g, "").replace(/-/g, " ");
+            const dsrNorm2 = dsrNorm.replace(/\s+/g, " ").trim();
+            
+            // Divide por vírgula ou " e "
+            const partes = dsrNorm2
+                .split(/,|\se\s/)
+                .map(p => p.trim().replace(/\s+/g, " "))
+                .filter(p => p);
+            
+            for (const parte of partes) {
+                // Tenta match exato
+                if (DIAS_SEMANA_MAP[parte] === diaSemanaNum) return true;
+                
+                // Tenta match pela primeira palavra (ex: "segunda" → "seg")
+                const primeiraPalavra = parte.split(" ")[0];
+                if (DIAS_SEMANA_MAP[primeiraPalavra] === diaSemanaNum) return true;
+                
+                // Tenta match pelos 3 primeiros caracteres
+                const abreviacao = primeiraPalavra.slice(0, 3);
+                if (DIAS_SEMANA_MAP[abreviacao] === diaSemanaNum) return true;
             }
-
-            const dsrNormalizado = dsrLower.replace("-feira", "");
-            return DIAS_SEMANA_MAP[dsrLower] === diaSemanaNum || DIAS_SEMANA_MAP[dsrNormalizado] === diaSemanaNum;
+            return false;
         }
 
         function isColabEmDSRHoje(colab) {
@@ -323,7 +341,7 @@
         }
 
         // =====================================================================
-        // CONTAR DIAS NA FUNÇÃO ATUAL (para no primeiro status especial)
+        // CONTAR DIAS NA FUNÇÃO ATUAL
         // =====================================================================
         function contarDiasNaFuncaoAtual(historico) {
             const funcaoAtual = historico[diaHoje - 1];
@@ -377,7 +395,7 @@
         }
 
         // =====================================================================
-        // CARREGAR DADOS + SANITIZAÇÃO (remove função antiga em dia DSR)
+        // CARREGAR DADOS + SANITIZAÇÃO
         // =====================================================================
         async function carregarDadosSupabase() {
             try {
@@ -409,7 +427,7 @@
                     };
                 });
 
-                // SANITIZAÇÃO: em dia DSR, função antiga vira "-" na UI
+                // SANITIZAÇÃO: em dia DSR, função antiga vira "-"
                 colaboradores.forEach(c => {
                     c.historicoDias = c.historicoDias.map((f, idx) => {
                         const dataDia = new Date(anoAtual, mesAtualIndex, idx + 1);
@@ -426,13 +444,12 @@
         }
 
         // =====================================================================
-        // POPULAR SELECT DO MODAL ADD/EDIT (com status especiais)
+        // POPULAR SELECT
         // =====================================================================
         function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
             const select = document.getElementById('novo-funcao');
             select.innerHTML = "";
             
-            // Status especiais primeiro
             let optgroupEspecial = document.createElement('optgroup');
             optgroupEspecial.label = "⚙️ Status Especiais";
             STATUS_ESPECIAIS.forEach(s => {
@@ -444,7 +461,6 @@
             });
             select.appendChild(optgroupEspecial);
 
-            // Funções por setor
             for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
                 let optgroup = document.createElement('optgroup');
                 optgroup.label = `📍 Setor: ${setor}`;
@@ -460,7 +476,7 @@
         }
 
         // =====================================================================
-        // ALTERAR DIA (validações)
+        // ALTERAR DIA
         // =====================================================================
         async function tentarAlterarDia(idColab, indexDia, elementoSelect) {
             const numeroDia = indexDia + 1;
@@ -471,14 +487,12 @@
             const novaFuncao = elementoSelect.value;
             const eDSR = isDiaDSR(colab.dsr, dataDoDia);
 
-            // 1) Em dia de DSR, só permite status especiais
             if (eDSR && !isStatusEspecial(novaFuncao)) {
                 alert(`🚫 ${colab.nome} está de DSR (${colab.dsr}) no Dia ${numeroDia}.\nSó é permitido registrar: -, DSR Extra, FALTA ou ATESTADO.`);
                 renderizar();
                 return;
             }
 
-            // 2) Dias anteriores exigem senha
             if (numeroDia < diaHoje) {
                 const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador:`);
                 if (senhaInformada !== SENHA_ADM) {
@@ -488,7 +502,6 @@
                 }
             }
 
-            // 3) Limite de 20 dias na mesma função (não vale para status especiais)
             if (!isStatusEspecial(novaFuncao)) {
                 const status = contarDiasNaFuncaoAtual(colab.historicoDias);
                 if (status.dias >= LIMITE_DIAS_FUNCAO && novaFuncao === status.funcao) {
@@ -546,13 +559,24 @@
 
             const colabsEmDSR = [];
             const colabsEscalados = [];
+            const colabsFalta = [];
             
             colaboradores.forEach(c => {
-                if (isColabEmDSRHoje(c)) colabsEmDSR.push(c);
-                else colabsEscalados.push(c);
+                const statusHoje = c.historicoDias[diaHoje - 1] || "-";
+                if (isColabEmDSRHoje(c)) {
+                    colabsEmDSR.push(c);
+                } else if (statusHoje === "FALTA" || statusHoje === "ATESTADO") {
+                    colabsFalta.push(c);
+                } else {
+                    colabsEscalados.push(c);
+                }
             });
 
             const dsrFiltrados = colabsEmDSR.filter(c => 
+                matchBuscaAvancada(termoBuscaNorm, c.nome, c.escala, c.dsr, c.horario)
+            );
+            
+            const faltasFiltrados = colabsFalta.filter(c => 
                 matchBuscaAvancada(termoBuscaNorm, c.nome, c.escala, c.dsr, c.horario)
             );
             
@@ -563,6 +587,7 @@
             // KPIs
             document.getElementById('kpi-total').innerText = colaboradores.length;
             document.getElementById('kpi-dsr').innerText = colabsEmDSR.length;
+            document.getElementById('kpi-faltas').innerText = colabsFalta.length;
             let totalAlertas = 0;
             colaboradores.forEach(c => { if (contarDiasNaFuncaoAtual(c.historicoDias).dias >= 7) totalAlertas++; });
             document.getElementById('kpi-alertas').innerText = totalAlertas;
@@ -606,6 +631,48 @@
 
                 blocoDSR.innerHTML = cabecalhoDSR + conteudoDSR;
                 containerSetores.appendChild(blocoDSR);
+            }
+
+            // ---- SEÇÃO FALTAS/ATESTADOS ----
+            if (faltasFiltrados.length > 0) {
+                let blocoFalta = document.createElement('div');
+                blocoFalta.className = "bg-yellow-950/20 border border-yellow-500/40 rounded-2xl p-4 shadow-xl";
+                
+                let cabecalhoFalta = `
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-yellow-500/30 flex-wrap gap-2">
+                        <h2 class="text-sm sm:text-base font-bold text-yellow-400 flex items-center gap-2">
+                            ⚠️ Faltas / Atestados Hoje
+                            <span class="text-[10px] font-normal text-yellow-300/70">— fora da escala</span>
+                        </h2>
+                        <span class="bg-yellow-500/20 text-yellow-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${faltasFiltrados.length} registro${faltasFiltrados.length === 1 ? '' : 's'}</span>
+                    </div>
+                `;
+
+                let conteudoFalta = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + faltasFiltrados.map(c => {
+                    const statusHoje = c.historicoDias[diaHoje - 1];
+                    const label = statusHoje === "FALTA" ? "⚠️ FALTA" : "🏥 ATESTADO";
+                    return `
+                    <div class="bg-slate-900 border border-yellow-500/40 rounded-xl p-3.5 shadow transition">
+                        <div class="flex flex-col gap-2">
+                            <div>
+                                <h3 class="text-xs sm:text-sm font-bold text-yellow-200">${c.nome}</h3>
+                                <div class="text-[10px] text-yellow-400 font-semibold mt-0.5">
+                                    Escala: ${c.escala} · DSR: ${c.dsr}
+                                </div>
+                                <div class="mt-1.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">
+                                    ${label}
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-1 pt-2 border-t border-slate-800/80">
+                                <button onclick="abrirHistorico('${c.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition"><i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Ver Dias</button>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }).join('') + `</div>`;
+
+                blocoFalta.innerHTML = cabecalhoFalta + conteudoFalta;
+                containerSetores.appendChild(blocoFalta);
             }
 
             // ---- SETORES ----
@@ -777,7 +844,6 @@
                 const ePassado = numeroDia < diaHoje;
                 const dataDoDia = new Date(anoAtual, mesAtualIndex, numeroDia);
                 const eDSR = isDiaDSR(colab.dsr, dataDoDia);
-                // Só passado bloqueia. DSR continua editável, mas só aceita status especiais.
                 const bloqueado = ePassado;
 
                 let optionsHtml = "";
@@ -838,10 +904,8 @@
                     const ePassado = d < diaHoje;
                     const dataDoDia = new Date(anoAtual, mesAtualIndex, d);
                     const eDSR = isDiaDSR(c.dsr, dataDoDia);
-                    // Só passado bloqueia (o DSR libera status especiais e bloqueia funções no handler)
                     const bloqueado = ePassado;
 
-                    // Options: status especiais + funções
                     let optionsHtml = "";
                     STATUS_ESPECIAIS.forEach(s => {
                         optionsHtml += `<option value="${s.valor}" ${s.valor === funcDia ? 'selected' : ''}>${s.label}</option>`;
