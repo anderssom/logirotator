@@ -1,45 +1,1217 @@
-async function salvarColaborador() {
-    const idEdit = document.getElementById('edit-id').value;
-    const nomeColab = document.getElementById('input-nome-colab').value.trim();
-    const funcaoSelecionada = document.getElementById('novo-funcao').value;
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LogiRotator - HUB-LCE-04 Juazeiro do Norte (Supabase)</title>
+    
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LogiRotator">
+    
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23f59e0b'/><path d='M130 180 L60 256 L130 332 M382 180 L452 256 L382 332 M275 140 L235 372' stroke='%2309090b' stroke-width='48' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23f59e0b'/><path d='M130 180 L60 256 L130 332 M382 180 L452 256 L382 332 M275 140 L235 372' stroke='%2309090b' stroke-width='48' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
 
-    if (!nomeColab) {
-        alert("⚠️ Por favor, insira o nome do colaborador.");
-        return;
-    }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
 
-    if (idEdit) {
-        await supabaseClient.from('colaboradores').update({ nome: nomeColab }).eq('id', idEdit);
-        
-        const colab = colaboradores.find(c => c.id === idEdit);
-        if (colab && !isColabEmDSRHoje(colab)) {
-            await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
-        } else if (colab && isColabEmDSRHoje(colab) && isStatusEspecial(funcaoSelecionada)) {
-            await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
+    <div class="flex min-h-screen">
+
+        <!-- SIDEBAR (desktop) -->
+        <aside id="sidebar-desktop" class="hidden lg:flex lg:flex-col w-64 bg-slate-900/70 border-r border-slate-800 backdrop-blur-sm sticky top-0 h-screen">
+            <div class="p-4 border-b border-slate-800">
+                <div class="flex items-center gap-2.5">
+                    <div class="bg-amber-500/10 p-2 rounded-xl border border-amber-500/30 text-amber-400">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base font-extrabold text-amber-400 leading-tight">LogiRotator</h1>
+                        <span class="text-[10px] text-emerald-400">● HUB-LCE-04</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-2 pb-1">Filtros</p>
+                <button onclick="setFiltro('todos')" id="menu-todos" class="menu-item w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
+                    <span class="flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4 text-amber-400"></i> Todos</span>
+                    <span id="badge-todos" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+                </button>
+                <button onclick="setFiltro('operacao')" id="menu-operacao" class="menu-item w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
+                    <span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Em Operação</span>
+                    <span id="badge-operacao" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+                </button>
+                <button onclick="setFiltro('dsr')" id="menu-dsr" class="menu-item w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
+                    <span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span>
+                    <span id="badge-dsr" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+                </button>
+                <button onclick="setFiltro('faltas')" id="menu-faltas" class="menu-item w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
+                    <span class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-400"></i> Faltas Hoje</span>
+                    <span id="badge-faltas" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+                </button>
+                <button onclick="setFiltro('atestados')" id="menu-atestados" class="menu-item w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
+                    <span class="flex items-center gap-2"><i data-lucide="stethoscope" class="w-4 h-4 text-red-400"></i> Atestados Hoje</span>
+                    <span id="badge-atestados" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+                </button>
+
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-4 pb-1">Ações</p>
+                <button onclick="abrirModalAdd()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-amber-400 hover:bg-amber-500/10 transition">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar
+                </button>
+                <button onclick="abrirModalMatriz()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
+                    <i data-lucide="grid" class="w-4 h-4 text-amber-400"></i> Grade Mensal
+                </button>
+            </nav>
+
+            <div class="p-3 border-t border-slate-800 text-[10px] text-slate-500">
+                <p id="label-mes-ano-sidebar">—</p>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO -->
+        <main class="flex-1 min-w-0">
+            <div id="app" class="max-w-md md:max-w-6xl mx-auto p-3 sm:p-6 pb-12">
+
+                <!-- Header mobile -->
+                <header class="flex flex-col gap-4 mb-6 pb-4 border-b border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <button onclick="toggleSidebarMobile()" class="lg:hidden bg-slate-800 hover:bg-slate-700 p-2 rounded-xl border border-slate-700">
+                                <i data-lucide="menu" class="w-5 h-5 text-amber-400"></i>
+                            </button>
+                            <div class="bg-amber-500/10 p-2 rounded-xl border border-amber-500/30 text-amber-400 hidden sm:block">
+                                <i data-lucide="layers" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight text-amber-400">LogiRotator <span class="text-[10px] sm:text-xs font-normal text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">● HUB-LCE-04</span></h1>
+                                <p id="label-mes-ano" class="text-[10px] sm:text-xs text-slate-400">A carregar...</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="abrirModalAdd()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-2.5 sm:px-4 sm:py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition active:scale-95">
+                                <i data-lucide="user-plus" class="w-5 h-5"></i>
+                                <span class="hidden sm:inline text-sm">Novo Auxiliar</span>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- KPIs -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</span>
+                            <h2 id="kpi-total" class="text-2xl font-extrabold text-slate-100 mt-0.5">0</h2>
+                        </div>
+                        <div class="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-emerald-500/30 p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em Operação</span>
+                            <h2 id="kpi-operacao" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2>
+                        </div>
+                        <div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400">
+                            <i data-lucide="activity" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Em DSR</span>
+                            <h2 id="kpi-dsr" class="text-2xl font-extrabold text-orange-400 mt-0.5">0</h2>
+                        </div>
+                        <div class="bg-orange-500/10 p-2.5 rounded-lg border border-orange-500/20 text-orange-400">
+                            <i data-lucide="palmtree" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Faltas</span>
+                            <h2 id="kpi-faltas" class="text-2xl font-extrabold text-yellow-400 mt-0.5">0</h2>
+                        </div>
+                        <div class="bg-yellow-500/10 p-2.5 rounded-lg border border-yellow-500/20 text-yellow-400">
+                            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Atestados</span>
+                            <h2 id="kpi-atestados" class="text-2xl font-extrabold text-red-400 mt-0.5">0</h2>
+                        </div>
+                        <div class="bg-red-500/10 p-2.5 rounded-lg border border-red-500/20 text-red-400">
+                            <i data-lucide="stethoscope" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Busca -->
+                <div class="bg-slate-900/50 border border-slate-800 p-3 rounded-xl mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                    <div class="relative w-full">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                        <input type="text" id="input-busca" placeholder="Pesquisar por nome, escala ou DSR..." oninput="renderizar()" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500 transition">
+                    </div>
+                    <div class="w-full sm:w-auto flex justify-end gap-2">
+                        <span id="label-filtro-ativo" class="text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap">
+                            <i data-lucide="filter" class="w-3.5 h-3.5"></i> Todos
+                        </span>
+                    </div>
+                </div>
+
+                <div id="container-setores" class="space-y-6"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SIDEBAR MOBILE -->
+    <div id="sidebar-mobile-overlay" onclick="toggleSidebarMobile()" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+    <aside id="sidebar-mobile" class="fixed top-0 left-0 h-full w-72 bg-slate-900 border-r border-slate-800 z-50 transform -translate-x-full transition-transform duration-300 lg:hidden flex flex-col">
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="bg-amber-500/10 p-2 rounded-xl border border-amber-500/30 text-amber-400">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-extrabold text-amber-400 leading-tight">LogiRotator</h1>
+                    <span class="text-[10px] text-emerald-400">● HUB-LCE-04</span>
+                </div>
+            </div>
+            <button onclick="toggleSidebarMobile()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-2 pb-1">Filtros</p>
+            <button onclick="setFiltro('todos');toggleSidebarMobile()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
+                <span class="flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4 text-amber-400"></i> Todos</span>
+                <span id="badge-todos-m" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+            </button>
+            <button onclick="setFiltro('operacao');toggleSidebarMobile()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
+                <span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Em Operação</span>
+                <span id="badge-operacao-m" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+            </button>
+            <button onclick="setFiltro('dsr');toggleSidebarMobile()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
+                <span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span>
+                <span id="badge-dsr-m" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+            </button>
+            <button onclick="setFiltro('faltas');toggleSidebarMobile()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
+                <span class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-400"></i> Faltas Hoje</span>
+                <span id="badge-faltas-m" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+            </button>
+            <button onclick="setFiltro('atestados');toggleSidebarMobile()" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
+                <span class="flex items-center gap-2"><i data-lucide="stethoscope" class="w-4 h-4 text-red-400"></i> Atestados Hoje</span>
+                <span id="badge-atestados-m" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">0</span>
+            </button>
+        </nav>
+    </aside>
+
+    <!-- MODAIS -->
+
+    <!-- Modal Adicionar / Editar -->
+    <div id="modal-add" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-titulo" class="text-base font-bold text-amber-400 flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar
+                </h3>
+                <button onclick="fecharModalAdd()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-3">
+                <input type="hidden" id="edit-id" value="">
+                
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Nome Completo</label>
+                    <input type="text" id="input-nome-colab" placeholder="Nome do colaborador..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div id="campos-add-extras" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Escala</label>
+                            <select id="select-escala" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
+                                <option value="6x1">6x1</option>
+                                <option value="5x2">5x2</option>
+                                <option value="12x36">12x36</option>
+                                <option value="3x4">3x4</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">DSR</label>
+                            <select id="select-dsr" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
+                                <option value="Domingo">Domingo</option>
+                                <option value="Segunda-feira">Segunda-feira</option>
+                                <option value="Terça-feira">Terça-feira</option>
+                                <option value="Quarta-feira">Quarta-feira</option>
+                                <option value="Quinta-feira">Quinta-feira</option>
+                                <option value="Sexta-feira">Sexta-feira</option>
+                                <option value="Sábado">Sábado</option>
+                                <option value="Seg, Ter, Qua, Qui">Seg, Ter, Qua, Qui</option>
+                                <option value="Sábado e Domingo">Sábado e Domingo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Horário</label>
+                        <input type="text" id="input-horario" value="08:00 - 17:00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Função / Setor</label>
+                    <select id="novo-funcao" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-amber-500"></select>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                    <button onclick="fecharModalAdd()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
+                    <button onclick="salvarColaborador()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Matriz Mensal -->
+    <div id="modal-matriz" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-[98vw] w-full h-[95vh] flex flex-col p-4 sm:p-6 shadow-2xl">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <div>
+                    <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
+                        <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa
+                    </h3>
+                    <p class="text-[11px] text-slate-400">⭐ Dia atual · 🔒 Passado (senha) · 🚫 DSR permite status especiais · ⚠️ Falta/Atestado/DSR Extra</p>
+                </div>
+                <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            
+            <div class="flex-grow overflow-auto my-3 relative rounded-lg border border-slate-800">
+                <table id="tabela-matriz-unica" class="text-left border-collapse text-xs" style="border-spacing: 0;"></table>
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t border-slate-800 flex-wrap gap-2">
+                <div class="text-[10px] text-slate-500 flex items-center gap-3 flex-wrap">
+                    <span>⭐ Hoje (fixo)</span>
+                    <span>🔒 Passado (senha)</span>
+                    <span class="text-orange-400">🚫 DSR</span>
+                    <span class="text-yellow-400">⚠️ Falta</span>
+                    <span class="text-red-400">🏥 Atestado</span>
+                </div>
+                <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Histórico -->
+    <div id="modal-historico" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+                <div>
+                    <h3 id="titulo-modal-hist" class="text-sm sm:text-base font-bold text-amber-400">Editar Histórico</h3>
+                    <p class="text-[11px] text-slate-400">O dia atual fica fixo no topo para edição rápida.</p>
+                </div>
+                <button onclick="fecharModalHistorico()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="conteudo-historico-dias" class="max-h-[55vh] overflow-y-auto space-y-2 pr-1"></div>
+            <div class="flex justify-end pt-3 border-t border-slate-800 mt-3">
+                <button onclick="fecharModalHistorico()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Concluir</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================================
+        // CONFIGURAÇÃO SUPABASE
+        // =====================================================================
+        const SUPABASE_URL = 'https://usnxltlieybmdcococvz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_jOkKrjI4nbacu3413U897A_ijUvRqJe';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // =====================================================================
+        // TOAST
+        // =====================================================================
+        function toast(msg, tipo = 'ok') {
+            const el = document.createElement('div');
+            el.className = `fixed top-4 right-4 z-[999] px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold border backdrop-blur-sm transition-all duration-300 ${
+                tipo === 'ok'   ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-200' :
+                tipo === 'warn' ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-200'   :
+                                  'bg-red-500/20 border-red-500/40 text-red-200'
+            }`;
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(20px)';
+                setTimeout(() => el.remove(), 300);
+            }, 2800);
         }
-    } else {
-        const escalaColab = document.getElementById('select-escala').value;
-        const dsrColab = document.getElementById('select-dsr').value;
-        const horarioColab = document.getElementById('input-horario').value;
 
-        const { data, error } = await supabaseClient.from('colaboradores').insert([{ 
-            nome: nomeColab,
-            escala: escalaColab,
-            dsr: dsrColab,
-            horario: horarioColab
-        }]).select();
+        // =====================================================================
+        // SETORES E FUNÇÕES
+        // =====================================================================
+        const SETORES_E_FUNCOES = {
+            "Recebimento": ["Bipador Recebimento", "Patoleiro"],
+            "Bancada de Triagem Fly / XPT": ["Abastecedor Triagem", "Sorting Triagem Fly"],
+            "Triagem de Volumoso XPT / LM": ["Bipador Vol XPT", "Sorting Triagem Vol"],
+            "Sorting 1 Volumoso LM": ["Bipador Volumoso LM", "Sorting 1 Volumoso LM"],
+            "Sorting 1 Fly LM": ["Abastecedor Fly LM", "Bipador Fly LM", "Etequitador", "Sorting 1 Fly LM"],
+            "Sorting 2 LM": ["Sorting 2 LM"],
+            "XPT Fly": ["Bipador XPT Fly", "Abastecedor XPT Fly"],
+            "Expedição XPT": ["Bipador Expedição XPT", "Gaioleiro Expedição"],
+            "Inventário": ["Aux Inventário"],
+            "Flip": ["Aux Flip"],
+            "FM": ["Aux FM"]
+        };
+
+        // =====================================================================
+        // STATUS ESPECIAIS
+        // =====================================================================
+        const STATUS_ESPECIAIS = [
+            { valor: "-",         label: "- (Folga/DSR normal)" },
+            { valor: "DSR_EXTRA", label: "🌴 DSR Extra (folga ganha)" },
+            { valor: "FALTA",     label: "⚠️ FALTA" },
+            { valor: "ATESTADO",  label: "🏥 ATESTADO" }
+        ];
+
+        function isStatusEspecial(valor) {
+            return STATUS_ESPECIAIS.some(s => s.valor === valor);
+        }
+
+        let FUNCOES_LOGISTICA = [];
+        Object.values(SETORES_E_FUNCOES).forEach(lista => FUNCOES_LOGISTICA.push(...lista));
+
+        // =====================================================================
+        // VARIÁVEIS GLOBAIS
+        // =====================================================================
+        const dataAtualSistema = new Date();
+        const anoAtual = dataAtualSistema.getFullYear();
+        const mesAtualIndex = dataAtualSistema.getMonth();
+        const diaHoje = dataAtualSistema.getDate();
         
-        if (!error && data && data.length > 0) {
-            const dataHoje = new Date(anoAtual, mesAtualIndex, diaHoje);
-            const hojeEhDSR = isDiaDSR(dsrColab, dataHoje);
-            if (!hojeEhDSR || isStatusEspecial(funcaoSelecionada)) {
-                await atualizarDiaSupabase(data[0].id, diaHoje, funcaoSelecionada);
+        function obterTotalDiasMes(ano, mes) { return new Date(ano, mes + 1, 0).getDate(); }
+        const totalDiasDoMes = obterTotalDiasMes(anoAtual, mesAtualIndex);
+
+        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const nomeMesAtual = nomesMeses[mesAtualIndex];
+        const SENHA_ADM = "admin123";
+        const LIMITE_DIAS_FUNCAO = 20;
+
+        let colaboradores = [];
+        let filtroAtivo = 'todos';
+
+        // =====================================================================
+        // NORMALIZAÇÃO
+        // =====================================================================
+        function normalizarTexto(texto) {
+            if (texto === null || texto === undefined) return "";
+            return String(texto)
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^\w\s,]/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function matchBuscaAvancada(termoBuscaNorm, ...campos) {
+            if (!termoBuscaNorm) return true;
+            const palavras = termoBuscaNorm.split(" ").filter(p => p.length > 0);
+            const alvo = normalizarTexto(campos.filter(c => c).join(" "));
+            return palavras.every(p => alvo.includes(p));
+        }
+
+        // =====================================================================
+        // MAPEAMENTO DIA DA SEMANA
+        // =====================================================================
+        const DIAS_SEMANA_MAP = {
+            "dom": 0, "domingo": 0,
+            "seg": 1, "segunda": 1,
+            "ter": 2, "terca": 2, "terca feira": 2,
+            "qua": 3, "quarta": 3, "quarta feira": 3,
+            "qui": 4, "quinta": 4, "quinta feira": 4,
+            "sex": 5, "sexta": 5, "sexta feira": 5,
+            "sab": 6, "sabado": 6, "sabado feira": 6
+        };
+
+        function isDiaDSR(dsrTexto, dataObj) {
+            if (!dsrTexto) return false;
+            const diaSemanaNum = dataObj.getDay();
+            
+            const dsrNorm = normalizarTexto(dsrTexto).replace(/feira/g, "").replace(/-/g, " ");
+            const dsrNorm2 = dsrNorm.replace(/\s+/g, " ").trim();
+            
+            const partes = dsrNorm2
+                .split(/,|\se\s/)
+                .map(p => p.trim().replace(/\s+/g, " "))
+                .filter(p => p);
+            
+            for (const parte of partes) {
+                if (DIAS_SEMANA_MAP[parte] === diaSemanaNum) return true;
+                const primeiraPalavra = parte.split(" ")[0];
+                if (DIAS_SEMANA_MAP[primeiraPalavra] === diaSemanaNum) return true;
+                const abreviacao = primeiraPalavra.slice(0, 3);
+                if (DIAS_SEMANA_MAP[abreviacao] === diaSemanaNum) return true;
             }
-        } else if (error) {
-            alert("Erro ao salvar: " + error.message);
+            return false;
         }
-    }
-    fecharModalAdd();
-    await carregarDadosSupabase();
-    renderizar();
-}
+
+        function isColabEmDSRHoje(colab) {
+            const dataHoje = new Date(anoAtual, mesAtualIndex, diaHoje);
+            return isDiaDSR(colab.dsr, dataHoje);
+        }
+
+        function obterStatusHoje(colab) {
+            if (isColabEmDSRHoje(colab)) return 'dsr';
+            const raw = colab.historicoDias[diaHoje - 1] || "-";
+            if (raw === "FALTA") return 'falta';
+            if (raw === "ATESTADO") return 'atestado';
+            if (raw === "-" || raw === "DSR_EXTRA") return 'sem_escala';
+            return 'operacao';
+        }
+
+        // =====================================================================
+        // CONTAR DIAS NA FUNÇÃO
+        // =====================================================================
+        function contarDiasNaFuncaoAtual(historico) {
+            const funcaoAtual = historico[diaHoje - 1];
+            if (!funcaoAtual || isStatusEspecial(funcaoAtual)) {
+                return { funcao: "Nenhuma", dias: 0, dataInicio: null, dataFim: null };
+            }
+            
+            let contador = 0;
+            let indexInicio = diaHoje - 1;
+            for (let i = diaHoje - 1; i >= 0; i--) {
+                if (historico[i] === funcaoAtual && !isStatusEspecial(historico[i])) {
+                    contador++;
+                    indexInicio = i;
+                } else {
+                    break;
+                }
+            }
+            
+            const dataInicio = new Date(anoAtual, mesAtualIndex, indexInicio + 1);
+            const dataFim = new Date(anoAtual, mesAtualIndex, diaHoje);
+            return { funcao: funcaoAtual, dias: contador, dataInicio, dataFim };
+        }
+
+        function formatarDataDDMM(dataObj) {
+            if (!dataObj) return '';
+            const dia = String(dataObj.getDate()).padStart(2, '0');
+            const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+            return `${dia}/${mes}`;
+        }
+
+        // =====================================================================
+        // SIDEBAR MOBILE
+        // =====================================================================
+        function toggleSidebarMobile() {
+            const sidebar = document.getElementById('sidebar-mobile');
+            const overlay = document.getElementById('sidebar-mobile-overlay');
+            const aberto = !sidebar.classList.contains('-translate-x-full');
+            if (aberto) {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            } else {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            }
+        }
+
+        // =====================================================================
+        // FILTRO
+        // =====================================================================
+        function setFiltro(filtro) {
+            filtroAtivo = filtro;
+            document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('bg-amber-500/10', 'text-amber-400', 'border', 'border-amber-500/30'));
+            const btn = document.getElementById('menu-' + filtro);
+            if (btn) btn.classList.add('bg-amber-500/10', 'text-amber-400', 'border', 'border-amber-500/30');
+
+            const labels = {
+                'todos': 'Todos',
+                'operacao': 'Em Operação',
+                'dsr': 'Em DSR Hoje',
+                'faltas': 'Faltas Hoje',
+                'atestados': 'Atestados Hoje'
+            };
+            const icons = {
+                'todos': 'layout-grid',
+                'operacao': 'users',
+                'dsr': 'palmtree',
+                'faltas': 'alert-triangle',
+                'atestados': 'stethoscope'
+            };
+            const el = document.getElementById('label-filtro-ativo');
+            if (el) el.innerHTML = `<i data-lucide="${icons[filtro]}" class="w-3.5 h-3.5"></i> ${labels[filtro]}`;
+
+            renderizar();
+            lucide.createIcons();
+        }
+
+        // =====================================================================
+        // INICIALIZAÇÃO
+        // =====================================================================
+        async function init() {
+            const labelTxt = `HUB-LCE-04 • Escala de ${nomeMesAtual} / ${anoAtual} (Hoje: Dia ${diaHoje} ⭐)`;
+            document.getElementById('label-mes-ano').innerText = labelTxt;
+            document.getElementById('label-mes-ano-sidebar').innerText = labelTxt;
+            
+            try {
+                const { error: testeError } = await supabaseClient.from('colaboradores').select('id').limit(1);
+                if (testeError) {
+                    console.error("Erro de conexão Supabase:", testeError);
+                    alert("⚠️ Não foi possível conectar ao Supabase.\n\nErro: " + testeError.message);
+                }
+            } catch (e) {
+                console.error("Erro de conexão:", e);
+            }
+            
+            popularSelectFuncoesPorSetor();
+            await carregarDadosSupabase();
+            setFiltro('todos');
+            lucide.createIcons();
+        }
+
+        // =====================================================================
+        // CARREGAR DADOS
+        // =====================================================================
+        async function carregarDadosSupabase() {
+            try {
+                const { data: cols, error: errCols } = await supabaseClient.from('colaboradores').select('*').order('nome');
+                if (errCols) throw errCols;
+
+                const { data: hist, error: errHist } = await supabaseClient.from('historico_escala').select('*');
+                if (errHist) throw errHist;
+
+                colaboradores = (cols || []).map(c => {
+                    const historicoDias = new Array(totalDiasDoMes).fill("-");
+                    const registrosColab = (hist || []).filter(h => h.colaborador_id === c.id);
+                    
+                    registrosColab.forEach(r => {
+                        const diaNum = new Date(r.data + 'T00:00:00').getDate();
+                        if (diaNum >= 1 && diaNum <= totalDiasDoMes) {
+                            historicoDias[diaNum - 1] = r.funcao;
+                        }
+                    });
+
+                    return {
+                        id: c.id,
+                        nome: c.nome,
+                        escala: c.escala || "6x1",
+                        horario: c.horario || "08:00 - 17:00",
+                        dsr: c.dsr || "Domingo",
+                        dataCriacao: c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT') : '',
+                        historicoDias: historicoDias
+                    };
+                });
+
+                colaboradores.forEach(c => {
+                    c.historicoDias = c.historicoDias.map((f, idx) => {
+                        const dataDia = new Date(anoAtual, mesAtualIndex, idx + 1);
+                        if (isDiaDSR(c.dsr, dataDia) && !isStatusEspecial(f)) {
+                            return "-";
+                        }
+                        return f;
+                    });
+                });
+            } catch (error) {
+                console.error("Erro ao sincronizar com Supabase:", error);
+                alert("Erro ao carregar dados do Supabase.\n\n" + error.message);
+            }
+        }
+
+        // =====================================================================
+        // SELECT
+        // =====================================================================
+        function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
+            const select = document.getElementById('novo-funcao');
+            select.innerHTML = "";
+            
+            let optgroupEspecial = document.createElement('optgroup');
+            optgroupEspecial.label = "⚙️ Status Especiais";
+            STATUS_ESPECIAIS.forEach(s => {
+                let option = document.createElement('option');
+                option.value = s.valor;
+                option.textContent = s.label;
+                if (s.valor === funcaoSelecionadaDefault) option.selected = true;
+                optgroupEspecial.appendChild(option);
+            });
+            select.appendChild(optgroupEspecial);
+
+            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                let optgroup = document.createElement('optgroup');
+                optgroup.label = `📍 Setor: ${setor}`;
+                funcoes.forEach(f => {
+                    let option = document.createElement('option');
+                    option.value = f;
+                    option.textContent = f;
+                    if (f === funcaoSelecionadaDefault) option.selected = true;
+                    optgroup.appendChild(option);
+                });
+                select.appendChild(optgroup);
+            }
+        }
+
+        // =====================================================================
+        // ALTERAR DIA (com toast + anti-duplo)
+        // =====================================================================
+        async function tentarAlterarDia(idColab, indexDia, elementoSelect) {
+            const numeroDia = indexDia + 1;
+            const colab = colaboradores.find(c => c.id === idColab);
+            if (!colab) return;
+
+            if (elementoSelect.disabled) return;
+            elementoSelect.disabled = true;
+            elementoSelect.style.opacity = '0.5';
+
+            try {
+                const dataDoDia = new Date(anoAtual, mesAtualIndex, numeroDia);
+                const novaFuncao = elementoSelect.value;
+                const eDSR = isDiaDSR(colab.dsr, dataDoDia);
+
+                if (eDSR && !isStatusEspecial(novaFuncao)) {
+                    toast(`🚫 ${colab.nome} está de DSR (${colab.dsr}) no Dia ${numeroDia}.`, 'warn');
+                    renderizar();
+                    return;
+                }
+
+                if (numeroDia < diaHoje) {
+                    const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador:`);
+                    if (senhaInformada !== SENHA_ADM) {
+                        toast('❌ Senha incorreta! Alteração negada.', 'erro');
+                        renderizar();
+                        return;
+                    }
+                }
+
+                if (!isStatusEspecial(novaFuncao)) {
+                    const status = contarDiasNaFuncaoAtual(colab.historicoDias);
+                    if (status.dias >= LIMITE_DIAS_FUNCAO && novaFuncao === status.funcao) {
+                        toast(`⚠️ ${colab.nome} já está há ${status.dias} dias em "${status.funcao}". Limite: ${LIMITE_DIAS_FUNCAO}.`, 'warn');
+                        renderizar();
+                        return;
+                    }
+                }
+
+                await atualizarDiaSupabase(idColab, numeroDia, novaFuncao);
+                colab.historicoDias[indexDia] = novaFuncao;
+                renderizar();
+            }
+            catch (e) {
+                console.error("Erro ao alterar dia:", e);
+                toast("❌ Erro ao alterar dia: " + (e.message || e), 'erro');
+                renderizar();
+            }
+        }
+
+        // =====================================================================
+        // ATUALIZAR NO SUPABASE
+        // =====================================================================
+        async function atualizarDiaSupabase(colaboradorId, dia, funcao) {
+            const dataStr = `${anoAtual}-${String(mesAtualIndex + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+
+            if (funcao === "-") {
+                await supabaseClient.from('historico_escala')
+                    .delete()
+                    .eq('colaborador_id', colaboradorId)
+                    .eq('data', dataStr);
+                return;
+            }
+
+            let setorParaGravar = "Status";
+            if (!isStatusEspecial(funcao)) {
+                setorParaGravar = "Recebimento";
+                for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                    if (funcoes.includes(funcao)) { setorParaGravar = setor; break; }
+                }
+            }
+
+            const { error } = await supabaseClient.from('historico_escala').upsert({
+                colaborador_id: colaboradorId,
+                data: dataStr,
+                setor: setorParaGravar,
+                funcao: funcao
+            }, { onConflict: 'colaborador_id,data' });
+
+            if (error) console.error("Erro ao atualizar histórico:", error);
+        }
+
+        // =====================================================================
+        // CARD DE COLABORADOR
+        // =====================================================================
+        function cardColaborador(c, tipo) {
+            const status = contarDiasNaFuncaoAtual(c.historicoDias);
+            const emAlerta = status.dias >= 7 && tipo === 'operacao';
+            const emBloqueio = status.dias >= LIMITE_DIAS_FUNCAO && tipo === 'operacao';
+            const dataRangeTexto = status.dataInicio && status.dataFim
+                ? `${formatarDataDDMM(status.dataInicio)} → ${formatarDataDDMM(status.dataFim)}`
+                : '-';
+
+            let bordaCor = 'border-slate-800';
+            let tituloCor = 'text-slate-100';
+            let badge = '';
+
+            if (tipo === 'dsr') {
+                bordaCor = 'border-orange-500/40';
+                tituloCor = 'text-orange-200';
+                badge = `<div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">🌴 Em DSR — Não pode ser escalado hoje</div>`;
+            } else if (tipo === 'falta') {
+                bordaCor = 'border-yellow-500/40';
+                tituloCor = 'text-yellow-200';
+                badge = `<div class="mt-1.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">⚠️ FALTA registrada</div>`;
+            } else if (tipo === 'atestado') {
+                bordaCor = 'border-red-500/40';
+                tituloCor = 'text-red-200';
+                badge = `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">🏥 ATESTADO registrado</div>`;
+            } else if (tipo === 'operacao') {
+                if (emBloqueio) bordaCor = 'border-orange-500/60';
+                else if (emAlerta) bordaCor = 'border-red-500/60';
+            }
+
+            const alertaBadge = tipo === 'operacao' ? (
+                emBloqueio
+                    ? `<div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1"><i data-lucide="lock" class="w-3 h-3"></i> Bloqueado: ${status.dias} dias na função!</div>`
+                    : emAlerta
+                    ? `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Alerta: ${status.dias} dias seguidos!</div>`
+                    : ''
+            ) : '';
+
+            const blocoFuncao = tipo === 'operacao' ? `
+                <div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5">
+                    <span>Função Atual:</span>
+                    <div class="flex items-center justify-between gap-1">
+                        <strong class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate">${status.funcao}</strong>
+                        <span class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px] whitespace-nowrap" title="${status.dias} dias consecutivos">${dataRangeTexto}</span>
+                    </div>
+                </div>
+            ` : '';
+
+            return `
+                <div class="bg-slate-900 border ${bordaCor} rounded-xl p-3.5 shadow transition">
+                    <div class="flex flex-col gap-2">
+                        <div>
+                            <h3 class="text-xs sm:text-sm font-bold ${tituloCor}">${c.nome}</h3>
+                            <div class="text-[10px] text-amber-400 font-semibold mt-0.5">
+                                Escala: ${c.escala} · DSR: ${c.dsr}
+                            </div>
+                            <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                                <span>🕒 ${c.horario}</span>
+                            </div>
+                            ${badge}
+                            ${alertaBadge}
+                            ${blocoFuncao}
+                        </div>
+                        <div class="grid grid-cols-2 gap-1 pt-2 border-t border-slate-800/80">
+                            <button onclick="abrirModalEditar('${c.id}')" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-blue-500/20 flex items-center justify-center gap-1 transition"><i data-lucide="edit-3" class="w-3 h-3"></i> Alterar</button>
+                            <button onclick="abrirHistorico('${c.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition"><i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Dias</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // =====================================================================
+        // SEÇÃO REUTILIZÁVEL
+        // =====================================================================
+        function criarBloco(titulo, subtitulo, itens, cor, iconTitulo, badgeTexto) {
+            if (itens.length === 0) return null;
+            const bloco = document.createElement('div');
+            const classes = {
+                orange: 'bg-orange-950/20 border-orange-500/40',
+                yellow: 'bg-yellow-950/20 border-yellow-500/40',
+                red: 'bg-red-950/20 border-red-500/40'
+            }[cor] || 'bg-slate-900/60 border-slate-800';
+
+            bloco.className = `${classes} border rounded-2xl p-4 shadow-xl`;
+            bloco.innerHTML = `
+                <div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 ${cor === 'orange' ? 'border-orange-500/30' : cor === 'yellow' ? 'border-yellow-500/30' : 'border-red-500/30'}">
+                    <h2 class="text-sm sm:text-base font-bold flex items-center gap-2 ${cor === 'orange' ? 'text-orange-400' : cor === 'yellow' ? 'text-yellow-400' : 'text-red-400'}">
+                        ${iconTitulo} ${titulo}
+                        <span class="text-[10px] font-normal opacity-70">${subtitulo || ''}</span>
+                    </h2>
+                    <span class="text-xs px-2.5 py-0.5 rounded-full font-mono ${cor === 'orange' ? 'bg-orange-500/20 text-orange-300' : cor === 'yellow' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}">${badgeTexto}</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    ${itens.map(c => cardColaborador(c, cor === 'orange' ? 'dsr' : cor === 'yellow' ? 'falta' : 'atestado')).join('')}
+                </div>
+            `;
+            return bloco;
+        }
+
+        // =====================================================================
+        // RENDERIZAR
+        // =====================================================================
+        function renderizar() {
+            const termoBuscaNorm = normalizarTexto(document.getElementById('input-busca').value);
+            const containerSetores = document.getElementById('container-setores');
+            containerSetores.innerHTML = "";
+
+            const grupos = { operacao: [], dsr: [], falta: [], atestado: [] };
+            colaboradores.forEach(c => {
+                const tipo = obterStatusHoje(c);
+                if (tipo === 'operacao') grupos.operacao.push(c);
+                else if (tipo === 'dsr') grupos.dsr.push(c);
+                else if (tipo === 'falta') grupos.falta.push(c);
+                else if (tipo === 'atestado') grupos.atestado.push(c);
+            });
+
+            const filtrar = lista => lista.filter(c =>
+                matchBuscaAvancada(termoBuscaNorm, c.nome, c.escala, c.dsr, c.horario)
+            );
+
+            const operacaoF = filtrar(grupos.operacao);
+            const dsrF = filtrar(grupos.dsr);
+            const faltaF = filtrar(grupos.falta);
+            const atestadoF = filtrar(grupos.atestado);
+
+            document.getElementById('kpi-total').innerText = colaboradores.length;
+            document.getElementById('kpi-operacao').innerText = grupos.operacao.length;
+            document.getElementById('kpi-dsr').innerText = grupos.dsr.length;
+            document.getElementById('kpi-faltas').innerText = grupos.falta.length;
+            document.getElementById('kpi-atestados').innerText = grupos.atestado.length;
+
+            const badges = {
+                'badge-todos': colaboradores.length,
+                'badge-operacao': grupos.operacao.length,
+                'badge-dsr': grupos.dsr.length,
+                'badge-faltas': grupos.falta.length,
+                'badge-atestados': grupos.atestado.length
+            };
+            Object.entries(badges).forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = val;
+                const elM = document.getElementById(id + '-m');
+                if (elM) elM.innerText = val;
+            });
+
+            const blocoDSR = criarBloco('Colaboradores em DSR Hoje', '— não podem ser escalados', dsrF, 'orange', '🌴', `${dsrF.length} em descanso`);
+            const blocoFalta = criarBloco('Faltas Hoje', '— ausências não justificadas', faltaF, 'yellow', '⚠️', `${faltaF.length} falta${faltaF.length === 1 ? '' : 's'}`);
+            const blocoAtestado = criarBloco('Atestados Hoje', '— ausências justificadas', atestadoF, 'red', '🏥', `${atestadoF.length} atestado${atestadoF.length === 1 ? '' : 's'}`);
+
+            if (filtroAtivo === 'todos') {
+                if (blocoDSR) containerSetores.appendChild(blocoDSR);
+                if (blocoFalta) containerSetores.appendChild(blocoFalta);
+                if (blocoAtestado) containerSetores.appendChild(blocoAtestado);
+                renderizarSetores(operacaoF, containerSetores);
+            } else if (filtroAtivo === 'operacao') {
+                renderizarSetores(operacaoF, containerSetores);
+            } else if (filtroAtivo === 'dsr') {
+                if (blocoDSR) containerSetores.appendChild(blocoDSR);
+                else containerSetores.innerHTML = `<p class="text-center text-slate-500 italic py-8">Nenhum colaborador em DSR hoje.</p>`;
+            } else if (filtroAtivo === 'faltas') {
+                if (blocoFalta) containerSetores.appendChild(blocoFalta);
+                else containerSetores.innerHTML = `<p class="text-center text-slate-500 italic py-8">Nenhuma falta registrada hoje.</p>`;
+            } else if (filtroAtivo === 'atestados') {
+                if (blocoAtestado) containerSetores.appendChild(blocoAtestado);
+                else containerSetores.innerHTML = `<p class="text-center text-slate-500 italic py-8">Nenhum atestado registrado hoje.</p>`;
+            }
+
+            lucide.createIcons();
+        }
+
+        // =====================================================================
+        // RENDERIZAR SETORES (com botão + Adicionar)
+        // =====================================================================
+        function renderizarSetores(colabsOperacao, container) {
+            for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
+                const colabsDoSetor = colabsOperacao.filter(c => {
+                    const funcAtual = c.historicoDias[diaHoje - 1] || "-";
+                    return funcoesDoSetor.includes(funcAtual);
+                });
+
+                let blocoSetor = document.createElement('div');
+                blocoSetor.className = "bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl";
+                const setorEscapado = setor.replace(/'/g, "\\'");
+                
+                blocoSetor.innerHTML = `
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2">
+                        <h2 class="text-sm sm:text-base font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-amber-500"></i> ${setor}
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
+                            <button onclick="abrirModalAdd('${setorEscapado}')"
+                                    class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95"
+                                    title="Adicionar auxiliar em ${setorEscapado}">
+                                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                                <span>Adicionar</span>
+                            </button>
+                        </div>
+                    </div>
+                    ${colabsDoSetor.length === 0
+                        ? `<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar alocado neste setor hoje. Clique em <strong class="text-amber-400">Adicionar</strong> para incluir o primeiro.</p>`
+                        : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">${colabsDoSetor.map(c => cardColaborador(c, 'operacao')).join('')}</div>`
+                    }
+                `;
+                container.appendChild(blocoSetor);
+            }
+        }
+
+        // =====================================================================
+        // MODAIS
+        // =====================================================================
+        function abrirModalAdd(setorPreSelecionado = null) {
+            document.getElementById('edit-id').value = '';
+            document.getElementById('modal-titulo').innerHTML = setorPreSelecionado
+                ? `<i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar — ${setorPreSelecionado}`
+                : `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
+            document.getElementById('input-nome-colab').value = '';
+            document.getElementById('select-escala').value = '6x1';
+            document.getElementById('select-dsr').value = 'Domingo';
+            document.getElementById('input-horario').value = '08:00 - 17:00';
+            document.getElementById('campos-add-extras').classList.remove('hidden');
+
+            let funcaoDefault = null;
+            if (setorPreSelecionado && SETORES_E_FUNCOES[setorPreSelecionado]) {
+                funcaoDefault = SETORES_E_FUNCOES[setorPreSelecionado][0];
+            }
+            popularSelectFuncoesPorSetor(funcaoDefault);
+
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        async function abrirModalEditar(id) {
+            const colab = colaboradores.find(c => c.id === id);
+            if (!colab) return;
+            
+            document.getElementById('edit-id').value = colab.id;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar`;
+            document.getElementById('input-nome-colab').value = colab.nome;
+            document.getElementById('campos-add-extras').classList.add('hidden');
+
+            const funcaoAtual = colab.historicoDias[diaHoje - 1] || "-";
+            popularSelectFuncoesPorSetor(funcaoAtual);
+            
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function fecharModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
+
+        // =====================================================================
+        // SALVAR (com validações + toast + anti-duplo)
+        // =====================================================================
+        async function salvarColaborador() {
+            const btn = document.querySelector('#modal-add button[onclick="salvarColaborador()"]');
+            if (btn?.disabled) return;
+            if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+
+            try {
+                const idEdit = document.getElementById('edit-id').value;
+                const nomeColab = document.getElementById('input-nome-colab').value.trim();
+                const funcaoSelecionada = document.getElementById('novo-funcao').value;
+
+                if (!nomeColab) {
+                    toast("⚠️ Insira o nome do colaborador.", 'warn');
+                    return;
+                }
+                if (nomeColab.length < 3) {
+                    toast("⚠️ O nome deve ter pelo menos 3 caracteres.", 'warn');
+                    return;
+                }
+
+                const nomeNorm = normalizarTexto(nomeColab);
+                const jaExiste = colaboradores.some(c =>
+                    normalizarTexto(c.nome) === nomeNorm && c.id !== idEdit
+                );
+                if (jaExiste) {
+                    toast(`⚠️ Já existe um colaborador chamado "${nomeColab}".`, 'warn');
+                    return;
+                }
+
+                if (idEdit) {
+                    const { error: errUpdate } = await supabaseClient
+                        .from('colaboradores')
+                        .update({ nome: nomeColab })
+                        .eq('id', idEdit);
+
+                    if (errUpdate) {
+                        toast("❌ Erro ao atualizar: " + errUpdate.message, 'erro');
+                        return;
+                    }
+
+                    const colab = colaboradores.find(c => c.id === idEdit);
+                    if (colab && !isColabEmDSRHoje(colab)) {
+                        await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
+                    } else if (colab && isColabEmDSRHoje(colab) && isStatusEspecial(funcaoSelecionada)) {
+                        await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
+                    }
+
+                    toast(`✅ ${nomeColab} atualizado.`, 'ok');
+                } else {
+                    const escalaColab = document.getElementById('select-escala').value;
+                    const dsrColab = document.getElementById('select-dsr').value;
+                    const horarioColab = document.getElementById('input-horario').value;
+
+                    const { data, error } = await supabaseClient
+                        .from('colaboradores')
+                        .insert([{
+                            nome: nomeColab,
+                            escala: escalaColab,
+                            dsr: dsrColab,
+                            horario: horarioColab
+                        }])
+                        .select();
+
+                    if (error) {
+                        toast("❌ Erro ao salvar: " + error.message, 'erro');
+                        return;
+                    }
+
+                    if (data && data.length > 0) {
+                        const dataHoje = new Date(anoAtual, mesAtualIndex, diaHoje);
+                        const hojeEhDSR = isDiaDSR(dsrColab, dataHoje);
+
+                        if (!hojeEhDSR || isStatusEspecial(funcaoSelecionada)) {
+                            await atualizarDiaSupabase(data[0].id, diaHoje, funcaoSelecionada);
+                        }
+
+                        toast(`✅ ${nomeColab} adicionado.`, 'ok');
+                    }
+                }
+
+                fecharModalAdd();
+                await carregarDadosSupabase();
+                renderizar();
+            }
+            catch (e) {
+                console.error("Erro inesperado ao salvar:", e);
+                toast("❌ Erro inesperado: " + (e.message || e), 'erro');
+            }
+            finally {
+                if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+            }
+        }
+
+        // =====================================================================
+        // HISTÓRICO
+        // =====================================================================
+        function abrirHistorico(id) {
+            const colab = colaboradores.find(c => c.id === id);
+            if (!colab) return;
+            document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome} (${colab.escala} | DSR: ${colab.dsr})`;
+            const container = document.getElementById('conteudo-historico-dias');
+            container.innerHTML = "";
+            
+            let indicesDias = Array.from({length: totalDiasDoMes}, (_, i) => i);
+            indicesDias.sort((a, b) => ((a + 1) === diaHoje ? -1 : (b + 1) === diaHoje ? 1 : 0));
+
+            indicesDias.forEach(i => {
+                const func = colab.historicoDias[i] || "-";
+                const numeroDia = i + 1;
+                const eHoje = numeroDia === diaHoje;
+                const ePassado = numeroDia < diaHoje;
+                const dataDoDia = new Date(anoAtual, mesAtualIndex, numeroDia);
+                const eDSR = isDiaDSR(colab.dsr, dataDoDia);
+                const bloqueado = ePassado;
+
+                let optionsHtml = "";
+                STATUS_ESPECIAIS.forEach(s => {
+                    optionsHtml += `<option value="${s.valor}" ${s.valor === func ? 'selected' : ''}>${s.label}</option>`;
+                });
+                for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                    optionsHtml += `<optgroup label="📍 ${setor}">`;
+                    funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`; });
+                    optionsHtml += `</optgroup>`;
+                }
+
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border ${eHoje ? 'border-amber-500 bg-amber-500/10' : eDSR ? 'border-orange-500/40 bg-orange-950/10' : 'border-slate-800 bg-slate-950'} gap-2">
+                        <span class="text-[11px] font-bold ${eHoje ? 'text-amber-300' : eDSR ? 'text-orange-400' : 'text-slate-300'} w-32">Dia ${numeroDia} ${eHoje ? '⭐' : eDSR ? '🚫 DSR' : ePassado ? '🔒' : ''}</span>
+                        <select ${bloqueado ? 'disabled' : ''} onchange="tentarAlterarDia('${id}', ${i}, this)" class="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-amber-500 flex-grow ${bloqueado ? 'opacity-50 cursor-not-allowed' : ''}">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `;
+            });
+            document.getElementById('modal-historico').classList.remove('hidden');
+        }
+
+        function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
+
+        // =====================================================================
+        // MATRIZ MENSAL
+        // =====================================================================
+        function abrirModalMatriz() {
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual} (HUB-LCE-04)`;
+            const tabelaUnica = document.getElementById('tabela-matriz-unica');
+            tabelaUnica.innerHTML = "";
+
+            const todosOsDias = Array.from({length: totalDiasDoMes}, (_, i) => i + 1);
+            const diasOrdenados = [diaHoje, ...todosOsDias.filter(d => d !== diaHoje)];
+
+            let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30">`;
+            thead += `<th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador (Escala / DSR)</th>`;
+            diasOrdenados.forEach(d => {
+                const eHoje = d === diaHoje;
+                thead += `<th class="p-2 text-center font-semibold min-w-[120px] text-[10px] ${eHoje ? 'text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500' : 'text-slate-300 border-l border-slate-800/50'}">${eHoje ? '⭐ ' : ''}Dia ${d}</th>`;
+            });
+            thead += `</tr></thead>`;
+
+            let tbody = `<tbody>`;
+            colaboradores.forEach(c => {
+                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30">
+                            <td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]">
+                                <div class="text-xs font-bold text-slate-200">${c.nome}</div>
+                                <div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: ${c.escala} · DSR: ${c.dsr}</div>
+                            </td>`;
+                
+                diasOrdenados.forEach(d => {
+                    const indexDia = d - 1;
+                    const funcDia = c.historicoDias[indexDia] || "-";
+                    const eHoje = d === diaHoje;
+                    const ePassado = d < diaHoje;
+                    const dataDoDia = new Date(anoAtual, mesAtualIndex, d);
+                    const eDSR = isDiaDSR(c.dsr, dataDoDia);
+                    const bloqueado = ePassado;
+
+                    let optionsHtml = "";
+                    STATUS_ESPECIAIS.forEach(s => {
+                        optionsHtml += `<option value="${s.valor}" ${s.valor === funcDia ? 'selected' : ''}>${s.label}</option>`;
+                    });
+                    for (const [sName, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                        optionsHtml += `<optgroup label="📍 ${sName}">`;
+                        funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`; });
+                        optionsHtml += `</optgroup>`;
+                    }
+
+                    const tdClasses = eHoje
+                        ? 'bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40'
+                        : eDSR
+                        ? 'bg-orange-950/20'
+                        : ePassado
+                        ? 'bg-slate-950/60'
+                        : '';
+
+                    tbody += `<td class="p-1 text-center ${tdClasses}">
+                        <select ${bloqueado ? 'disabled' : ''} 
+                                onchange="tentarAlterarDia('${c.id}', ${indexDia}, this)" 
+                                title="${eDSR ? 'DSR - Só permite status especiais' : ePassado ? 'Dia anterior - Requer senha' : 'Editável'}"
+                                class="border rounded p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${bloqueado ? 'opacity-40 cursor-not-allowed bg-slate-950 border-slate-800 text-slate-500' : 'bg-slate-950 border-slate-700 text-slate-200'}">
+                            ${optionsHtml}
+                        </select>
+                    </td>`;
+                });
+                tbody += `</tr>`;
+            });
+            tbody += `</tbody>`;
+
+            tabelaUnica.innerHTML = thead + tbody;
+            document.getElementById('modal-matriz').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function fecharModalMatriz() { 
+            document.getElementById('modal-matriz').classList.add('hidden'); 
+            renderizar(); 
+        }
+
+        // =====================================================================
+        // INICIAR
+        // =====================================================================
+        window.onload = init;
+    </script>
+</body>
+</html>
