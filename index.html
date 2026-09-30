@@ -43,7 +43,7 @@
         </header>
 
         <!-- KPI -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="grid grid-cols-3 gap-3 mb-6">
             <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Auxiliares</span>
@@ -60,15 +60,6 @@
                 </div>
                 <div class="bg-orange-500/10 p-2.5 rounded-lg border border-orange-500/20 text-orange-400">
                     <i data-lucide="palmtree" class="w-5 h-5"></i>
-                </div>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
-                <div>
-                    <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Faltas/Atestados</span>
-                    <h2 id="kpi-faltas" class="text-2xl font-extrabold text-yellow-400 mt-0.5">0</h2>
-                </div>
-                <div class="bg-yellow-500/10 p-2.5 rounded-lg border border-yellow-500/20 text-yellow-400">
-                    <i data-lucide="calendar-x" class="w-5 h-5"></i>
                 </div>
             </div>
             <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl shadow-md flex items-center justify-between">
@@ -171,7 +162,7 @@
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
                         <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa
                     </h3>
-                    <p class="text-[11px] text-slate-400">⭐ Dia atual fixo · 🔒 Passado · 🌴 DSR · Faltas/Atestados disponíveis</p>
+                    <p class="text-[11px] text-slate-400">⭐ Dia atual · 🔒 Passado (senha) · 🚫 DSR permite apenas status especiais · ⚠️ Falta/Atestado/DSR Extra disponíveis</p>
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
@@ -183,8 +174,8 @@
             <div class="flex justify-between items-center pt-2 border-t border-slate-800 flex-wrap gap-2">
                 <div class="text-[10px] text-slate-500 flex items-center gap-3 flex-wrap">
                     <span>⭐ Hoje (fixo)</span>
-                    <span>🔒 Passado</span>
-                    <span class="text-orange-400">🌴 DSR</span>
+                    <span>🔒 Passado (senha)</span>
+                    <span class="text-orange-400">🚫 DSR</span>
                     <span class="text-yellow-400">⚠️ Falta/Atestado</span>
                 </div>
                 <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
@@ -234,23 +225,22 @@
             "FM": ["Aux FM"]
         };
 
-        let FUNCOES_LOGISTICA = [];
-        Object.values(SETORES_E_FUNCOES).forEach(lista => FUNCOES_LOGISTICA.push(...lista));
-
         // =====================================================================
         // STATUS ESPECIAIS (não são funções, mas ocupam o dia)
         // =====================================================================
-        const STATUS_ESPECIAIS = {
-            "-": { label: "- (Folga/DSR)", cor: "text-slate-400" },
-            "FALTA": { label: "⚠️ FALTA", cor: "text-yellow-400" },
-            "ATESTADO": { label: "🏥 ATESTADO", cor: "text-yellow-400" }
-        };
+        const STATUS_ESPECIAIS = [
+            { valor: "-",         label: "- (Folga/DSR normal)" },
+            { valor: "DSR_EXTRA", label: "🌴 DSR Extra (folga ganha)" },
+            { valor: "FALTA",     label: "⚠️ FALTA" },
+            { valor: "ATESTADO",  label: "🏥 ATESTADO" }
+        ];
 
-        const STATUS_QUE_NAO_SAO_FUNCAO = ["-", "FALTA", "ATESTADO"];
-
-        function isStatusEspecial(funcao) {
-            return STATUS_QUE_NAO_SAO_FUNCAO.includes(funcao);
+        function isStatusEspecial(valor) {
+            return STATUS_ESPECIAIS.some(s => s.valor === valor);
         }
+
+        let FUNCOES_LOGISTICA = [];
+        Object.values(SETORES_E_FUNCOES).forEach(lista => FUNCOES_LOGISTICA.push(...lista));
 
         // =====================================================================
         // VARIÁVEIS GLOBAIS
@@ -327,14 +317,13 @@
             return DIAS_SEMANA_MAP[dsrLower] === diaSemanaNum || DIAS_SEMANA_MAP[dsrNormalizado] === diaSemanaNum;
         }
 
-        // Verifica se hoje é DSR
         function isColabEmDSRHoje(colab) {
             const dataHoje = new Date(anoAtual, mesAtualIndex, diaHoje);
             return isDiaDSR(colab.dsr, dataHoje);
         }
 
         // =====================================================================
-        // CONTAR DIAS NA FUNÇÃO ATUAL (ignora status especiais)
+        // CONTAR DIAS NA FUNÇÃO ATUAL (para no primeiro status especial)
         // =====================================================================
         function contarDiasNaFuncaoAtual(historico) {
             const funcaoAtual = historico[diaHoje - 1];
@@ -345,7 +334,7 @@
             let contador = 0;
             let indexInicio = diaHoje - 1;
             for (let i = diaHoje - 1; i >= 0; i--) {
-                if (historico[i] === funcaoAtual) {
+                if (historico[i] === funcaoAtual && !isStatusEspecial(historico[i])) {
                     contador++;
                     indexInicio = i;
                 } else {
@@ -355,8 +344,7 @@
             
             const dataInicio = new Date(anoAtual, mesAtualIndex, indexInicio + 1);
             const dataFim = new Date(anoAtual, mesAtualIndex, diaHoje);
-            
-            return { funcao: funcaoAtual, dias: contador, dataInicio: dataInicio, dataFim: dataFim };
+            return { funcao: funcaoAtual, dias: contador, dataInicio, dataFim };
         }
 
         function formatarDataDDMM(dataObj) {
@@ -364,39 +352,6 @@
             const dia = String(dataObj.getDate()).padStart(2, '0');
             const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
             return `${dia}/${mes}`;
-        }
-
-        // =====================================================================
-        // OBTER STATUS ATUAL DO COLABORADOR HOJE
-        // =====================================================================
-        function obterStatusHoje(colab) {
-            const statusRaw = colab.historicoDias[diaHoje - 1] || "-";
-            
-            // Se está em DSR hoje, esse é o status, independentemente do histórico
-            if (isColabEmDSRHoje(colab)) {
-                return { 
-                    tipo: "DSR", 
-                    label: `🌴 DSR (${colab.dsr})`, 
-                    funcao: "-", 
-                    detalhe: "Em descanso — não pode ser escalado"
-                };
-            }
-            
-            // Se tem falta/atestado registrado
-            if (statusRaw === "FALTA") {
-                return { tipo: "FALTA", label: "⚠️ FALTA", funcao: "FALTA", detalhe: "Falta registrada" };
-            }
-            if (statusRaw === "ATESTADO") {
-                return { tipo: "ATESTADO", label: "🏥 ATESTADO", funcao: "ATESTADO", detalhe: "Atestado registrado" };
-            }
-            
-            // Se está em uma função
-            if (statusRaw && statusRaw !== "-") {
-                return { tipo: "FUNCAO", label: statusRaw, funcao: statusRaw, detalhe: "Escalado" };
-            }
-            
-            // Sem escala hoje
-            return { tipo: "SEM_ESCALA", label: "— Sem escala", funcao: "-", detalhe: "Sem função atribuída hoje" };
         }
 
         // =====================================================================
@@ -422,7 +377,7 @@
         }
 
         // =====================================================================
-        // CARREGAR DADOS
+        // CARREGAR DADOS + SANITIZAÇÃO (remove função antiga em dia DSR)
         // =====================================================================
         async function carregarDadosSupabase() {
             try {
@@ -453,6 +408,17 @@
                         historicoDias: historicoDias
                     };
                 });
+
+                // SANITIZAÇÃO: em dia DSR, função antiga vira "-" na UI
+                colaboradores.forEach(c => {
+                    c.historicoDias = c.historicoDias.map((f, idx) => {
+                        const dataDia = new Date(anoAtual, mesAtualIndex, idx + 1);
+                        if (isDiaDSR(c.dsr, dataDia) && !isStatusEspecial(f)) {
+                            return "-";
+                        }
+                        return f;
+                    });
+                });
             } catch (error) {
                 console.error("Erro ao sincronizar com Supabase:", error);
                 alert("Erro ao carregar dados do Supabase.\n\n" + error.message);
@@ -460,7 +426,7 @@
         }
 
         // =====================================================================
-        // POPULAR SELECT DE FUNÇÕES (com opções especiais)
+        // POPULAR SELECT DO MODAL ADD/EDIT (com status especiais)
         // =====================================================================
         function popularSelectFuncoesPorSetor(funcaoSelecionadaDefault = null) {
             const select = document.getElementById('novo-funcao');
@@ -469,15 +435,15 @@
             // Status especiais primeiro
             let optgroupEspecial = document.createElement('optgroup');
             optgroupEspecial.label = "⚙️ Status Especiais";
-            Object.entries(STATUS_ESPECIAIS).forEach(([valor, info]) => {
+            STATUS_ESPECIAIS.forEach(s => {
                 let option = document.createElement('option');
-                option.value = valor;
-                option.textContent = info.label;
-                if (valor === funcaoSelecionadaDefault) option.selected = true;
+                option.value = s.valor;
+                option.textContent = s.label;
+                if (s.valor === funcaoSelecionadaDefault) option.selected = true;
                 optgroupEspecial.appendChild(option);
             });
             select.appendChild(optgroupEspecial);
-            
+
             // Funções por setor
             for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
                 let optgroup = document.createElement('optgroup');
@@ -493,24 +459,8 @@
             }
         }
 
-        // Gerar HTML de options com status especiais + funções
-        function gerarOptionsHtml(statusSelecionado) {
-            let html = "";
-            for (const [valor, info] of Object.entries(STATUS_ESPECIAIS)) {
-                html += `<option value="${valor}" ${valor === statusSelecionado ? 'selected' : ''}>${info.label}</option>`;
-            }
-            for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
-                html += `<optgroup label="📍 ${setor}">`;
-                funcoes.forEach(f => {
-                    html += `<option value="${f}" ${f === statusSelecionado ? 'selected' : ''}>${f}</option>`;
-                });
-                html += `</optgroup>`;
-            }
-            return html;
-        }
-
         // =====================================================================
-        // ALTERAR DIA
+        // ALTERAR DIA (validações)
         // =====================================================================
         async function tentarAlterarDia(idColab, indexDia, elementoSelect) {
             const numeroDia = indexDia + 1;
@@ -519,15 +469,16 @@
 
             const dataDoDia = new Date(anoAtual, mesAtualIndex, numeroDia);
             const novaFuncao = elementoSelect.value;
+            const eDSR = isDiaDSR(colab.dsr, dataDoDia);
 
-            // 1) Bloquear função em dia de DSR (permite apenas "-", "FALTA" ou "ATESTADO")
-            if (isDiaDSR(colab.dsr, dataDoDia) && !isStatusEspecial(novaFuncao)) {
-                alert(`🌴 ${colab.nome} está de DSR no Dia ${numeroDia} (${colab.dsr}).\n\nSó é possível registrar: - (Folga), FALTA ou ATESTADO neste dia.`);
+            // 1) Em dia de DSR, só permite status especiais
+            if (eDSR && !isStatusEspecial(novaFuncao)) {
+                alert(`🚫 ${colab.nome} está de DSR (${colab.dsr}) no Dia ${numeroDia}.\nSó é permitido registrar: -, DSR Extra, FALTA ou ATESTADO.`);
                 renderizar();
                 return;
             }
 
-            // 2) Bloquear dias anteriores (exceto se for só ajuste de status)
+            // 2) Dias anteriores exigem senha
             if (numeroDia < diaHoje) {
                 const senhaInformada = prompt(`🔒 O Dia ${numeroDia} já passou e está TRANCADO.\nInsira a senha de Administrador:`);
                 if (senhaInformada !== SENHA_ADM) {
@@ -537,7 +488,7 @@
                 }
             }
 
-            // 3) Bloquear +20 dias na mesma função (apenas se for função válida)
+            // 3) Limite de 20 dias na mesma função (não vale para status especiais)
             if (!isStatusEspecial(novaFuncao)) {
                 const status = contarDiasNaFuncaoAtual(colab.historicoDias);
                 if (status.dias >= LIMITE_DIAS_FUNCAO && novaFuncao === status.funcao) {
@@ -553,7 +504,389 @@
         }
 
         // =====================================================================
-        // ATUALIZAR DIA NO SUPABASE
+        // ATUALIZAR NO SUPABASE
         // =====================================================================
         async function atualizarDiaSupabase(colaboradorId, dia, funcao) {
-            const dataStr = `${anoAtual}-${String(mesAtualIndex + 1).padStart(2, '0')}-${String(dia).padStart(2, '0
+            const dataStr = `${anoAtual}-${String(mesAtualIndex + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+
+            if (funcao === "-") {
+                await supabaseClient.from('historico_escala')
+                    .delete()
+                    .eq('colaborador_id', colaboradorId)
+                    .eq('data', dataStr);
+                return;
+            }
+
+            let setorParaGravar = "Status";
+            if (!isStatusEspecial(funcao)) {
+                setorParaGravar = "Recebimento";
+                for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                    if (funcoes.includes(funcao)) { setorParaGravar = setor; break; }
+                }
+            }
+
+            const { error } = await supabaseClient.from('historico_escala').upsert({
+                colaborador_id: colaboradorId,
+                data: dataStr,
+                setor: setorParaGravar,
+                funcao: funcao
+            }, { onConflict: 'colaborador_id,data' });
+
+            if (error) console.error("Erro ao atualizar histórico:", error);
+        }
+
+        // =====================================================================
+        // RENDERIZAR
+        // =====================================================================
+        function renderizar() {
+            const termoBuscaNorm = normalizarTexto(document.getElementById('input-busca').value);
+            
+            const containerSetores = document.getElementById('container-setores');
+            containerSetores.innerHTML = "";
+
+            const colabsEmDSR = [];
+            const colabsEscalados = [];
+            
+            colaboradores.forEach(c => {
+                if (isColabEmDSRHoje(c)) colabsEmDSR.push(c);
+                else colabsEscalados.push(c);
+            });
+
+            const dsrFiltrados = colabsEmDSR.filter(c => 
+                matchBuscaAvancada(termoBuscaNorm, c.nome, c.escala, c.dsr, c.horario)
+            );
+            
+            const escaladosFiltrados = colabsEscalados.filter(c => 
+                matchBuscaAvancada(termoBuscaNorm, c.nome, c.escala, c.dsr, c.horario)
+            );
+
+            // KPIs
+            document.getElementById('kpi-total').innerText = colaboradores.length;
+            document.getElementById('kpi-dsr').innerText = colabsEmDSR.length;
+            let totalAlertas = 0;
+            colaboradores.forEach(c => { if (contarDiasNaFuncaoAtual(c.historicoDias).dias >= 7) totalAlertas++; });
+            document.getElementById('kpi-alertas').innerText = totalAlertas;
+
+            // ---- SEÇÃO DSR ----
+            if (dsrFiltrados.length > 0) {
+                let blocoDSR = document.createElement('div');
+                blocoDSR.className = "bg-orange-950/20 border border-orange-500/40 rounded-2xl p-4 shadow-xl";
+                
+                let cabecalhoDSR = `
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-orange-500/30 flex-wrap gap-2">
+                        <h2 class="text-sm sm:text-base font-bold text-orange-400 flex items-center gap-2">
+                            🌴 Colaboradores em DSR Hoje
+                            <span class="text-[10px] font-normal text-orange-300/70">— não podem ser escalados</span>
+                        </h2>
+                        <span class="bg-orange-500/20 text-orange-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${dsrFiltrados.length} em descanso</span>
+                    </div>
+                `;
+
+                let conteudoDSR = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + dsrFiltrados.map(c => `
+                    <div class="bg-slate-900 border border-orange-500/40 rounded-xl p-3.5 shadow transition opacity-90">
+                        <div class="flex flex-col gap-2">
+                            <div>
+                                <h3 class="text-xs sm:text-sm font-bold text-orange-200">${c.nome}</h3>
+                                <div class="text-[10px] text-orange-400 font-semibold mt-0.5">
+                                    Escala: ${c.escala} · DSR: ${c.dsr}
+                                </div>
+                                <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                                    <span>🕒 ${c.horario}</span>
+                                </div>
+                                <div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">
+                                    🌴 Em DSR — Não pode ser escalado hoje
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-1 pt-2 border-t border-slate-800/80">
+                                <button onclick="abrirHistorico('${c.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition"><i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Ver Dias</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') + `</div>`;
+
+                blocoDSR.innerHTML = cabecalhoDSR + conteudoDSR;
+                containerSetores.appendChild(blocoDSR);
+            }
+
+            // ---- SETORES ----
+            for (const [setor, funcoesDoSetor] of Object.entries(SETORES_E_FUNCOES)) {
+                const colabsDoSetor = escaladosFiltrados.filter(c => {
+                    const funcAtual = c.historicoDias[diaHoje - 1] || "-";
+                    return funcoesDoSetor.includes(funcAtual);
+                });
+
+                let blocoSetor = document.createElement('div');
+                blocoSetor.className = "bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl";
+                
+                let cabecalhoSetor = `
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2">
+                        <h2 class="text-sm sm:text-base font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-amber-500"></i> ${setor}
+                        </h2>
+                        <span class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${colabsDoSetor.length} operador${colabsDoSetor.length === 1 ? '' : 'es'}</span>
+                    </div>
+                `;
+
+                let conteudoCards = colabsDoSetor.length === 0 
+                    ? `<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar alocado neste setor hoje.</p>`
+                    : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">` + colabsDoSetor.map(c => {
+                        const status = contarDiasNaFuncaoAtual(c.historicoDias);
+                        const emAlerta = status.dias >= 7;
+                        const emBloqueio = status.dias >= LIMITE_DIAS_FUNCAO;
+                        
+                        const dataRangeTexto = status.dataInicio && status.dataFim
+                            ? `${formatarDataDDMM(status.dataInicio)} → ${formatarDataDDMM(status.dataFim)}`
+                            : '-';
+                        
+                        return `
+                            <div class="bg-slate-900 border ${emBloqueio ? 'border-orange-500/60 bg-orange-950/10' : emAlerta ? 'border-red-500/60 bg-red-950/10' : 'border-slate-800'} rounded-xl p-3.5 shadow transition">
+                                <div class="flex flex-col gap-2">
+                                    <div>
+                                        <h3 class="text-xs sm:text-sm font-bold text-slate-100">${c.nome}</h3>
+                                        <div class="text-[10px] text-amber-400 font-semibold mt-0.5">
+                                            Escala: ${c.escala} · DSR: ${c.dsr}
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                                            <span>🕒 ${c.horario}</span>
+                                        </div>
+                                        ${emBloqueio ? `<div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1"><i data-lucide="lock" class="w-3 h-3"></i> Bloqueado: ${status.dias} dias na função!</div>` : emAlerta ? `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Alerta: ${status.dias} dias seguidos!</div>` : ''}
+                                        <div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5">
+                                            <span>Função Atual:</span>
+                                            <div class="flex items-center justify-between gap-1">
+                                                <strong class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate">${status.funcao}</strong>
+                                                <span class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px] whitespace-nowrap" title="${status.dias} dias consecutivos">${dataRangeTexto}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-1 pt-2 border-t border-slate-800/80">
+                                        <button onclick="abrirModalEditar('${c.id}')" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-blue-500/20 flex items-center justify-center gap-1 transition"><i data-lucide="edit-3" class="w-3 h-3"></i> Alterar</button>
+                                        <button onclick="abrirHistorico('${c.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold py-1.5 px-1 rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition"><i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Dias</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') + `</div>`;
+
+                blocoSetor.innerHTML = cabecalhoSetor + conteudoCards;
+                containerSetores.appendChild(blocoSetor);
+            }
+
+            lucide.createIcons();
+        }
+
+        // =====================================================================
+        // MODAIS
+        // =====================================================================
+        function abrirModalAdd() {
+            document.getElementById('edit-id').value = '';
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Auxiliar`;
+            document.getElementById('input-nome-colab').value = '';
+            document.getElementById('select-escala').value = '6x1';
+            document.getElementById('select-dsr').value = 'Domingo';
+            document.getElementById('input-horario').value = '08:00 - 17:00';
+            document.getElementById('campos-add-extras').classList.remove('hidden');
+            popularSelectFuncoesPorSetor();
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        async function abrirModalEditar(id) {
+            const colab = colaboradores.find(c => c.id === id);
+            if (!colab) return;
+            
+            document.getElementById('edit-id').value = colab.id;
+            document.getElementById('modal-titulo').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4"></i> Alterar Auxiliar`;
+            document.getElementById('input-nome-colab').value = colab.nome;
+            document.getElementById('campos-add-extras').classList.add('hidden');
+
+            const funcaoAtual = colab.historicoDias[diaHoje - 1] || "-";
+            popularSelectFuncoesPorSetor(funcaoAtual);
+            
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function fecharModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
+
+        // =====================================================================
+        // SALVAR
+        // =====================================================================
+        async function salvarColaborador() {
+            const idEdit = document.getElementById('edit-id').value;
+            const nomeColab = document.getElementById('input-nome-colab').value.trim();
+            const funcaoSelecionada = document.getElementById('novo-funcao').value;
+
+            if (!nomeColab) {
+                alert("⚠️ Por favor, insira o nome do colaborador.");
+                return;
+            }
+
+            if (idEdit) {
+                await supabaseClient.from('colaboradores').update({ nome: nomeColab }).eq('id', idEdit);
+                
+                const colab = colaboradores.find(c => c.id === idEdit);
+                if (colab && !isColabEmDSRHoje(colab)) {
+                    await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
+                } else if (colab && isColabEmDSRHoje(colab) && isStatusEspecial(funcaoSelecionada)) {
+                    await atualizarDiaSupabase(idEdit, diaHoje, funcaoSelecionada);
+                }
+            } else {
+                const escalaColab = document.getElementById('select-escala').value;
+                const dsrColab = document.getElementById('select-dsr').value;
+                const horarioColab = document.getElementById('input-horario').value;
+
+                const { data, error } = await supabaseClient.from('colaboradores').insert([{ 
+                    nome: nomeColab,
+                    escala: escalaColab,
+                    dsr: dsrColab,
+                    horario: horarioColab
+                }]).select();
+                
+                if (!error && data && data.length > 0) {
+                    const dataHoje = new Date(anoAtual, mesAtualIndex, diaHoje);
+                    const hojeEhDSR = isDiaDSR(dsrColab, dataHoje);
+                    if (!hojeEhDSR || isStatusEspecial(funcaoSelecionada)) {
+                        await atualizarDiaSupabase(data[0].id, diaHoje, funcaoSelecionada);
+                    }
+                } else if (error) {
+                    alert("Erro ao salvar: " + error.message);
+                }
+            }
+            fecharModalAdd();
+            await carregarDadosSupabase();
+            renderizar();
+        }
+
+        // =====================================================================
+        // HISTÓRICO
+        // =====================================================================
+        function abrirHistorico(id) {
+            const colab = colaboradores.find(c => c.id === id);
+            if (!colab) return;
+            document.getElementById('titulo-modal-hist').innerText = `Editar Dias (${nomeMesAtual}): ${colab.nome} (${colab.escala} | DSR: ${colab.dsr})`;
+            const container = document.getElementById('conteudo-historico-dias');
+            container.innerHTML = "";
+            
+            let indicesDias = Array.from({length: totalDiasDoMes}, (_, i) => i);
+            indicesDias.sort((a, b) => ((a + 1) === diaHoje ? -1 : (b + 1) === diaHoje ? 1 : 0));
+
+            indicesDias.forEach(i => {
+                const func = colab.historicoDias[i] || "-";
+                const numeroDia = i + 1;
+                const eHoje = numeroDia === diaHoje;
+                const ePassado = numeroDia < diaHoje;
+                const dataDoDia = new Date(anoAtual, mesAtualIndex, numeroDia);
+                const eDSR = isDiaDSR(colab.dsr, dataDoDia);
+                // Só passado bloqueia. DSR continua editável, mas só aceita status especiais.
+                const bloqueado = ePassado;
+
+                let optionsHtml = "";
+                STATUS_ESPECIAIS.forEach(s => {
+                    optionsHtml += `<option value="${s.valor}" ${s.valor === func ? 'selected' : ''}>${s.label}</option>`;
+                });
+                for (const [setor, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                    optionsHtml += `<optgroup label="📍 ${setor}">`;
+                    funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === func ? 'selected' : ''}>${f}</option>`; });
+                    optionsHtml += `</optgroup>`;
+                }
+
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border ${eHoje ? 'border-amber-500 bg-amber-500/10' : eDSR ? 'border-orange-500/40 bg-orange-950/10' : 'border-slate-800 bg-slate-950'} gap-2">
+                        <span class="text-[11px] font-bold ${eHoje ? 'text-amber-300' : eDSR ? 'text-orange-400' : 'text-slate-300'} w-32">Dia ${numeroDia} ${eHoje ? '⭐' : eDSR ? '🚫 DSR' : ePassado ? '🔒' : ''}</span>
+                        <select ${bloqueado ? 'disabled' : ''} onchange="tentarAlterarDia('${id}', ${i}, this)" class="bg-slate-900 border border-slate-800 text-slate-200 rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-amber-500 flex-grow ${bloqueado ? 'opacity-50 cursor-not-allowed' : ''}">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `;
+            });
+            document.getElementById('modal-historico').classList.remove('hidden');
+        }
+
+        function fecharModalHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
+
+        // =====================================================================
+        // MATRIZ MENSAL
+        // =====================================================================
+        function abrirModalMatriz() {
+            document.getElementById('titulo-matriz-mes').innerHTML = `<i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa: ${nomeMesAtual} / ${anoAtual} (HUB-LCE-04)`;
+            const tabelaUnica = document.getElementById('tabela-matriz-unica');
+            tabelaUnica.innerHTML = "";
+
+            const todosOsDias = Array.from({length: totalDiasDoMes}, (_, i) => i + 1);
+            const diasOrdenados = [diaHoje, ...todosOsDias.filter(d => d !== diaHoje)];
+
+            let thead = `<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30">`;
+            thead += `<th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador (Escala / DSR)</th>`;
+            diasOrdenados.forEach(d => {
+                const eHoje = d === diaHoje;
+                thead += `<th class="p-2 text-center font-semibold min-w-[120px] text-[10px] ${eHoje ? 'text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500' : 'text-slate-300 border-l border-slate-800/50'}">${eHoje ? '⭐ ' : ''}Dia ${d}</th>`;
+            });
+            thead += `</tr></thead>`;
+
+            let tbody = `<tbody>`;
+            colaboradores.forEach(c => {
+                tbody += `<tr class="border-b border-slate-800/60 hover:bg-slate-900/30">
+                            <td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]">
+                                <div class="text-xs font-bold text-slate-200">${c.nome}</div>
+                                <div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: ${c.escala} · DSR: ${c.dsr}</div>
+                            </td>`;
+                
+                diasOrdenados.forEach(d => {
+                    const indexDia = d - 1;
+                    const funcDia = c.historicoDias[indexDia] || "-";
+                    const eHoje = d === diaHoje;
+                    const ePassado = d < diaHoje;
+                    const dataDoDia = new Date(anoAtual, mesAtualIndex, d);
+                    const eDSR = isDiaDSR(c.dsr, dataDoDia);
+                    // Só passado bloqueia (o DSR libera status especiais e bloqueia funções no handler)
+                    const bloqueado = ePassado;
+
+                    // Options: status especiais + funções
+                    let optionsHtml = "";
+                    STATUS_ESPECIAIS.forEach(s => {
+                        optionsHtml += `<option value="${s.valor}" ${s.valor === funcDia ? 'selected' : ''}>${s.label}</option>`;
+                    });
+                    for (const [sName, funcoes] of Object.entries(SETORES_E_FUNCOES)) {
+                        optionsHtml += `<optgroup label="📍 ${sName}">`;
+                        funcoes.forEach(f => { optionsHtml += `<option value="${f}" ${f === funcDia ? 'selected' : ''}>${f}</option>`; });
+                        optionsHtml += `</optgroup>`;
+                    }
+
+                    const tdClasses = eHoje
+                        ? 'bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40'
+                        : eDSR
+                        ? 'bg-orange-950/20'
+                        : ePassado
+                        ? 'bg-slate-950/60'
+                        : '';
+
+                    tbody += `<td class="p-1 text-center ${tdClasses}">
+                        <select ${bloqueado ? 'disabled' : ''} 
+                                onchange="tentarAlterarDia('${c.id}', ${indexDia}, this)" 
+                                title="${eDSR ? 'DSR - Só permite status especiais' : ePassado ? 'Dia anterior - Requer senha' : 'Editável'}"
+                                class="border rounded p-1 text-[10px] focus:outline-none focus:border-amber-500 w-full truncate ${bloqueado ? 'opacity-40 cursor-not-allowed bg-slate-950 border-slate-800 text-slate-500' : 'bg-slate-950 border-slate-700 text-slate-200'}">
+                            ${optionsHtml}
+                        </select>
+                    </td>`;
+                });
+                tbody += `</tr>`;
+            });
+            tbody += `</tbody>`;
+
+            tabelaUnica.innerHTML = thead + tbody;
+            document.getElementById('modal-matriz').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function fecharModalMatriz() { 
+            document.getElementById('modal-matriz').classList.add('hidden'); 
+            renderizar(); 
+        }
+
+        // =====================================================================
+        // INICIAR
+        // =====================================================================
+        window.onload = init;
+    </script>
+</body>
+</html>
