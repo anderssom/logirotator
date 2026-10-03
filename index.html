@@ -356,12 +356,18 @@
                 <button onclick="fecharModalAddDiarista()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="space-y-4">
+                <div class="bg-cyan-950/20 border border-cyan-500/30 rounded-xl p-2.5 text-center">
+                    <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold">Pedido do dia</span>
+                    <div id="info-pedido-modal" class="text-xl font-extrabold text-cyan-300">0</div>
+                </div>
+
                 <div>
                     <label class="block text-[11px] font-semibold text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-1">
                         <i data-lucide="user-check" class="w-3.5 h-3.5"></i> Presentes
                     </label>
                     <input type="number" id="input-diaristas-presentes" min="0" value="0"
                         class="w-full bg-slate-950 border border-emerald-500/40 rounded-xl px-3 py-3 text-2xl font-extrabold text-emerald-300 focus:outline-none focus:border-emerald-500 text-center">
+                    <p id="aviso-limite-presentes" class="hidden text-[10px] text-yellow-400 mt-1 text-center"></p>
                 </div>
 
                 <div>
@@ -427,7 +433,6 @@
                     <span class="text-orange-400">🚫 DSR</span>
                     <span class="text-yellow-400">⚠️ Falta</span>
                     <span class="text-red-400">🏥 Atestado</span>
-                    <span class="text-cyan-400">🧑‍🔧 Diarista</span>
                 </div>
                 <button onclick="fecharModalMatriz()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-xs transition">Fechar</button>
             </div>
@@ -676,7 +681,14 @@
         function salvarDiaristasPedidos() {
             const valor = parseInt(document.getElementById('input-diaristas-pedidos').value, 10) || 0;
             const atual = getDiaristasDia();
-            setDiaristasDia({ ...atual, pedidos: valor });
+
+            // Se presentes já for maior que o novo pedido, ajusta
+            let novosPresentes = atual.presentes;
+            if (valor > 0 && novosPresentes > valor) {
+                novosPresentes = valor;
+            }
+
+            setDiaristasDia({ pedidos: valor, presentes: novosPresentes, faltantes: atual.faltantes });
             toast(`✅ ${valor} diarista${valor === 1 ? '' : 's'} pedido${valor === 1 ? '' : 's'} para hoje.`, 'ok');
             fecharModalDiaristasPedidos();
             renderizar();
@@ -693,6 +705,31 @@
 
             document.getElementById('input-diaristas-presentes').value = dados.presentes;
             document.getElementById('input-diaristas-faltantes').value = dados.faltantes;
+            document.getElementById('info-pedido-modal').innerText = dados.pedidos;
+
+            // Remove listener anterior e adiciona novo para validar em tempo real
+            const inputP = document.getElementById('input-diaristas-presentes');
+            const inputPNovo = inputP.cloneNode(true);
+            inputP.parentNode.replaceChild(inputPNovo, inputP);
+
+            // Esconde aviso no início
+            document.getElementById('aviso-limite-presentes').classList.add('hidden');
+
+            inputPNovo.addEventListener('input', () => {
+                const val = parseInt(inputPNovo.value, 10) || 0;
+                const aviso = document.getElementById('aviso-limite-presentes');
+                const dadosAtuais = getDiaristasDia();
+                if (dadosAtuais.pedidos > 0 && val > dadosAtuais.pedidos) {
+                    aviso.innerText = `⚠️ Presentes não pode passar de ${dadosAtuais.pedidos}`;
+                    aviso.classList.remove('hidden');
+                    inputPNovo.classList.add('border-yellow-500');
+                    inputPNovo.classList.remove('border-emerald-500/40');
+                } else {
+                    aviso.classList.add('hidden');
+                    inputPNovo.classList.remove('border-yellow-500');
+                    inputPNovo.classList.add('border-emerald-500/40');
+                }
+            });
 
             document.getElementById('modal-add-diarista-qtd').classList.remove('hidden');
             lucide.createIcons();
@@ -719,6 +756,13 @@
             }
 
             const atual = getDiaristasDia();
+
+            // VALIDAÇÃO: presentes não pode passar do pedido
+            if (atual.pedidos > 0 && presentes > atual.pedidos) {
+                toast(`⚠️ Presentes (${presentes}) não pode ser maior que os pedidos (${atual.pedidos}).`, 'warn');
+                return;
+            }
+
             setDiaristasDia({ ...atual, presentes, faltantes });
 
             toast(`✅ Diaristas atualizados: ${presentes} presente${presentes === 1 ? '' : 's'}, ${faltantes} falta${faltantes === 1 ? '' : 's'}.`, 'ok');
@@ -1065,13 +1109,14 @@
         }
 
         // =====================================================================
-        // BLOCO DE DIARISTAS (com botões clicáveis)
+        // BLOCO DE DIARISTAS (com lápis e sem botão Registrar)
         // =====================================================================
         function criarBlocoDiaristas() {
             const dados = getDiaristasDia();
             const total = dados.presentes + dados.faltantes;
             const pedidoDefinido = dados.pedidos > 0;
             const diferenca = dados.presentes - dados.pedidos;
+            const excedeuPresentes = dados.presentes >= dados.pedidos && dados.pedidos > 0;
 
             let statusPlanejamento = '';
             let corStatus = '';
@@ -1092,11 +1137,8 @@
             const bloco = document.createElement('div');
             bloco.className = "bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl";
 
-            const classeBotaoRegistrar = pedidoDefinido
-                ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 cursor-pointer'
-                : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700';
-
-            const classeCardPresentes = pedidoDefinido
+            // Presentes bloqueia quando atingiu o pedido (não pode passar)
+            const classeCardPresentes = pedidoDefinido && !excedeuPresentes
                 ? 'bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 hover:bg-emerald-950/20 cursor-pointer active:scale-[0.98]'
                 : 'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';
 
@@ -1110,60 +1152,54 @@
                         🧑‍🔧 Diaristas Hoje
                         <span class="text-[10px] font-normal opacity-70">— quantidades por dia</span>
                     </h2>
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <button onclick="abrirModalAddDiarista()"
-                                ${!pedidoDefinido ? 'disabled' : ''}
-                                title="${!pedidoDefinido ? 'Defina o pedido primeiro' : 'Registrar presentes e faltantes'}"
-                                class="${classeBotaoRegistrar} text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow transition">
-                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                            <span>Registrar</span>
-                        </button>
-                        <button onclick="abrirModalDiaristasPedidos()"
-                                class="bg-slate-800 hover:bg-slate-700 text-cyan-400 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow transition active:scale-95 border border-cyan-500/30">
-                            <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i>
-                            <span>Definir Pedido</span>
-                        </button>
-                    </div>
+                    <span class="bg-cyan-500/20 text-cyan-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${total} registrado${total === 1 ? '' : 's'}</span>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
-                    <!-- PEDIDOS -->
-                    <div class="bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5">
-                        <div class="flex items-center gap-2 mb-2">
-                            <i data-lucide="clipboard-list" class="w-4 h-4 text-cyan-400"></i>
-                            <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold">Pedidos</span>
+                    <!-- PEDIDOS — clicável com lápis -->
+                    <button onclick="abrirModalDiaristasPedidos()"
+                            title="Editar quantidade de diaristas pedidos"
+                            class="text-left bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5 hover:border-cyan-400 hover:bg-cyan-950/20 cursor-pointer active:scale-[0.98] transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="clipboard-list" class="w-4 h-4 text-cyan-400"></i>
+                                <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold">Pedidos</span>
+                            </div>
+                            <i data-lucide="edit-3" class="w-4 h-4 text-cyan-400"></i>
                         </div>
                         <div class="text-3xl font-extrabold text-cyan-300">${dados.pedidos}</div>
                         <div class="text-[10px] ${corStatus} font-semibold mt-1">${statusPlanejamento}</div>
-                    </div>
+                    </button>
 
-                    <!-- PRESENTES — clicável -->
-                    <button onclick="${pedidoDefinido ? "abrirModalAddDiarista('presente')" : ''}"
-                            ${!pedidoDefinido ? 'disabled' : ''}
-                            title="${!pedidoDefinido ? 'Defina o pedido primeiro' : 'Adicionar presentes'}"
+                    <!-- PRESENTES — clicável com lápis (bloqueia se atingiu pedido) -->
+                    <button onclick="${pedidoDefinido && !excedeuPresentes ? "abrirModalAddDiarista('presente')" : ''}"
+                            ${!pedidoDefinido || excedeuPresentes ? 'disabled' : ''}
+                            title="${!pedidoDefinido ? 'Defina o pedido primeiro' : excedeuPresentes ? 'Presentes já atingiu o pedido — edite o pedido para ajustar' : 'Editar presentes'}"
                             class="text-left rounded-xl p-3.5 transition ${classeCardPresentes}">
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center gap-2">
                                 <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
                                 <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Presentes</span>
                             </div>
-                            ${pedidoDefinido ? `<i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i>` : ''}
+                            <i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i>
                         </div>
                         <div class="text-3xl font-extrabold text-emerald-300">${dados.presentes}</div>
-                        <div class="text-[10px] text-slate-500 mt-1">de ${dados.pedidos} pedido${dados.pedidos === 1 ? '' : 's'} · somam em <span class="text-emerald-400 font-bold">Operação</span></div>
+                        <div class="text-[10px] text-slate-500 mt-1">
+                            ${pedidoDefinido ? `de ${dados.pedidos} pedido${dados.pedidos === 1 ? '' : 's'}` : 'sem pedido definido'} · somam em <span class="text-emerald-400 font-bold">Operação</span>
+                        </div>
                     </button>
 
-                    <!-- FALTARAM — clicável -->
+                    <!-- FALTARAM — clicável com lápis -->
                     <button onclick="${pedidoDefinido ? "abrirModalAddDiarista('faltou')" : ''}"
                             ${!pedidoDefinido ? 'disabled' : ''}
-                            title="${!pedidoDefinido ? 'Defina o pedido primeiro' : 'Adicionar faltantes'}"
+                            title="${!pedidoDefinido ? 'Defina o pedido primeiro' : 'Editar faltantes'}"
                             class="text-left rounded-xl p-3.5 transition ${classeCardFaltaram}">
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center gap-2">
                                 <i data-lucide="user-x" class="w-4 h-4 text-red-400"></i>
                                 <span class="text-[10px] uppercase tracking-wider text-red-400 font-bold">Faltaram</span>
                             </div>
-                            ${pedidoDefinido ? `<i data-lucide="plus-circle" class="w-4 h-4 text-red-400"></i>` : ''}
+                            <i data-lucide="edit-3" class="w-4 h-4 text-red-400"></i>
                         </div>
                         <div class="text-3xl font-extrabold text-red-300">${dados.faltantes}</div>
                         <div class="text-[10px] text-slate-500 mt-1">Total registrados: ${total} · somam em <span class="text-yellow-400 font-bold">Faltas</span></div>
@@ -1174,6 +1210,11 @@
                     <div class="mt-3 pt-3 border-t border-cyan-500/20 flex items-center gap-2 text-[11px] text-yellow-400">
                         <i data-lucide="info" class="w-3.5 h-3.5"></i>
                         <span>Defina primeiro a quantidade de diaristas pedidos para liberar o registro de presentes/faltantes.</span>
+                    </div>
+                ` : excedeuPresentes ? `
+                    <div class="mt-3 pt-3 border-t border-cyan-500/20 flex items-center gap-2 text-[11px] text-yellow-400">
+                        <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                        <span>Presentes já atingiu o total de pedidos (${dados.pedidos}). Para ajustar, edite o pedido primeiro.</span>
                     </div>
                 ` : ''}
             `;
