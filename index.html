@@ -68,8 +68,11 @@
                 <button onclick="abrirModalAdd()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-amber-400 hover:bg-amber-500/10 transition">
                     <i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar
                 </button>
+                <button onclick="abrirModalAddDiarista()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-cyan-400 hover:bg-cyan-500/10 transition">
+                    <i data-lucide="hard-hat" class="w-4 h-4"></i> Registrar Diaristas
+                </button>
                 <button onclick="abrirModalDiaristasPedidos()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-cyan-400 hover:bg-cyan-500/10 transition">
-                    <i data-lucide="hard-hat" class="w-4 h-4"></i> Definir Diaristas Pedidos
+                    <i data-lucide="clipboard-list" class="w-4 h-4"></i> Definir Diaristas Pedidos
                 </button>
                 <button onclick="abrirModalMatriz()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60 transition">
                     <i data-lucide="grid" class="w-4 h-4 text-amber-400"></i> Grade Mensal
@@ -230,8 +233,11 @@
             <button onclick="abrirModalAdd();toggleSidebarMobile()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-amber-400 hover:bg-amber-500/10">
                 <i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar
             </button>
+            <button onclick="abrirModalAddDiarista();toggleSidebarMobile()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-cyan-400 hover:bg-cyan-500/10">
+                <i data-lucide="hard-hat" class="w-4 h-4"></i> Registrar Diaristas
+            </button>
             <button onclick="abrirModalDiaristasPedidos();toggleSidebarMobile()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-cyan-400 hover:bg-cyan-500/10">
-                <i data-lucide="hard-hat" class="w-4 h-4"></i> Definir Diaristas Pedidos
+                <i data-lucide="clipboard-list" class="w-4 h-4"></i> Definir Diaristas Pedidos
             </button>
             <button onclick="abrirModalMatriz();toggleSidebarMobile()" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-slate-800/60">
                 <i data-lucide="grid" class="w-4 h-4 text-amber-400"></i> Grade Mensal
@@ -243,7 +249,7 @@
     <!-- MODAIS                                                    -->
     <!-- ========================================================= -->
 
-    <!-- Modal Adicionar / Editar -->
+    <!-- Modal Adicionar / Editar Colaborador -->
     <div id="modal-add" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
@@ -346,50 +352,35 @@
         </div>
     </div>
 
-    <!-- Modal Adicionar Diarista -->
-    <div id="modal-add-diarista" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl">
+    <!-- Modal Registrar Diaristas (por quantidade) -->
+    <div id="modal-add-diarista-qtd" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-base font-bold text-cyan-400 flex items-center gap-2">
-                    <i data-lucide="hard-hat" class="w-4 h-4"></i> Adicionar Diarista
+                    <i data-lucide="hard-hat" class="w-4 h-4"></i> Registrar Diaristas
                 </h3>
                 <button onclick="fecharModalAddDiarista()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            <div class="space-y-3">
+            <div class="space-y-4">
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Buscar Colaborador</label>
-                    <div class="relative">
-                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-                        <input type="text" id="diarista-busca" placeholder="Digite o nome do colaborador..." autocomplete="off"
-                            oninput="filtrarColabsDiarista()"
-                            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
-                    </div>
+                    <label class="block text-[11px] font-semibold text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <i data-lucide="user-check" class="w-3.5 h-3.5"></i> Presentes
+                    </label>
+                    <input type="number" id="input-diaristas-presentes" min="0" value="0"
+                        class="w-full bg-slate-950 border border-emerald-500/40 rounded-xl px-3 py-3 text-2xl font-extrabold text-emerald-300 focus:outline-none focus:border-emerald-500 text-center">
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Colaborador</label>
-                    <div id="diarista-lista" class="bg-slate-950 border border-slate-800 rounded-xl max-h-56 overflow-y-auto"></div>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" id="btn-diarista-presente" onclick="setStatusDiarista('presente')"
-                            class="border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5">
-                            <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
-                            <span>Presente</span>
-                        </button>
-                        <button type="button" id="btn-diarista-faltou" onclick="setStatusDiarista('faltou')"
-                            class="border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5">
-                            <i data-lucide="user-x" class="w-3.5 h-3.5"></i>
-                            <span>Faltou</span>
-                        </button>
-                    </div>
+                    <label class="block text-[11px] font-semibold text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <i data-lucide="user-x" class="w-3.5 h-3.5"></i> Faltaram
+                    </label>
+                    <input type="number" id="input-diaristas-faltantes" min="0" value="0"
+                        class="w-full bg-slate-950 border border-red-500/40 rounded-xl px-3 py-3 text-2xl font-extrabold text-red-300 focus:outline-none focus:border-red-500 text-center">
                 </div>
 
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                     <button onclick="fecharModalAddDiarista()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
-                    <button onclick="confirmarAddDiarista()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Adicionar</button>
+                    <button onclick="salvarDiaristasQtd()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Salvar</button>
                 </div>
             </div>
         </div>
@@ -400,7 +391,7 @@
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-base font-bold text-cyan-400 flex items-center gap-2">
-                    <i data-lucide="hard-hat" class="w-4 h-4"></i> Diaristas Pedidos Hoje
+                    <i data-lucide="clipboard-list" class="w-4 h-4"></i> Diaristas Pedidos Hoje
                 </h3>
                 <button onclick="fecharModalDiaristasPedidos()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
@@ -408,7 +399,7 @@
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Quantidade pedida para hoje</label>
                     <input type="number" id="input-diaristas-pedidos" min="0" value="0"
-                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-lg font-bold text-cyan-300 focus:outline-none focus:border-cyan-500 text-center">
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-2xl font-extrabold text-cyan-300 focus:outline-none focus:border-cyan-500 text-center">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                     <button onclick="fecharModalDiaristasPedidos()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition">Cancelar</button>
@@ -426,7 +417,7 @@
                     <h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400 flex items-center gap-2">
                         <i data-lucide="grid" class="w-5 h-5"></i> Matriz Mensal Completa
                     </h3>
-                    <p class="text-[11px] text-slate-400">⭐ Dia atual · 🔒 Passado (senha) · 🚫 DSR permite status especiais · ⚠️ Falta/Atestado/DSR Extra/Diarista</p>
+                    <p class="text-[11px] text-slate-400">⭐ Dia atual · 🔒 Passado (senha) · 🚫 DSR permite status especiais · ⚠️ Falta/Atestado/DSR Extra</p>
                 </div>
                 <button onclick="fecharModalMatriz()" class="text-slate-400 hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
@@ -510,21 +501,18 @@
             "FM": ["Aux FM"]
         };
 
+        // =====================================================================
+        // STATUS ESPECIAIS
+        // =====================================================================
         const STATUS_ESPECIAIS = [
-            { valor: "-",                 label: "- (Folga/DSR normal)" },
-            { valor: "DSR_EXTRA",         label: "🌴 DSR Extra (folga ganha)" },
-            { valor: "FALTA",             label: "⚠️ FALTA" },
-            { valor: "ATESTADO",          label: "🏥 ATESTADO" },
-            { valor: "DIARISTA_PRESENTE", label: "🧑‍🔧 DIARISTA (presente)" },
-            { valor: "DIARISTA_FALTOU",   label: "🧑‍🔧 DIARISTA (faltou)" }
+            { valor: "-",         label: "- (Folga/DSR normal)" },
+            { valor: "DSR_EXTRA", label: "🌴 DSR Extra (folga ganha)" },
+            { valor: "FALTA",     label: "⚠️ FALTA" },
+            { valor: "ATESTADO",  label: "🏥 ATESTADO" }
         ];
 
         function isStatusEspecial(valor) {
             return STATUS_ESPECIAIS.some(s => s.valor === valor);
-        }
-
-        function isDiarista(valor) {
-            return valor === "DIARISTA_PRESENTE" || valor === "DIARISTA_FALTOU";
         }
 
         let FUNCOES_LOGISTICA = [];
@@ -549,8 +537,6 @@
         let colaboradores = [];
         let filtroAtivo = 'todos';
         let alocarColabSelecionadoId = null;
-        let diaristaColabSelecionadoId = null;
-        let diaristaStatusSelecionado = 'presente';
 
         // =====================================================================
         // NORMALIZAÇÃO
@@ -618,8 +604,6 @@
             const raw = colab.historicoDias[diaHoje - 1] || "-";
             if (raw === "FALTA") return 'falta';
             if (raw === "ATESTADO") return 'atestado';
-            if (raw === "DIARISTA_PRESENTE") return 'diarista_presente';
-            if (raw === "DIARISTA_FALTOU") return 'diarista_faltou';
             if (raw === "-" || raw === "DSR_EXTRA") return 'sem_escala';
             return 'operacao';
         }
@@ -657,19 +641,38 @@
         }
 
         // =====================================================================
-        // DIARISTAS PEDIDOS (localStorage)
+        // DIARISTAS — QUANTIDADES (localStorage por dia)
         // =====================================================================
-        function obterChaveDiaristasPedidos() {
-            return `diaristas_pedidos_${anoAtual}-${String(mesAtualIndex + 1).padStart(2, '0')}-${String(diaHoje).padStart(2, '0')}`;
+        function obterChaveDiaristasDia() {
+            return `diaristas_${anoAtual}-${String(mesAtualIndex + 1).padStart(2, '0')}-${String(diaHoje).padStart(2, '0')}`;
         }
 
-        function getDiaristasPedidos() {
-            const val = localStorage.getItem(obterChaveDiaristasPedidos());
-            return val ? parseInt(val, 10) || 0 : 0;
+        function getDiaristasDia() {
+            const raw = localStorage.getItem(obterChaveDiaristasDia());
+            if (!raw) return { pedidos: 0, presentes: 0, faltantes: 0 };
+            try {
+                const obj = JSON.parse(raw);
+                return {
+                    pedidos: parseInt(obj.pedidos, 10) || 0,
+                    presentes: parseInt(obj.presentes, 10) || 0,
+                    faltantes: parseInt(obj.faltantes, 10) || 0
+                };
+            } catch {
+                return { pedidos: 0, presentes: 0, faltantes: 0 };
+            }
         }
 
+        function setDiaristasDia(obj) {
+            localStorage.setItem(obterChaveDiaristasDia(), JSON.stringify({
+                pedidos: parseInt(obj.pedidos, 10) || 0,
+                presentes: parseInt(obj.presentes, 10) || 0,
+                faltantes: parseInt(obj.faltantes, 10) || 0
+            }));
+        }
+
+        // --- Modal definir pedido ---
         function abrirModalDiaristasPedidos() {
-            document.getElementById('input-diaristas-pedidos').value = getDiaristasPedidos();
+            document.getElementById('input-diaristas-pedidos').value = getDiaristasDia().pedidos;
             document.getElementById('modal-diaristas-pedidos').classList.remove('hidden');
             lucide.createIcons();
             setTimeout(() => document.getElementById('input-diaristas-pedidos').select(), 100);
@@ -681,147 +684,49 @@
 
         function salvarDiaristasPedidos() {
             const valor = parseInt(document.getElementById('input-diaristas-pedidos').value, 10) || 0;
-            localStorage.setItem(obterChaveDiaristasPedidos(), String(valor));
+            const atual = getDiaristasDia();
+            setDiaristasDia({ ...atual, pedidos: valor });
             toast(`✅ ${valor} diarista${valor === 1 ? '' : 's'} pedido${valor === 1 ? '' : 's'} para hoje.`, 'ok');
             fecharModalDiaristasPedidos();
             renderizar();
         }
 
-        // =====================================================================
-        // MODAL ADICIONAR DIARISTA
-        // =====================================================================
-        function abrirModalAddDiarista(statusPreSelecionado = 'presente') {
-            document.getElementById('diarista-busca').value = '';
-            diaristaColabSelecionadoId = null;
-            diaristaStatusSelecionado = statusPreSelecionado;
-            atualizarBotoesStatusDiarista();
-            filtrarColabsDiarista();
+        // --- Modal registrar presentes/faltantes ---
+        function abrirModalAddDiarista(statusPreSelecionado = null) {
+            const dados = getDiaristasDia();
+            document.getElementById('input-diaristas-presentes').value = dados.presentes;
+            document.getElementById('input-diaristas-faltantes').value = dados.faltantes;
 
-            document.getElementById('modal-add-diarista').classList.remove('hidden');
+            document.getElementById('modal-add-diarista-qtd').classList.remove('hidden');
             lucide.createIcons();
-            setTimeout(() => document.getElementById('diarista-busca').focus(), 100);
+
+            setTimeout(() => {
+                const alvo = statusPreSelecionado === 'faltou'
+                    ? document.getElementById('input-diaristas-faltantes')
+                    : document.getElementById('input-diaristas-presentes');
+                if (alvo) { alvo.focus(); alvo.select(); }
+            }, 100);
         }
 
         function fecharModalAddDiarista() {
-            document.getElementById('modal-add-diarista').classList.add('hidden');
-            diaristaColabSelecionadoId = null;
+            document.getElementById('modal-add-diarista-qtd').classList.add('hidden');
         }
 
-        function setStatusDiarista(status) {
-            diaristaStatusSelecionado = status;
-            atualizarBotoesStatusDiarista();
-        }
+        function salvarDiaristasQtd() {
+            const presentes = parseInt(document.getElementById('input-diaristas-presentes').value, 10) || 0;
+            const faltantes = parseInt(document.getElementById('input-diaristas-faltantes').value, 10) || 0;
 
-        function atualizarBotoesStatusDiarista() {
-            const btnP = document.getElementById('btn-diarista-presente');
-            const btnF = document.getElementById('btn-diarista-faltou');
-            if (!btnP || !btnF) return;
-            if (diaristaStatusSelecionado === 'presente') {
-                btnP.className = 'border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5 bg-emerald-500/20 border-emerald-500/50 text-emerald-300';
-                btnF.className = 'border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5 bg-slate-950 border-slate-800 text-slate-400';
-            } else {
-                btnP.className = 'border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5 bg-slate-950 border-slate-800 text-slate-400';
-                btnF.className = 'border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5 bg-red-500/20 border-red-500/50 text-red-300';
-            }
-        }
-
-        function filtrarColabsDiarista() {
-            const termo = normalizarTexto(document.getElementById('diarista-busca').value);
-            const container = document.getElementById('diarista-lista');
-
-            const lista = colaboradores
-                .filter(c => matchBuscaAvancada(termo, c.nome))
-                .map(c => {
-                    const statusHoje = obterStatusHoje(c);
-                    let indisponivel = false;
-                    let motivo = '';
-                    if (statusHoje === 'dsr') { indisponivel = true; motivo = 'DSR hoje'; }
-                    return { colab: c, indisponivel, motivo, statusHoje };
-                })
-                .sort((a, b) => {
-                    if (a.indisponivel !== b.indisponivel) return a.indisponivel ? 1 : -1;
-                    return a.colab.nome.localeCompare(b.colab.nome);
-                });
-
-            if (lista.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-500 italic p-3">Nenhum colaborador encontrado.</p>`;
+            if (presentes < 0 || faltantes < 0) {
+                toast("⚠️ As quantidades não podem ser negativas.", 'warn');
                 return;
             }
 
-            container.innerHTML = lista.map(({ colab, indisponivel, motivo, statusHoje }) => {
-                const selecionado = colab.id === diaristaColabSelecionadoId;
-                const funcaoAtual = colab.historicoDias[diaHoje - 1] || "-";
-                const funcaoAtualTxt = (funcaoAtual !== "-" && !isStatusEspecial(funcaoAtual)) ? funcaoAtual : '';
-                const isDiaristaJa = statusHoje === 'diarista_presente' || statusHoje === 'diarista_faltou';
+            const atual = getDiaristasDia();
+            setDiaristasDia({ ...atual, presentes, faltantes });
 
-                return `
-                    <button type="button"
-                        ${indisponivel ? 'disabled' : ''}
-                        onclick="selecionarColabDiarista('${colab.id}')"
-                        class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 transition ${
-                            indisponivel
-                                ? 'opacity-40 cursor-not-allowed'
-                                : selecionado
-                                    ? 'bg-cyan-500/15 border-l-2 border-l-cyan-500'
-                                    : 'hover:bg-slate-900/60'
-                        }">
-                        <div class="min-w-0">
-                            <div class="text-xs font-bold text-slate-200 truncate">${colab.nome}</div>
-                            <div class="text-[10px] text-slate-400 truncate">
-                                ${colab.escala} · DSR: ${colab.dsr}
-                                ${isDiaristaJa ? ` · <span class="text-cyan-400 font-bold">Já é diarista</span>` : ''}
-                                ${funcaoAtualTxt && !isDiaristaJa ? ` · Hoje: <span class="text-amber-400">${funcaoAtualTxt}</span>` : ''}
-                            </div>
-                        </div>
-                        ${indisponivel
-                            ? `<span class="text-[9px] bg-orange-500/20 border border-orange-500/30 text-orange-300 px-2 py-0.5 rounded-full whitespace-nowrap">${motivo}</span>`
-                            : selecionado
-                                ? `<i data-lucide="check-circle-2" class="w-4 h-4 text-cyan-400"></i>`
-                                : `<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>`
-                        }
-                    </button>
-                `;
-            }).join('');
-
-            lucide.createIcons();
-        }
-
-        function selecionarColabDiarista(id) {
-            diaristaColabSelecionadoId = id;
-            filtrarColabsDiarista();
-        }
-
-        async function confirmarAddDiarista() {
-            if (!diaristaColabSelecionadoId) {
-                toast("⚠️ Selecione um colaborador na lista.", 'warn');
-                return;
-            }
-
-            const colab = colaboradores.find(c => c.id === diaristaColabSelecionadoId);
-            if (!colab) return;
-
-            const btn = document.querySelector('#modal-add-diarista button[onclick="confirmarAddDiarista()"]');
-            if (btn?.disabled) return;
-            if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
-
-            try {
-                const novoStatus = diaristaStatusSelecionado === 'presente' ? 'DIARISTA_PRESENTE' : 'DIARISTA_FALTOU';
-                await atualizarDiaSupabase(colab.id, diaHoje, novoStatus);
-                colab.historicoDias[diaHoje - 1] = novoStatus;
-
-                const labelStatus = diaristaStatusSelecionado === 'presente' ? 'presente' : 'faltou';
-                toast(`✅ ${colab.nome} marcado como diarista (${labelStatus}).`, 'ok');
-
-                fecharModalAddDiarista();
-                renderizar();
-            }
-            catch (e) {
-                console.error("Erro ao adicionar diarista:", e);
-                toast("❌ Erro ao adicionar diarista: " + (e.message || e), 'erro');
-            }
-            finally {
-                if (btn) { btn.disabled = false; btn.style.opacity = ''; }
-            }
+            toast(`✅ Diaristas atualizados: ${presentes} presente${presentes === 1 ? '' : 's'}, ${faltantes} falta${faltantes === 1 ? '' : 's'}.`, 'ok');
+            fecharModalAddDiarista();
+            renderizar();
         }
 
         // =====================================================================
@@ -1087,14 +992,6 @@
                 bordaCor = 'border-red-500/40';
                 tituloCor = 'text-red-200';
                 badge = `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">🏥 ATESTADO registrado</div>`;
-            } else if (tipo === 'diarista_presente') {
-                bordaCor = 'border-cyan-500/40';
-                tituloCor = 'text-cyan-200';
-                badge = `<div class="mt-1.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">🧑‍🔧 DIARISTA — Presente</div>`;
-            } else if (tipo === 'diarista_faltou') {
-                bordaCor = 'border-red-500/40';
-                tituloCor = 'text-red-200';
-                badge = `<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-extrabold flex items-center gap-1">🧑‍🔧 DIARISTA — Faltou</div>`;
             } else if (tipo === 'operacao') {
                 if (emBloqueio) bordaCor = 'border-orange-500/60';
                 else if (emAlerta) bordaCor = 'border-red-500/60';
@@ -1171,16 +1068,16 @@
         }
 
         // =====================================================================
-        // BLOCO DE DIARISTAS
+        // BLOCO DE DIARISTAS (POR QUANTIDADE)
         // =====================================================================
-        function criarBlocoDiaristas(qtdPresentes, qtdFaltou, listaPresentes, listaFaltou) {
-            const total = qtdPresentes + qtdFaltou;
-            const pedidos = getDiaristasPedidos();
-            const diferenca = qtdPresentes - pedidos;
+        function criarBlocoDiaristas() {
+            const dados = getDiaristasDia();
+            const total = dados.presentes + dados.faltantes;
+            const diferenca = dados.presentes - dados.pedidos;
 
             let statusPlanejamento = '';
             let corStatus = '';
-            if (pedidos === 0) {
+            if (dados.pedidos === 0) {
                 statusPlanejamento = 'Sem pedido definido';
                 corStatus = 'text-slate-400';
             } else if (diferenca === 0) {
@@ -1197,101 +1094,57 @@
             const bloco = document.createElement('div');
             bloco.className = "bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl";
 
-            let corpo = `
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
-                    <div class="bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <i data-lucide="clipboard-list" class="w-4 h-4 text-cyan-400"></i>
-                                <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold">Pedidos</span>
-                            </div>
-                            <button onclick="abrirModalDiaristasPedidos()" class="text-cyan-400 hover:text-cyan-300 transition" title="Editar quantidade">
-                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                        <div class="text-3xl font-extrabold text-cyan-300 mt-1">${pedidos}</div>
-                        <div class="text-[10px] ${corStatus} font-semibold mt-1">${statusPlanejamento}</div>
-                    </div>
-
-                    <div class="bg-slate-900 border border-emerald-500/40 rounded-xl p-3.5">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
-                                <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Presentes</span>
-                            </div>
-                            <button onclick="abrirModalAddDiarista('presente')"
-                                    class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-md p-1 shadow transition active:scale-95"
-                                    title="Adicionar diarista presente">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                        <div class="text-3xl font-extrabold text-emerald-300 mt-1">${qtdPresentes}</div>
-                        <div class="text-[10px] text-slate-500 mt-1">de ${pedidos} pedido${pedidos === 1 ? '' : 's'} · somam em <span class="text-emerald-400 font-bold">Operação</span></div>
-                    </div>
-
-                    <div class="bg-slate-900 border border-red-500/40 rounded-xl p-3.5">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <i data-lucide="user-x" class="w-4 h-4 text-red-400"></i>
-                                <span class="text-[10px] uppercase tracking-wider text-red-400 font-bold">Faltaram</span>
-                            </div>
-                            <button onclick="abrirModalAddDiarista('faltou')"
-                                    class="bg-red-500 hover:bg-red-400 text-slate-950 rounded-md p-1 shadow transition active:scale-95"
-                                    title="Adicionar diarista que faltou">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                        <div class="text-3xl font-extrabold text-red-300 mt-1">${qtdFaltou}</div>
-                        <div class="text-[10px] text-slate-500 mt-1">Total registrados: ${total} · somam em <span class="text-yellow-400 font-bold">Faltas</span></div>
-                    </div>
-                </div>
-            `;
-
-            const cards = [
-                ...listaPresentes.map(c => ({ c, tipo: 'diarista_presente' })),
-                ...listaFaltou.map(c => ({ c, tipo: 'diarista_faltou' }))
-            ];
-
-            if (cards.length > 0) {
-                corpo += `
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4 pt-4 border-t border-cyan-500/20">
-                        ${cards.map(({ c, tipo }) => cardColaborador(c, tipo)).join('')}
-                    </div>
-                `;
-            } else {
-                corpo += `
-                    <p class="text-xs text-slate-500 italic mt-4 pt-4 border-t border-cyan-500/20 text-center">
-                        Nenhum diarista registrado ainda. Use os botões <strong class="text-emerald-400">+</strong> em Presentes ou Faltaram para registrar.
-                    </p>
-                `;
-            }
-
             bloco.innerHTML = `
                 <div class="flex items-center justify-between pb-3 mb-3 border-b border-cyan-500/30 flex-wrap gap-2">
                     <h2 class="text-sm sm:text-base font-bold text-cyan-400 flex items-center gap-2">
                         🧑‍🔧 Diaristas Hoje
-                        <span class="text-[10px] font-normal opacity-70">— quantidade pedida vs. realizada</span>
+                        <span class="text-[10px] font-normal opacity-70">— quantidades por dia</span>
                     </h2>
                     <div class="flex items-center gap-2 flex-wrap">
-                        <button onclick="abrirModalAddDiarista('presente')"
-                                class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95">
-                            <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
-                            <span>+ Presente</span>
-                        </button>
-                        <button onclick="abrirModalAddDiarista('faltou')"
-                                class="bg-red-500 hover:bg-red-400 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95">
-                            <i data-lucide="user-x" class="w-3.5 h-3.5"></i>
-                            <span>+ Faltou</span>
+                        <button onclick="abrirModalAddDiarista()"
+                                class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow transition active:scale-95">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                            <span>Registrar</span>
                         </button>
                         <button onclick="abrirModalDiaristasPedidos()"
-                                class="bg-slate-800 hover:bg-slate-700 text-cyan-400 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95 border border-cyan-500/30">
-                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                class="bg-slate-800 hover:bg-slate-700 text-cyan-400 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow transition active:scale-95 border border-cyan-500/30">
+                            <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i>
                             <span>Definir Pedido</span>
                         </button>
-                        <span class="bg-cyan-500/20 text-cyan-300 text-xs px-2.5 py-0.5 rounded-full font-mono">${total} registrado${total === 1 ? '' : 's'}</span>
                     </div>
                 </div>
-                ${corpo}
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
+                    <!-- PEDIDOS -->
+                    <div class="bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="clipboard-list" class="w-4 h-4 text-cyan-400"></i>
+                            <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold">Pedidos</span>
+                        </div>
+                        <div class="text-3xl font-extrabold text-cyan-300">${dados.pedidos}</div>
+                        <div class="text-[10px] ${corStatus} font-semibold mt-1">${statusPlanejamento}</div>
+                    </div>
+
+                    <!-- PRESENTES -->
+                    <div class="bg-slate-900 border border-emerald-500/40 rounded-xl p-3.5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
+                            <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Presentes</span>
+                        </div>
+                        <div class="text-3xl font-extrabold text-emerald-300">${dados.presentes}</div>
+                        <div class="text-[10px] text-slate-500 mt-1">de ${dados.pedidos} pedido${dados.pedidos === 1 ? '' : 's'} · somam em <span class="text-emerald-400 font-bold">Operação</span></div>
+                    </div>
+
+                    <!-- FALTARAM -->
+                    <div class="bg-slate-900 border border-red-500/40 rounded-xl p-3.5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="user-x" class="w-4 h-4 text-red-400"></i>
+                            <span class="text-[10px] uppercase tracking-wider text-red-400 font-bold">Faltaram</span>
+                        </div>
+                        <div class="text-3xl font-extrabold text-red-300">${dados.faltantes}</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Total registrados: ${total} · somam em <span class="text-yellow-400 font-bold">Faltas</span></div>
+                    </div>
+                </div>
             `;
             return bloco;
         }
@@ -1308,9 +1161,7 @@
                 operacao: [],
                 dsr: [],
                 falta: [],
-                atestado: [],
-                diarista_presente: [],
-                diarista_faltou: []
+                atestado: []
             };
             colaboradores.forEach(c => {
                 const tipo = obterStatusHoje(c);
@@ -1325,30 +1176,29 @@
             const dsrF = filtrar(grupos.dsr);
             const faltaF = filtrar(grupos.falta);
             const atestadoF = filtrar(grupos.atestado);
-            const diaristaPresenteF = filtrar(grupos.diarista_presente);
-            const diaristaFaltouF = filtrar(grupos.diarista_faltou);
 
-            const totalDiaristas = grupos.diarista_presente.length + grupos.diarista_faltou.length;
-            const emOperacaoTotal = grupos.operacao.length + grupos.diarista_presente.length;
+            // Diaristas vêm do localStorage (quantidades)
+            const dadosDiaristas = getDiaristasDia();
+            const totalDiaristas = dadosDiaristas.presentes + dadosDiaristas.faltantes;
+            const emOperacaoTotal = grupos.operacao.length + dadosDiaristas.presentes;
 
             document.getElementById('kpi-total').innerText = colaboradores.length;
             document.getElementById('kpi-operacao').innerText = emOperacaoTotal;
             document.getElementById('kpi-dsr').innerText = grupos.dsr.length;
-            document.getElementById('kpi-faltas').innerText = grupos.falta.length + grupos.diarista_faltou.length;
+            document.getElementById('kpi-faltas').innerText = grupos.falta.length + dadosDiaristas.faltantes;
             document.getElementById('kpi-atestados').innerText = grupos.atestado.length;
             document.getElementById('kpi-diaristas').innerText = totalDiaristas;
 
-            // Detalhe do KPI Em Operação
             const detalheEl = document.getElementById('kpi-operacao-detalhe');
             if (detalheEl) {
-                detalheEl.innerText = `${grupos.operacao.length} escal. + ${grupos.diarista_presente.length} diar.`;
+                detalheEl.innerText = `${grupos.operacao.length} escal. + ${dadosDiaristas.presentes} diar.`;
             }
 
             const badges = {
                 'badge-todos': colaboradores.length,
                 'badge-operacao': emOperacaoTotal,
                 'badge-dsr': grupos.dsr.length,
-                'badge-faltas': grupos.falta.length + grupos.diarista_faltou.length,
+                'badge-faltas': grupos.falta.length + dadosDiaristas.faltantes,
                 'badge-atestados': grupos.atestado.length,
                 'badge-diaristas': totalDiaristas
             };
@@ -1364,22 +1214,20 @@
                     ...dsrF.map(c => ({ c, tipo: 'dsr' })),
                     ...faltaF.map(c => ({ c, tipo: 'falta' })),
                     ...atestadoF.map(c => ({ c, tipo: 'atestado' })),
-                    ...diaristaFaltouF.map(c => ({ c, tipo: 'diarista_faltou' })),
-                    ...diaristaPresenteF.map(c => ({ c, tipo: 'diarista_presente' })),
                     ...operacaoF.map(c => ({ c, tipo: 'operacao' }))
                 ];
 
                 const filtroMap = {
                     'todos': null,
                     'operacao': 'operacao',
-                    'diaristas': ['diarista_presente', 'diarista_faltou'],
+                    'diaristas': null, // diaristas não têm nomes
                     'dsr': 'dsr',
                     'faltas': 'falta',
                     'atestados': 'atestado'
                 };
                 const tipoPermitido = filtroMap[filtroAtivo];
                 const filtrados = tipoPermitido
-                    ? todosMatch.filter(x => Array.isArray(tipoPermitido) ? tipoPermitido.includes(x.tipo) : x.tipo === tipoPermitido)
+                    ? todosMatch.filter(x => x.tipo === tipoPermitido)
                     : todosMatch;
 
                 if (filtrados.length === 0) {
@@ -1416,22 +1264,12 @@
                 if (blocoDSR) containerSetores.appendChild(blocoDSR);
                 if (blocoFalta) containerSetores.appendChild(blocoFalta);
                 if (blocoAtestado) containerSetores.appendChild(blocoAtestado);
-                containerSetores.appendChild(criarBlocoDiaristas(
-                    grupos.diarista_presente.length,
-                    grupos.diarista_faltou.length,
-                    diaristaPresenteF,
-                    diaristaFaltouF
-                ));
+                containerSetores.appendChild(criarBlocoDiaristas());
                 renderizarSetores(operacaoF, containerSetores);
             } else if (filtroAtivo === 'operacao') {
                 renderizarSetores(operacaoF, containerSetores);
             } else if (filtroAtivo === 'diaristas') {
-                containerSetores.appendChild(criarBlocoDiaristas(
-                    grupos.diarista_presente.length,
-                    grupos.diarista_faltou.length,
-                    diaristaPresenteF,
-                    diaristaFaltouF
-                ));
+                containerSetores.appendChild(criarBlocoDiaristas());
             } else if (filtroAtivo === 'dsr') {
                 if (blocoDSR) containerSetores.appendChild(blocoDSR);
                 else containerSetores.innerHTML = `<p class="text-center text-slate-500 italic py-8">Nenhum colaborador em DSR hoje.</p>`;
