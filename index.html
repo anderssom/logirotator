@@ -102,7 +102,7 @@
                     </div>
                 </header>
 
-                <!-- KPIs clicáveis (6 cards) -->
+                <!-- KPIs clicáveis -->
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
                     <button onclick="setFiltro('todos')" class="text-left bg-slate-900/80 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-3.5 rounded-xl shadow-md flex items-center justify-between transition active:scale-[0.98]">
                         <div>
@@ -118,6 +118,7 @@
                         <div>
                             <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em Operação</span>
                             <h2 id="kpi-operacao" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2>
+                            <span id="kpi-operacao-detalhe" class="text-[9px] text-slate-500">—</span>
                         </div>
                         <div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400">
                             <i data-lucide="activity" class="w-5 h-5"></i>
@@ -374,12 +375,12 @@
                     <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</label>
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" id="btn-diarista-presente" onclick="setStatusDiarista('presente')"
-                            class="border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5 bg-emerald-500/20 border-emerald-500/50 text-emerald-300">
+                            class="border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5">
                             <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
                             <span>Presente</span>
                         </button>
                         <button type="button" id="btn-diarista-faltou" onclick="setStatusDiarista('faltou')"
-                            class="border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5 bg-slate-950 border-slate-800 text-slate-400">
+                            class="border rounded-xl px-3 py-2.5 text-xs font-bold transition flex items-center justify-center gap-1.5">
                             <i data-lucide="user-x" class="w-3.5 h-3.5"></i>
                             <span>Faltou</span>
                         </button>
@@ -509,9 +510,6 @@
             "FM": ["Aux FM"]
         };
 
-        // =====================================================================
-        // STATUS ESPECIAIS
-        // =====================================================================
         const STATUS_ESPECIAIS = [
             { valor: "-",                 label: "- (Folga/DSR normal)" },
             { valor: "DSR_EXTRA",         label: "🌴 DSR Extra (folga ganha)" },
@@ -692,10 +690,10 @@
         // =====================================================================
         // MODAL ADICIONAR DIARISTA
         // =====================================================================
-        function abrirModalAddDiarista() {
+        function abrirModalAddDiarista(statusPreSelecionado = 'presente') {
             document.getElementById('diarista-busca').value = '';
             diaristaColabSelecionadoId = null;
-            diaristaStatusSelecionado = 'presente';
+            diaristaStatusSelecionado = statusPreSelecionado;
             atualizarBotoesStatusDiarista();
             filtrarColabsDiarista();
 
@@ -1173,7 +1171,7 @@
         }
 
         // =====================================================================
-        // BLOCO DE DIARISTAS (com botão Adicionar Diarista)
+        // BLOCO DE DIARISTAS
         // =====================================================================
         function criarBlocoDiaristas(qtdPresentes, qtdFaltou, listaPresentes, listaFaltou) {
             const total = qtdPresentes + qtdFaltou;
@@ -1214,21 +1212,37 @@
                         <div class="text-3xl font-extrabold text-cyan-300 mt-1">${pedidos}</div>
                         <div class="text-[10px] ${corStatus} font-semibold mt-1">${statusPlanejamento}</div>
                     </div>
+
                     <div class="bg-slate-900 border border-emerald-500/40 rounded-xl p-3.5">
-                        <div class="flex items-center gap-2">
-                            <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
-                            <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Presentes</span>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
+                                <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Presentes</span>
+                            </div>
+                            <button onclick="abrirModalAddDiarista('presente')"
+                                    class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-md p-1 shadow transition active:scale-95"
+                                    title="Adicionar diarista presente">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            </button>
                         </div>
                         <div class="text-3xl font-extrabold text-emerald-300 mt-1">${qtdPresentes}</div>
-                        <div class="text-[10px] text-slate-500 mt-1">de ${pedidos} pedido${pedidos === 1 ? '' : 's'}</div>
+                        <div class="text-[10px] text-slate-500 mt-1">de ${pedidos} pedido${pedidos === 1 ? '' : 's'} · somam em <span class="text-emerald-400 font-bold">Operação</span></div>
                     </div>
+
                     <div class="bg-slate-900 border border-red-500/40 rounded-xl p-3.5">
-                        <div class="flex items-center gap-2">
-                            <i data-lucide="user-x" class="w-4 h-4 text-red-400"></i>
-                            <span class="text-[10px] uppercase tracking-wider text-red-400 font-bold">Faltaram</span>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="user-x" class="w-4 h-4 text-red-400"></i>
+                                <span class="text-[10px] uppercase tracking-wider text-red-400 font-bold">Faltaram</span>
+                            </div>
+                            <button onclick="abrirModalAddDiarista('faltou')"
+                                    class="bg-red-500 hover:bg-red-400 text-slate-950 rounded-md p-1 shadow transition active:scale-95"
+                                    title="Adicionar diarista que faltou">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            </button>
                         </div>
                         <div class="text-3xl font-extrabold text-red-300 mt-1">${qtdFaltou}</div>
-                        <div class="text-[10px] text-slate-500 mt-1">Total registrados: ${total}</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Total registrados: ${total} · somam em <span class="text-yellow-400 font-bold">Faltas</span></div>
                     </div>
                 </div>
             `;
@@ -1247,7 +1261,7 @@
             } else {
                 corpo += `
                     <p class="text-xs text-slate-500 italic mt-4 pt-4 border-t border-cyan-500/20 text-center">
-                        Nenhum diarista registrado ainda. Clique em <strong class="text-cyan-400">Adicionar</strong> para registrar.
+                        Nenhum diarista registrado ainda. Use os botões <strong class="text-emerald-400">+</strong> em Presentes ou Faltaram para registrar.
                     </p>
                 `;
             }
@@ -1259,10 +1273,15 @@
                         <span class="text-[10px] font-normal opacity-70">— quantidade pedida vs. realizada</span>
                     </h2>
                     <div class="flex items-center gap-2 flex-wrap">
-                        <button onclick="abrirModalAddDiarista()"
-                                class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95">
-                            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
-                            <span>Adicionar</span>
+                        <button onclick="abrirModalAddDiarista('presente')"
+                                class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95">
+                            <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+                            <span>+ Presente</span>
+                        </button>
+                        <button onclick="abrirModalAddDiarista('faltou')"
+                                class="bg-red-500 hover:bg-red-400 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95">
+                            <i data-lucide="user-x" class="w-3.5 h-3.5"></i>
+                            <span>+ Faltou</span>
                         </button>
                         <button onclick="abrirModalDiaristasPedidos()"
                                 class="bg-slate-800 hover:bg-slate-700 text-cyan-400 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow transition active:scale-95 border border-cyan-500/30">
@@ -1318,6 +1337,12 @@
             document.getElementById('kpi-faltas').innerText = grupos.falta.length + grupos.diarista_faltou.length;
             document.getElementById('kpi-atestados').innerText = grupos.atestado.length;
             document.getElementById('kpi-diaristas').innerText = totalDiaristas;
+
+            // Detalhe do KPI Em Operação
+            const detalheEl = document.getElementById('kpi-operacao-detalhe');
+            if (detalheEl) {
+                detalheEl.innerText = `${grupos.operacao.length} escal. + ${grupos.diarista_presente.length} diar.`;
+            }
 
             const badges = {
                 'badge-todos': colaboradores.length,
