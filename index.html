@@ -28,6 +28,8 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 .btn-ghost:hover{background:hsl(var(--muted))}
 .btn-success{background:#10b981;color:#000;border-color:#10b981}
 .btn-success:hover{background:#34d399}
+.btn-danger{background:#ef4444;color:#fff;border-color:#ef4444}
+.btn-danger:hover{background:#f87171;border-color:#f87171}
 .btn-sm{height:1.875rem;font-size:.75rem;padding:0 .625rem}
 .btn-icon{height:2.25rem;width:2.25rem;padding:0}
 .btn-icon-sm{height:1.875rem;width:1.875rem;padding:0}
@@ -35,7 +37,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 .input:focus,.select:focus{border-color:hsl(var(--primary));box-shadow:0 0 0 3px hsl(var(--primary)/.15)}
 .input::placeholder{color:#64748b}
 .input:disabled,.select:disabled{opacity:.5;cursor:not-allowed}
-.select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem;cursor:pointer}
+.select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;background-size:12px;padding-right:2rem;cursor:pointer}
 .label{display:block;font-size:.6875rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.375rem}
 .card{background:rgba(30,41,59,.5);border:1px solid hsl(var(--border));border-radius:.75rem;padding:1rem;backdrop-filter:blur(8px);transition:border-color .15s ease,background .15s ease}
 .card:hover{border-color:hsl(var(--primary)/.4)}
@@ -45,6 +47,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 .badge-danger{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#fca5a5}
 .badge-info{background:rgba(6,182,212,.15);border-color:rgba(6,182,212,.3);color:#67e8f9}
 .badge-orange{background:rgba(249,115,22,.15);border-color:rgba(249,115,22,.3);color:#fdba74}
+.badge-purple{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.3);color:#d8b4fe}
 .badge-default{background:hsl(var(--secondary));border-color:hsl(var(--border));color:#cbd5e1}
 .sidebar-item{display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;padding:.625rem .75rem;border-radius:.5rem;font-size:.8125rem;color:#cbd5e1;transition:background .15s ease;text-align:left;border:1px solid transparent}
 .sidebar-item:hover{background:hsl(var(--muted))}
@@ -238,11 +241,19 @@ const SETORES_E_FUNCOES={
 "Flip":["Aux Flip"],
 "FM":["Aux FM"],
 "Avarias":["Aux Avarias"],
-"Expedi\u00e7\u00e3o LM":["Bipador Expedi\u00e7\u00e3o LM","Gaioleiro Expedi\u00e7\u00e3o LM"],
-"Bancada de Invers\u00e3o":["Aux Bancada de Invers\u00e3o","Bipador Bancada de Invers\u00e3o"]
+"Expedi\u00e7\u00e3o LM":["Bipador Expedi\u00e7\u00e3o LM","Abastecedor Expedi\u00e7\u00e3o LM"],
+"Bancada de Invers\u00e3o":["Aux Bancada de Invers\u00e3o","Bipador Bancada de Invers\u00e3o"],
+"5S":["Aux 5S", "Facilitador 5S"]
 };
 
-const STATUS_ESPECIAIS=[{valor:"-",label:"- (Folga/DSR)"},{valor:"DSR_EXTRA",label:"DSR Extra"},{valor:"FALTA",label:"FALTA"},{valor:"ATESTADO",label:"ATESTADO"}];
+const STATUS_ESPECIAIS=[
+{valor:"-",label:"- (Folga/DSR)"},
+{valor:"DSR_EXTRA",label:"DSR Extra"},
+{valor:"FALTA",label:"FALTA"},
+{valor:"ATESTADO",label:"ATESTADO"},
+{valor:"FERIAS",label:"F\u00e9rias"},
+{valor:"AFASTAMENTO",label:"Afastamento Tempor\u00e1rio"}
+];
 function isStatusEspecial(v){return STATUS_ESPECIAIS.some(function(s){return s.valor===v})}
 
 const dataAtualSistema=new Date();
@@ -265,7 +276,7 @@ function matchBuscaAvancada(termo){if(!termo)return true;const palavras=termo.sp
 const DIAS_SEMANA_MAP={"dom":0,"domingo":0,"seg":1,"segunda":1,"ter":2,"terca":2,"terca feira":2,"qua":3,"quarta":3,"quarta feira":3,"qui":4,"quinta":4,"quinta feira":4,"sex":5,"sexta":5,"sexta feira":5,"sab":6,"sabado":6,"sabado feira":6};
 function isDiaDSR(dsrTexto,dataObj){if(!dsrTexto)return false;const d=dataObj.getDay();const dn=normalizarTexto(dsrTexto).replace(/feira/g,"").replace(/-/g," ");const dn2=dn.replace(/\s+/g," ").trim();const p=dn2.split(/,|\se\s/).map(function(x){return x.trim().replace(/\s+/g," ")}).filter(function(x){return x});for(let i=0;i<p.length;i++){const parte=p[i];if(DIAS_SEMANA_MAP[parte]===d)return true;const prim=parte.split(" ")[0];if(DIAS_SEMANA_MAP[prim]===d)return true;if(DIAS_SEMANA_MAP[prim.slice(0,3)]===d)return true}return false}
 function isColabEmDSRHoje(c){const dataHoje=new Date(anoAtual,mesAtualIndex,diaHoje);return isDiaDSR(c.dsr,dataHoje)}
-function obterStatusHoje(c){if(isColabEmDSRHoje(c))return'dsr';const raw=c.historicoDias[diaHoje-1]||"-";if(raw==="FALTA")return'falta';if(raw==="ATESTADO")return'atestado';if(raw==="-"||raw==="DSR_EXTRA")return'sem_escala';return'operacao'}
+function obterStatusHoje(c){if(isColabEmDSRHoje(c))return'dsr';const raw=c.historicoDias[diaHoje-1]||"-";if(raw==="FALTA")return'falta';if(raw==="ATESTADO")return'atestado';if(raw==="FERIAS")return'ferias';if(raw==="AFASTAMENTO")return'afastamento';if(raw==="-"||raw==="DSR_EXTRA")return'sem_escala';return'operacao'}
 function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
 function formatarDataDDMM(d){if(!d)return'';return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
 
@@ -276,7 +287,6 @@ function abrirModalDiaristasPedidos(){document.getElementById('input-diaristas-p
 function fecharModalDiaristasPedidos(){document.getElementById('modal-diaristas-pedidos').classList.add('hidden')}
 function salvarDiaristasPedidos(){const v=parseInt(document.getElementById('input-diaristas-pedidos').value,10)||0;const a=getDiaristasDia();let np=a.presentes;let nf=a.faltantes;if(v>0){if(np>v)np=v;if((np+nf)>v)nf=Math.max(0,v-np);}setDiaristasDia({pedidos:v,presentes:np,faltantes:nf});toast('Pedido: '+v,'ok');fecharModalDiaristasPedidos();renderizar()}
 
-// ==== MODAL ADD DIARISTA com validação em tempo real ====
 function abrirModalAddDiarista(statusPre){
   const d=getDiaristasDia();
   if(d.pedidos<=0){toast("Defina primeiro o pedido.",'warn');return}
@@ -315,7 +325,6 @@ function abrirModalAddDiarista(statusPre){
 }
 function fecharModalAddDiarista(){document.getElementById('modal-add-diarista-qtd').classList.add('hidden')}
 
-// ==== SALVAR DIARISTAS com regra presentes + faltas <= pedidos ====
 function salvarDiaristasQtd(){
   const p=parseInt(document.getElementById('input-diaristas-presentes').value,10)||0;
   const f=parseInt(document.getElementById('input-diaristas-faltantes').value,10)||0;
@@ -343,9 +352,36 @@ async function tentarAlterarDia(idColab,indexDia,el){const numDia=indexDia+1;con
 
 async function atualizarDiaSupabase(colabId,dia,funcao){const dataStr=anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');if(funcao==="-"){await supabaseClient.from('historico_escala').delete().eq('colaborador_id',colabId).eq('data',dataStr);return}let setor="Status";if(!isStatusEspecial(funcao)){setor="Recebimento";for(const s of Object.keys(SETORES_E_FUNCOES)){if(SETORES_E_FUNCOES[s].includes(funcao)){setor=s;break}}}const r=await supabaseClient.from('historico_escala').upsert({colaborador_id:colabId,data:dataStr,setor:setor,funcao:funcao},{onConflict:'colaborador_id,data'});if(r.error)console.error(r.error)}
 
-function cardColaborador(c,tipo){const status=contarDiasNaFuncaoAtual(c.historicoDias);const emAlerta=status.dias>=7&&tipo==='operacao';const emBloqueio=status.dias>=LIMITE_DIAS_FUNCAO&&tipo==='operacao';const dr=status.dataInicio&&status.dataFim?formatarDataDDMM(status.dataInicio)+' \u2192 '+formatarDataDDMM(status.dataFim):'-';let borda='border-slate-800';let titulo='text-slate-100';let badge='';if(tipo==='dsr'){borda='border-orange-500/40';titulo='text-orange-200';badge='<div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Em DSR - Nao escalar hoje</div>'}else if(tipo==='falta'){borda='border-yellow-500/40';titulo='text-yellow-200';badge='<div class="mt-1.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-[10px] px-2 py-0.5 rounded font-extrabold">FALTA registrada</div>'}else if(tipo==='atestado'){borda='border-red-500/40';titulo='text-red-200';badge='<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded font-extrabold">ATESTADO registrado</div>'}else if(tipo==='operacao'){if(emBloqueio)borda='border-orange-500/60';else if(emAlerta)borda='border-red-500/60'}let alerta='';if(tipo==='operacao'){if(emBloqueio)alerta='<div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Bloqueado: '+status.dias+' dias</div>';else if(emAlerta)alerta='<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Alerta: '+status.dias+' dias</div>'}let bf='';if(tipo==='operacao'){bf='<div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5"><span>Funcao:</span><div class="flex items-center justify-between gap-1"><strong class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate">'+status.funcao+'</strong><span class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px]">'+dr+'</span></div></div>'}return '<div class="bg-slate-900 border '+borda+' rounded-xl p-3.5 shadow transition"><div class="flex flex-col gap-2"><div><h3 class="text-xs sm:text-sm font-bold '+titulo+'">'+c.nome+'</h3><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div><div class="text-[10px] text-slate-400 mt-1">'+c.horario+'</div>'+badge+alerta+bf+'</div><div class="grid grid-cols-2 gap-1 pt-2 border-t border-slate-800/80"><button onclick="abrirModalEditar(\''+c.id+'\')" class="btn btn-outline btn-sm w-full"><i data-lucide="edit-3" class="w-3 h-3"></i> Alterar</button><button onclick="abrirHistorico(\''+c.id+'\')" class="btn btn-secondary btn-sm w-full"><i data-lucide="calendar" class="w-3 h-3"></i> Dias</button></div></div></div>'}
+// ==== CARD COLABORADOR (Agora com botão de excluir) ====
+function cardColaborador(c,tipo){
+  const status=contarDiasNaFuncaoAtual(c.historicoDias);
+  const emAlerta=status.dias>=7&&tipo==='operacao';
+  const emBloqueio=status.dias>=LIMITE_DIAS_FUNCAO&&tipo==='operacao';
+  const dr=status.dataInicio&&status.dataFim?formatarDataDDMM(status.dataInicio)+' \u2192 '+formatarDataDDMM(status.dataFim):'-';
+  
+  let borda='border-slate-800',titulo='text-slate-100',badge='';
+  if(tipo==='dsr'){borda='border-orange-500/40';titulo='text-orange-200';badge='<div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Em DSR - Nao escalar hoje</div>'}
+  else if(tipo==='falta'){borda='border-yellow-500/40';titulo='text-yellow-200';badge='<div class="mt-1.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-[10px] px-2 py-0.5 rounded font-extrabold">FALTA registrada</div>'}
+  else if(tipo==='atestado'){borda='border-red-500/40';titulo='text-red-200';badge='<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded font-extrabold">ATESTADO registrado</div>'}
+  else if(tipo==='ferias'){borda='border-purple-500/40';titulo='text-purple-200';badge='<div class="mt-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[10px] px-2 py-0.5 rounded font-extrabold">F\u00e9rias</div>'}
+  else if(tipo==='afastamento'){borda='border-slate-500/40';titulo='text-slate-300';badge='<div class="mt-1.5 bg-slate-500/10 border border-slate-500/30 text-slate-300 text-[10px] px-2 py-0.5 rounded font-extrabold">Afastamento Tempor\u00e1rio</div>'}
+  else if(tipo==='operacao'){if(emBloqueio)borda='border-orange-500/60';else if(emAlerta)borda='border-red-500/60'}
+  
+  let alerta='';
+  if(tipo==='operacao'){
+    if(emBloqueio)alerta='<div class="mt-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Bloqueado: '+status.dias+' dias</div>';
+    else if(emAlerta)alerta='<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Alerta: '+status.dias+' dias</div>';
+  }
+  
+  let bf='';
+  if(tipo==='operacao'){
+    bf='<div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5"><span>Funcao:</span><div class="flex items-center justify-between gap-1"><strong class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate">'+status.funcao+'</strong><span class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px]">'+dr+'</span></div></div>';
+  }
+  
+  return '<div class="bg-slate-900 border '+borda+' rounded-xl p-3.5 shadow transition"><div class="flex flex-col gap-2"><div><h3 class="text-xs sm:text-sm font-bold '+titulo+'">'+c.nome+'</h3><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div><div class="text-[10px] text-slate-400 mt-1">'+c.horario+'</div>'+badge+alerta+bf+'</div><div class="grid grid-cols-3 gap-1 pt-2 border-t border-slate-800/80"><button onclick="abrirModalEditar(\''+c.id+'\')" class="btn btn-outline btn-sm"><i data-lucide="edit-3" class="w-3 h-3"></i> Alt</button><button onclick="abrirHistorico(\''+c.id+'\')" class="btn btn-secondary btn-sm"><i data-lucide="calendar" class="w-3 h-3"></i> Dias</button><button onclick="excluirColaborador(\''+c.id+'\', \''+c.nome.replace(/'/g,"\\'")+'\')" class="btn btn-danger btn-sm"><i data-lucide="trash-2" class="w-3 h-3"></i> Excluir</button></div></div></div>';
+}
 
-function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)return null;const bloco=document.createElement('div');const cls={orange:'bg-orange-950/20 border-orange-500/40',yellow:'bg-yellow-950/20 border-yellow-500/40',red:'bg-red-950/20 border-red-500/40'}[cor]||'bg-slate-900/60 border-slate-800';bloco.className=cls+' border rounded-2xl p-4 shadow-xl';bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 '+(cor==='orange'?'border-orange-500/30':cor==='yellow'?'border-yellow-500/30':'border-red-500/30')+'"><h2 class="text-sm font-bold flex items-center gap-2 '+(cor==='orange'?'text-orange-400':cor==='yellow'?'text-yellow-400':'text-red-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(cor==='orange'?'badge-orange':cor==='yellow'?'badge-warning':'badge-danger')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor==='orange'?'dsr':cor==='yellow'?'falta':'atestado')}).join('')+'</div>';return bloco}
+function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)return null;const bloco=document.createElement('div');const cls={orange:'bg-orange-950/20 border-orange-500/40',yellow:'bg-yellow-950/20 border-yellow-500/40',red:'bg-red-950/20 border-red-500/40',purple:'bg-purple-950/20 border-purple-500/40',slate:'bg-slate-900/60 border-slate-700'}[cor]||'bg-slate-900/60 border-slate-800';bloco.className=cls+' border rounded-2xl p-4 shadow-xl';const iconMap={orange:'text-orange-400',yellow:'text-yellow-400',red:'text-red-400',purple:'text-purple-400',slate:'text-slate-400'};const badgeMap={orange:'badge-orange',yellow:'badge-warning',red:'badge-danger',purple:'badge-purple',slate:'badge-default'};bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 '+(cor==='orange'?'border-orange-500/30':cor==='yellow'?'border-yellow-500/30':cor==='red'?'border-red-500/30':cor==='purple'?'border-purple-500/30':'border-slate-700/30')+'"><h2 class="text-sm font-bold flex items-center gap-2 '+(iconMap[cor]||'text-slate-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(badgeMap[cor]||'badge-default')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor)}).join('')+'</div>';return bloco}
 
 function criarBlocoDiaristas(){const d=getDiaristasDia();const total=d.presentes+d.faltantes;const pd=d.pedidos>0;const dif=d.presentes-d.pedidos;const exc=d.presentes>=d.pedidos&&d.pedidos>0;let status='';let cs='';if(d.pedidos===0){status='Defina o pedido';cs='text-slate-400'}else if(dif===0){status='Meta atendida';cs='text-emerald-400'}else if(dif>0){status=dif+' alem';cs='text-cyan-400'}else{status='Faltam '+Math.abs(dif)+' do pedido';cs='text-yellow-400'}const bloco=document.createElement('div');bloco.className='bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl';const clP=pd&&!exc?'bg-slate-900 border border-emerald-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';const clF=pd?'bg-slate-900 border border-red-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-cyan-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-cyan-400">Diaristas Hoje <span class="text-[10px] font-normal opacity-70">- quantidades por dia</span></h2><span class="badge badge-info">'+total+' registrado(s)</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl"><button onclick="abrirModalDiaristasPedidos()" class="text-left bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5 cursor-pointer active:scale-[0.98]"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-cyan-400 font-bold">Pedidos</span><i data-lucide="edit-3" class="w-4 h-4 text-cyan-400"></i></div><div class="text-3xl font-extrabold text-cyan-300">'+d.pedidos+'</div><div class="text-[10px] '+cs+' font-semibold mt-1">'+status+'</div></button><button onclick="'+(pd&&!exc?"abrirModalAddDiarista('presente')":'')+'" '+(pd&&!exc?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clP+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-emerald-400 font-bold">Presentes</span><i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i></div><div class="text-3xl font-extrabold text-emerald-300">'+d.presentes+'</div><div class="text-[10px] text-slate-500 mt-1">'+(pd?'de '+d.pedidos+' pedido(s)':'sem pedido')+' \u00b7 somam em <span class="text-emerald-400 font-bold">Opera\u00e7\u00e3o</span></div></button><button onclick="'+(pd?"abrirModalAddDiarista('faltou')":'')+'" '+(pd?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clF+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-red-400 font-bold">Faltaram</span><i data-lucide="edit-3" class="w-4 h-4 text-red-400"></i></div><div class="text-3xl font-extrabold text-red-300">'+d.faltantes+'</div><div class="text-[10px] text-slate-500 mt-1">Total: '+total+' \u00b7 somam em <span class="text-yellow-400 font-bold">Faltas</span></div></button></div>'+(pd?'':'<div class="mt-3 pt-3 border-t border-cyan-500/20 text-[11px] text-yellow-400">Defina primeiro a quantidade de diaristas pedidos.</div>');return bloco}
 
@@ -353,13 +389,10 @@ function renderizar(){
 const termo=normalizarTexto(document.getElementById('input-busca').value);
 const cont=document.getElementById('container-setores');
 cont.innerHTML="";
-const g={operacao:[],dsr:[],falta:[],atestado:[]};
+const g={operacao:[],dsr:[],falta:[],atestado:[],ferias:[],afastamento:[],sem_escala:[]};
 colaboradores.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c)});
 const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
-const oF=fl(g.operacao);
-const dF=fl(g.dsr);
-const fF=fl(g.falta);
-const aF=fl(g.atestado);
+const oF=fl(g.operacao);const dF=fl(g.dsr);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);
 const dd=getDiaristasDia();
 const td=dd.presentes;
 const eo=g.operacao.length+dd.presentes;
@@ -373,16 +406,28 @@ const det=document.getElementById('kpi-operacao-detalhe');
 if(det)det.innerText=g.operacao.length+' escal. + '+dd.presentes+' diar.';
 const bg={'badge-todos':colaboradores.length,'badge-operacao':eo,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
 Object.keys(bg).forEach(function(id){const el=document.getElementById(id);if(el)el.innerText=bg[id];const elM=document.getElementById(id+'-m');if(elM)elM.innerText=bg[id]});
-if(termo){const m=[].concat(dF.map(function(c){return{c:c,tipo:'dsr'}}),fF.map(function(c){return{c:c,tipo:'falta'}}),aF.map(function(c){return{c:c,tipo:'atestado'}}),oF.map(function(c){return{c:c,tipo:'operacao'}}));const fM={'todos':null,'operacao':'operacao','diaristas':null,'dsr':'dsr','faltas':'falta','atestados':'atestado'};const tp=fM[filtroAtivo];const filt=tp?m.filter(function(x){return x.tipo===tp}):m;if(filt.length===0){cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum resultado.</p>';lucide.createIcons();return}const b=document.createElement('div');b.className='bg-amber-950/10 border-2 border-amber-500/40 rounded-2xl p-4 shadow-2xl';b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-500/30"><h2 class="text-sm font-bold text-amber-400">Resultados</h2><span class="badge badge-warning">'+filt.length+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+filt.map(function(x){return cardColaborador(x.c,x.tipo)}).join('')+'</div>';cont.appendChild(b);lucide.createIcons();return}
-const bd=criarBloco('Colaboradores em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length+' em descanso');
+if(termo){const m=[].concat(dF.map(function(c){return{c:c,tipo:'dsr'}}),fF.map(function(c){return{c:c,tipo:'falta'}}),aF.map(function(c){return{c:c,tipo:'atestado'}}),feF.map(function(c){return{c:c,tipo:'ferias'}}),afF.map(function(c){return{c:c,tipo:'afastamento'}}),oF.map(function(c){return{c:c,tipo:'operacao'}}));const fM={'todos':null,'operacao':'operacao','diaristas':null,'dsr':'dsr','faltas':'falta','atestados':'atestado'};const tp=fM[filtroAtivo];const filt=tp?m.filter(function(x){return x.tipo===tp}):m;if(filt.length===0){cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum resultado.</p>';lucide.createIcons();return}const b=document.createElement('div');b.className='bg-amber-950/10 border-2 border-amber-500/40 rounded-2xl p-4 shadow-2xl';b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-500/30"><h2 class="text-sm font-bold text-amber-400">Resultados</h2><span class="badge badge-warning">'+filt.length+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+filt.map(function(x){return cardColaborador(x.c,x.tipo)}).join('')+'</div>';cont.appendChild(b);lucide.createIcons();return}
+const bd=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length+' em descanso');
 const bf=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);
 const ba=criarBloco('Atestados Hoje','ausencias justificadas',aF,'red','',aF.length);
-if(filtroAtivo==='todos'){if(bd)cont.appendChild(bd);if(bf)cont.appendChild(bf);if(ba)cont.appendChild(ba);renderizarSetores(oF,cont)}
-else if(filtroAtivo==='operacao'){renderizarSetores(oF,cont)}
-else if(filtroAtivo==='diaristas'){cont.appendChild(criarBlocoDiaristas())}
-else if(filtroAtivo==='dsr'){if(bd)cont.appendChild(bd);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>'}
-else if(filtroAtivo==='faltas'){if(bf)cont.appendChild(bf);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>'}
-else if(filtroAtivo==='atestados'){if(ba)cont.appendChild(ba);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum atestado.</p>'}
+const bfe=criarBloco('F\u00e9rias','afastamento programado',feF,'purple','',feF.length);
+const baf=criarBloco('Afastamento Tempor\u00e1rio','afastamento temporario',afF,'slate','',afF.length);
+
+if(filtroAtivo==='todos'){
+  if(bd)cont.appendChild(bd);if(bf)cont.appendChild(bf);if(ba)cont.appendChild(ba);
+  if(bfe)cont.appendChild(bfe);if(baf)cont.appendChild(baf);
+  renderizarSetores(oF,cont)
+} else if(filtroAtivo==='operacao'){
+  renderizarSetores(oF,cont)
+} else if(filtroAtivo==='diaristas'){
+  cont.appendChild(criarBlocoDiaristas())
+} else if(filtroAtivo==='dsr'){
+  if(bd)cont.appendChild(bd);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>'
+} else if(filtroAtivo==='faltas'){
+  if(bf)cont.appendChild(bf);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>'
+} else if(filtroAtivo==='atestados'){
+  if(ba)cont.appendChild(ba);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum atestado.</p>'
+}
 lucide.createIcons()}
 
 function renderizarSetores(cols,cont){for(const setor of Object.keys(SETORES_E_FUNCOES)){const funcs=SETORES_E_FUNCOES[setor];const cs=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return funcs.includes(f)});const b=document.createElement('div');b.className='bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl';const esc=setor.replace(/'/g,"\\'");b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400">'+setor+'</h2><div class="flex items-center gap-2"><span class="badge badge-default">'+cs.length+' operador(es)</span><button onclick="abrirModalAlocar(\''+esc+'\')" class="btn btn-primary btn-sm"><i data-lucide="user-plus" class="w-3 h-3"></i> Adicionar</button></div></div>'+(cs.length===0?'<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar neste setor hoje.</p>':'<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+cs.map(function(c){return cardColaborador(c,'operacao')}).join('')+'</div>');cont.appendChild(b)}}
@@ -392,11 +437,25 @@ function abrirModalEditar(id){const c=colaboradores.find(function(x){return x.id
 function fecharModalAdd(){document.getElementById('modal-add').classList.add('hidden')}
 function abrirModalAlocar(setor){document.getElementById('alocar-setor').value=setor;document.getElementById('alocar-titulo').innerHTML='Alocar em '+setor;document.getElementById('alocar-busca').value='';alocarColabSelecionadoId=null;const sel=document.getElementById('alocar-funcao');sel.innerHTML='';(SETORES_E_FUNCOES[setor]||[]).forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o)});filtrarColabsAlocar();document.getElementById('modal-alocar').classList.remove('hidden');lucide.createIcons();setTimeout(function(){document.getElementById('alocar-busca').focus()},100)}
 function fecharModalAlocar(){document.getElementById('modal-alocar').classList.add('hidden');alocarColabSelecionadoId=null}
-function filtrarColabsAlocar(){const t=normalizarTexto(document.getElementById('alocar-busca').value);const cont=document.getElementById('alocar-lista');const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){const st=obterStatusHoje(c);let ind=false;let mot='';if(st==='dsr'){ind=true;mot='DSR'}else if(st==='falta'){ind=true;mot='Falta'}else if(st==='atestado'){ind=true;mot='Atestado'}return{colab:c,ind:ind,mot:mot}}).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});if(lista.length===0){cont.innerHTML='<p class="text-xs text-slate-500 italic p-3">Nenhum.</p>';return}cont.innerHTML=lista.map(function(x){const sel=x.colab.id===alocarColabSelecionadoId;const f=x.colab.historicoDias[diaHoje-1]||"-";const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(\''+x.colab.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+(x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60')+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' \u00b7 DSR: '+x.colab.dsr+(ft?' \u00b7 Hoje: '+ft:'')+'</div></div>'+(x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>')+'</button>'}).join('');lucide.createIcons()}
+function filtrarColabsAlocar(){const t=normalizarTexto(document.getElementById('alocar-busca').value);const cont=document.getElementById('alocar-lista');const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){const st=obterStatusHoje(c);let ind=false;let mot='';if(st==='dsr'){ind=true;mot='DSR'}else if(st==='falta'){ind=true;mot='Falta'}else if(st==='atestado'){ind=true;mot='Atestado'}else if(st==='ferias'){ind=true;mot='Ferias'}else if(st==='afastamento'){ind=true;mot='Afast.'}return{colab:c,ind:ind,mot:mot}}).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});if(lista.length===0){cont.innerHTML='<p class="text-xs text-slate-500 italic p-3">Nenhum.</p>';return}cont.innerHTML=lista.map(function(x){const sel=x.colab.id===alocarColabSelecionadoId;const f=x.colab.historicoDias[diaHoje-1]||"-";const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(\''+x.colab.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+(x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60')+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' \u00b7 DSR: '+x.colab.dsr+(ft?' \u00b7 Hoje: '+ft:'')+'</div></div>'+(x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>')+'</button>'}).join('');lucide.createIcons()}
 function selecionarColabAlocar(id){alocarColabSelecionadoId=id;filtrarColabsAlocar()}
-async function confirmarAlocacao(){const funcao=document.getElementById('alocar-funcao').value;if(!alocarColabSelecionadoId){toast("Selecione um.",'warn');return}const colab=colaboradores.find(function(c){return c.id===alocarColabSelecionadoId});if(!colab)return;const btn=document.querySelector('#modal-alocar button[onclick="confirmarAlocacao()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const st=obterStatusHoje(colab);if(st==='dsr'||st==='falta'||st==='atestado'){toast(colab.nome+' nao pode.','warn');return}await atualizarDiaSupabase(colab.id,diaHoje,funcao);colab.historicoDias[diaHoje-1]=funcao;toast(colab.nome+' alocado em '+funcao+'.','ok');fecharModalAlocar();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
+async function confirmarAlocacao(){const funcao=document.getElementById('alocar-funcao').value;if(!alocarColabSelecionadoId){toast("Selecione um.",'warn');return}const colab=colaboradores.find(function(c){return c.id===alocarColabSelecionadoId});if(!colab)return;const btn=document.querySelector('#modal-alocar button[onclick="confirmarAlocacao()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const st=obterStatusHoje(colab);if(st==='dsr'||st==='falta'||st==='atestado'||st==='ferias'||st==='afastamento'){toast(colab.nome+' nao pode.','warn');return}await atualizarDiaSupabase(colab.id,diaHoje,funcao);colab.historicoDias[diaHoje-1]=funcao;toast(colab.nome+' alocado em '+funcao+'.','ok');fecharModalAlocar();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
 
 async function salvarColaborador(){const btn=document.querySelector('#modal-add button[onclick="salvarColaborador()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const idEdit=document.getElementById('edit-id').value;const nome=document.getElementById('input-nome-colab').value.trim();const func=document.getElementById('novo-funcao').value;if(!nome){toast("Insira o nome.",'warn');return}if(nome.length<3){toast("Nome curto.",'warn');return}const nn=normalizarTexto(nome);const dup=colaboradores.some(function(c){return normalizarTexto(c.nome)===nn&&c.id!==idEdit});if(dup){toast('Ja existe: '+nome,'warn');return}if(idEdit){const ru=await supabaseClient.from('colaboradores').update({nome:nome}).eq('id',idEdit);if(ru.error){toast("Erro: "+ru.error.message,'erro');return}const c=colaboradores.find(function(x){return x.id===idEdit});if(c&&!isColabEmDSRHoje(c))await atualizarDiaSupabase(idEdit,diaHoje,func);else if(c&&isColabEmDSRHoje(c)&&isStatusEspecial(func))await atualizarDiaSupabase(idEdit,diaHoje,func);toast(nome+' atualizado.','ok')}else{const esc=document.getElementById('select-escala').value;const dsr=document.getElementById('select-dsr').value;const hor=document.getElementById('input-horario').value;const ri=await supabaseClient.from('colaboradores').insert([{nome:nome,escala:esc,dsr:dsr,horario:hor}]).select();if(ri.error){toast("Erro: "+ri.error.message,'erro');return}if(ri.data&&ri.data.length>0){const dh=new Date(anoAtual,mesAtualIndex,diaHoje);const hd=isDiaDSR(dsr,dh);if(!hd||isStatusEspecial(func))await atualizarDiaSupabase(ri.data[0].id,diaHoje,func);toast(nome+' adicionado.','ok')}}fecharModalAdd();await carregarDadosSupabase();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
+
+async function excluirColaborador(id, nome) {
+  if (!confirm('Deseja realmente EXCLUIR o colaborador "' + nome + '"?\n\nEssa ação apagará também todo o histórico e não pode ser desfeita.')) return;
+  try {
+    const { error } = await supabaseClient.from('colaboradores').delete().eq('id', id);
+    if (error) throw error;
+    toast(nome + ' excluído(a) com sucesso.', 'ok');
+    await carregarDadosSupabase();
+    renderizar();
+  } catch (e) {
+    console.error(e);
+    toast("Erro ao excluir: " + e.message, 'erro');
+  }
+}
 
 function abrirHistorico(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select '+(bl?'disabled':'')+' onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')}
 function fecharModalHistorico(){document.getElementById('modal-historico').classList.add('hidden')}
@@ -404,57 +463,102 @@ function fecharModalHistorico(){document.getElementById('modal-historico').class
 function abrirModalMatriz(){document.getElementById('titulo-matriz-mes').innerHTML='Matriz: '+nomeMesAtual+' / '+anoAtual;document.getElementById('matriz-busca').value='';renderizarMatriz();document.getElementById('modal-matriz').classList.remove('hidden');lucide.createIcons();setTimeout(function(){const th=document.querySelector('#tabela-matriz-unica thead th.bg-amber-500\\/30');if(th)th.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})},150)}
 function renderizarMatriz(){const t=normalizarTexto(document.getElementById('matriz-busca').value||'');const tab=document.getElementById('tabela-matriz-unica');const cont=document.getElementById('matriz-busca-contador');tab.innerHTML='';const cf=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome,c.escala,c.dsr)});if(cont)cont.innerText=t?cf.length+' de '+colaboradores.length:colaboradores.length+' cols';const dP=[];const dF=[];for(let d=1;d<=totalDiasDoMes;d++){if(d<diaHoje)dP.push(d);else if(d>diaHoje)dF.push(d)}const dO=[].concat(dP,[diaHoje],dF);let th='<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador</th>';dO.forEach(function(d){const eH=d===diaHoje;const eP=d<diaHoje;let c='p-2 text-center font-semibold min-w-[120px] text-[10px] ';if(eH)c+='text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500';else if(eP)c+='text-slate-400 border-l border-slate-800/50 bg-slate-950/40';else c+='text-slate-200 border-l border-slate-800/50';th+='<th class="'+c+'">'+(eH?'HOJE - ':'')+'Dia '+d+'</th>'});th+='</tr></thead>';if(cf.length===0){tab.innerHTML=th+'<tbody><tr><td colspan="'+(dO.length+1)+'" class="text-center text-slate-500 italic py-8">Nenhum.</td></tr></tbody>';return}let tb='<tbody>';cf.forEach(function(c){tb+='<tr class="border-b border-slate-800/60"><td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]"><div class="text-xs font-bold text-slate-200">'+c.nome+'</div><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div></td>';dO.forEach(function(d){const iD=d-1;const fD=c.historicoDias[iD]||"-";const eH=d===diaHoje;const eP=d<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,d);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===fD?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===fD?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}let tc='p-1 text-center ';if(eH)tc+='bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40';else if(eD)tc+='bg-orange-950/20';else if(eP)tc+='bg-slate-950/60';tb+='<td class="'+tc+'"><select '+(bl?'disabled':'')+' onchange="tentarAlterarDia(\''+c.id+'\', '+iD+', this)" class="w-full text-[10px] rounded p-1 '+(bl?'opacity-40 bg-slate-950 border-slate-800 text-slate-500':'bg-slate-950 border-slate-700 text-slate-200')+' border">'+op+'</select></td>'});tb+='</tr>'});tb+='</tbody>';tab.innerHTML=th+tb}
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
-function calcularAcumuladoColab(c){const dias=diaHoje;const r={funcoes:{},faltas:0,atestados:0,dsr:0,semEscala:0,dsrExtra:0,totalOperacao:0};for(let i=0;i<dias;i++){const dD=new Date(anoAtual,mesAtualIndex,i+1);const eD=isDiaDSR(c.dsr,dD);const f=c.historicoDias[i]||"-";if(eD){r.dsr++;continue}if(f==="FALTA")r.faltas++;else if(f==="ATESTADO")r.atestados++;else if(f==="DSR_EXTRA")r.dsrExtra++;else if(f==="-"||!f)r.semEscala++;else{r.funcoes[f]=(r.funcoes[f]||0)+1;r.totalOperacao++}}return r}
+function calcularAcumuladoColab(c){
+  const dias=diaHoje;
+  const r={funcoes:{},faltas:0,atestados:0,dsr:0,semEscala:0,dsrExtra:0,ferias:0,afastamento:0,totalOperacao:0};
+  for(let i=0;i<dias;i++){
+    const dD=new Date(anoAtual,mesAtualIndex,i+1);
+    const eD=isDiaDSR(c.dsr,dD);
+    const f=c.historicoDias[i]||"-";
+    if(eD){r.dsr++;continue}
+    if(f==="FALTA")r.faltas++;
+    else if(f==="ATESTADO")r.atestados++;
+    else if(f==="FERIAS")r.ferias++;
+    else if(f==="AFASTAMENTO")r.afastamento++;
+    else if(f==="DSR_EXTRA")r.dsrExtra++;
+    else if(f==="-"||!f)r.semEscala++;
+    else{r.funcoes[f]=(r.funcoes[f]||0)+1;r.totalOperacao++}
+  }
+  return r;
+}
 
 function abrirRelatorioAcumulado(){
-const cont=document.getElementById('relatorio-conteudo');
-const sub=document.getElementById('relatorio-subtitulo');
-cont.innerHTML='';
-sub.innerText='Periodo: 01/'+String(mesAtualIndex+1).padStart(2,'0')+' a '+String(diaHoje).padStart(2,'0')+'/'+String(mesAtualIndex+1).padStart(2,'0')+' ('+diaHoje+' dias)';
-const todos=colaboradores.map(function(c){return{colab:c,resumo:calcularAcumuladoColab(c)}});
-const tg={operacao:0,faltas:0,atestados:0,dsr:0,semEscala:0,dsrExtra:0};
-const tp={};
-todos.forEach(function(x){tg.operacao+=x.resumo.totalOperacao;tg.faltas+=x.resumo.faltas;tg.atestados+=x.resumo.atestados;tg.dsr+=x.resumo.dsr;tg.semEscala+=x.resumo.semEscala;tg.dsrExtra+=x.resumo.dsrExtra;Object.keys(x.resumo.funcoes).forEach(function(f){tp[f]=(tp[f]||0)+x.resumo.funcoes[f]})});
-const totalColabs=colaboradores.length;
-const totalRegistros=tg.operacao+tg.faltas+tg.atestados+tg.dsr+tg.semEscala+tg.dsrExtra;
-const taxaOperacao=totalRegistros>0?((tg.operacao/totalRegistros)*100).toFixed(1):'0';
-const taxaFaltas=totalRegistros>0?((tg.faltas/totalRegistros)*100).toFixed(1):'0';
-const taxaAtestados=totalRegistros>0?((tg.atestados/totalRegistros)*100).toFixed(1):'0';
-const taxaDSR=totalRegistros>0?((tg.dsr/totalRegistros)*100).toFixed(1):'0';
-const taxaAbsenteismo=totalRegistros>0?(((tg.faltas+tg.atestados)/totalRegistros)*100).toFixed(1):'0';
-const mediaOpPorColab=totalColabs>0?(tg.operacao/totalColabs).toFixed(1):'0';
-const totalAusencias=tg.faltas+tg.atestados;
-const colabsComAusencia=todos.filter(function(x){return x.resumo.faltas>0||x.resumo.atestados>0}).length;
-const colabsSemAusencia=totalColabs-colabsComAusencia;
-const indiceAssiduidade=totalColabs>0?((colabsSemAusencia/totalColabs)*100).toFixed(1):'0';
-let h='';
-h+='<div class="mb-4"><h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4"></i> Indicadores de Performance</h3><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">';
-h+='<div class="card"><div class="text-[10px] uppercase text-emerald-400 font-bold mb-1">Taxa de Opera\u00e7\u00e3o</div><div class="text-2xl font-extrabold text-emerald-300">'+taxaOperacao+'%</div><div class="text-[10px] text-slate-500 mt-1">'+tg.operacao+' de '+totalRegistros+' registros</div></div>';
-h+='<div class="card"><div class="text-[10px] uppercase text-red-400 font-bold mb-1">Absente\u00edsmo</div><div class="text-2xl font-extrabold text-red-300">'+taxaAbsenteismo+'%</div><div class="text-[10px] text-slate-500 mt-1">'+totalAusencias+' aus\u00eancias totais</div></div>';
-h+='<div class="card"><div class="text-[10px] uppercase text-cyan-400 font-bold mb-1">Assiduidade</div><div class="text-2xl font-extrabold text-cyan-300">'+indiceAssiduidade+'%</div><div class="text-[10px] text-slate-500 mt-1">'+colabsSemAusencia+' de '+totalColabs+' sem aus\u00eancia</div></div>';
-h+='<div class="card"><div class="text-[10px] uppercase text-amber-400 font-bold mb-1">M\u00e9dia Op/Colab</div><div class="text-2xl font-extrabold text-amber-300">'+mediaOpPorColab+'</div><div class="text-[10px] text-slate-500 mt-1">dias trabalhados</div></div>';
-h+='<div class="card"><div class="text-[10px] uppercase text-yellow-400 font-bold mb-1">Taxa de Faltas</div><div class="text-2xl font-extrabold text-yellow-300">'+taxaFaltas+'%</div><div class="text-[10px] text-slate-500 mt-1">'+tg.faltas+' faltas</div></div>';
-h+='<div class="card"><div class="text-[10px] uppercase text-red-400 font-bold mb-1">Taxa de Atestados</div><div class="text-2xl font-extrabold text-red-300">'+taxaAtestados+'%</div><div class="text-[10px] text-slate-500 mt-1">'+tg.atestados+' atestados</div></div>';
-h+='<div class="card"><div class="text-[10px] uppercase text-orange-400 font-bold mb-1">Taxa de DSR</div><div class="text-2xl font-extrabold text-orange-300">'+taxaDSR+'%</div><div class="text-[10px] text-slate-500 mt-1">'+tg.dsr+' descansos</div></div>';
-h+='<div class="card"><div class="text-[10px] uppercase text-slate-400 font-bold mb-1">Total de Registros</div><div class="text-2xl font-extrabold text-slate-200">'+totalRegistros+'</div><div class="text-[10px] text-slate-500 mt-1">no per\u00edodo</div></div>';
-h+='</div></div>';
-h+='<div class="bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 mb-4"><h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2"><i data-lucide="pie-chart" class="w-4 h-4"></i> Totais Gerais</h3><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">';
-h+='<div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-emerald-400 font-bold">Opera\u00e7\u00e3o</div><div class="text-2xl font-extrabold text-emerald-300">'+tg.operacao+'</div></div>';
-h+='<div class="bg-slate-900 border border-yellow-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-yellow-400 font-bold">Faltas</div><div class="text-2xl font-extrabold text-yellow-300">'+tg.faltas+'</div></div>';
-h+='<div class="bg-slate-900 border border-red-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-red-400 font-bold">Atestados</div><div class="text-2xl font-extrabold text-red-300">'+tg.atestados+'</div></div>';
-h+='<div class="bg-slate-900 border border-orange-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-orange-400 font-bold">DSR</div><div class="text-2xl font-extrabold text-orange-300">'+tg.dsr+'</div></div>';
-h+='<div class="bg-slate-900 border border-cyan-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-cyan-400 font-bold">DSR Extra</div><div class="text-2xl font-extrabold text-cyan-300">'+tg.dsrExtra+'</div></div>';
-h+='<div class="bg-slate-900 border border-slate-700 rounded-xl p-3"><div class="text-[10px] uppercase text-slate-400 font-bold">Sem Escala</div><div class="text-2xl font-extrabold text-slate-300">'+tg.semEscala+'</div></div>';
-h+='</div></div>';
-const fo=Object.keys(tp).sort(function(a,b){return tp[b]-tp[a]});
-if(fo.length>0){h+='<div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 mb-4"><h3 class="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2"><i data-lucide="trophy" class="w-4 h-4"></i> Ranking de Fun\u00e7\u00f5es</h3><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">';fo.forEach(function(f,i){const pos=i+1;const cor=pos===1?'text-amber-400':pos===2?'text-slate-300':pos===3?'text-orange-400':'text-slate-500';h+='<div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-3 py-2"><div class="flex items-center gap-2 min-w-0"><span class="text-xs font-bold '+cor+' w-5">'+pos+'</span><span class="text-[11px] text-slate-300 truncate">'+f+'</span></div><span class="text-sm font-extrabold text-amber-400">'+tp[f]+'</span></div>'});h+='</div></div>'}
-h+='<div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4"><h3 class="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i> Detalhamento por Colaborador</h3><div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="bg-slate-950 border-b border-slate-800"><th class="text-left p-2 font-bold text-slate-300">Colaborador</th><th class="text-center p-2 font-bold text-emerald-400">Op.</th><th class="text-center p-2 font-bold text-yellow-400">Faltas</th><th class="text-center p-2 font-bold text-red-400">Atest.</th><th class="text-center p-2 font-bold text-orange-400">DSR</th><th class="text-center p-2 font-bold text-cyan-400">DSR+</th><th class="text-center p-2 font-bold text-slate-400">S/E</th><th class="text-center p-2 font-bold text-amber-400">%Op.</th><th class="text-left p-2 font-bold text-amber-400">Fun\u00e7\u00f5es</th></tr></thead><tbody>';
-todos.forEach(function(x){const totReg=x.resumo.totalOperacao+x.resumo.faltas+x.resumo.atestados+x.resumo.dsr+x.resumo.semEscala+x.resumo.dsrExtra;const taxaOp=totReg>0?((x.resumo.totalOperacao/totReg)*100).toFixed(0):'0';const ft=Object.keys(x.resumo.funcoes).sort(function(a,b){return x.resumo.funcoes[b]-x.resumo.funcoes[a]}).map(function(f){return f+' ('+x.resumo.funcoes[f]+')'}).join(' \u00b7 ')||'-';h+='<tr class="border-b border-slate-800/60"><td class="p-2 bg-slate-900 font-semibold text-slate-200 whitespace-nowrap"><div>'+x.colab.nome+'</div><div class="text-[10px] text-slate-500">'+x.colab.escala+' \u00b7 DSR: '+x.colab.dsr+'</div></td><td class="text-center p-2 text-emerald-300 font-bold">'+x.resumo.totalOperacao+'</td><td class="text-center p-2 text-yellow-300 font-bold">'+x.resumo.faltas+'</td><td class="text-center p-2 text-red-300 font-bold">'+x.resumo.atestados+'</td><td class="text-center p-2 text-orange-300 font-bold">'+x.resumo.dsr+'</td><td class="text-center p-2 text-cyan-300 font-bold">'+x.resumo.dsrExtra+'</td><td class="text-center p-2 text-slate-400 font-bold">'+x.resumo.semEscala+'</td><td class="text-center p-2 text-amber-400 font-bold">'+taxaOp+'%</td><td class="p-2 text-slate-400 text-[10px] max-w-md">'+ft+'</td></tr>'});
-h+='</tbody></table></div></div>';
-cont.innerHTML=h;
-document.getElementById('modal-relatorio-acumulado').classList.remove('hidden');
-lucide.createIcons();
+  const cont=document.getElementById('relatorio-conteudo');
+  const sub=document.getElementById('relatorio-subtitulo');
+  cont.innerHTML='';
+  sub.innerText='Periodo: 01/'+String(mesAtualIndex+1).padStart(2,'0')+' a '+String(diaHoje).padStart(2,'0')+'/'+String(mesAtualIndex+1).padStart(2,'0')+' ('+diaHoje+' dias)';
+  
+  const todos=colaboradores.map(function(c){return{colab:c,resumo:calcularAcumuladoColab(c)}});
+  const tg={operacao:0,faltas:0,atestados:0,dsr:0,semEscala:0,dsrExtra:0,ferias:0,afastamento:0};
+  const tp={};
+  
+  todos.forEach(function(x){
+    tg.operacao+=x.resumo.totalOperacao;
+    tg.faltas+=x.resumo.faltas;
+    tg.atestados+=x.resumo.atestados;
+    tg.dsr+=x.resumo.dsr;
+    tg.semEscala+=x.resumo.semEscala;
+    tg.dsrExtra+=x.resumo.dsrExtra;
+    tg.ferias+=x.resumo.ferias;
+    tg.afastamento+=x.resumo.afastamento;
+    Object.keys(x.resumo.funcoes).forEach(function(f){tp[f]=(tp[f]||0)+x.resumo.funcoes[f]});
+  });
+  
+  const totalColabs=colaboradores.length;
+  const totalRegistros=tg.operacao+tg.faltas+tg.atestados+tg.dsr+tg.semEscala+tg.dsrExtra+tg.ferias+tg.afastamento;
+  const taxaOperacao=totalRegistros>0?((tg.operacao/totalRegistros)*100).toFixed(1):'0';
+  const taxaFaltas=totalRegistros>0?((tg.faltas/totalRegistros)*100).toFixed(1):'0';
+  const taxaAtestados=totalRegistros>0?((tg.atestados/totalRegistros)*100).toFixed(1):'0';
+  const taxaDSR=totalRegistros>0?((tg.dsr/totalRegistros)*100).toFixed(1):'0';
+  const taxaAusencias=totalRegistros>0?(((tg.faltas+tg.atestados+tg.ferias+tg.afastamento)/totalRegistros)*100).toFixed(1):'0';
+  const mediaOpPorColab=totalColabs>0?(tg.operacao/totalColabs).toFixed(1):'0';
+  
+  let h='';
+  
+  h+='<div class="mb-4">';
+  h+='<h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4"></i> Indicadores de Performance</h3>';
+  h+='<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">';
+  h+='<div class="card"><div class="text-[10px] uppercase text-emerald-400 font-bold mb-1">Taxa de Opera\u00e7\u00e3o</div><div class="text-2xl font-extrabold text-emerald-300">'+taxaOperacao+'%</div><div class="text-[10px] text-slate-500 mt-1">'+tg.operacao+' de '+totalRegistros+' registros</div></div>';
+  h+='<div class="card"><div class="text-[10px] uppercase text-red-400 font-bold mb-1">Absente\u00edsmo Total</div><div class="text-2xl font-extrabold text-red-300">'+taxaAusencias+'%</div><div class="text-[10px] text-slate-500 mt-1">Faltas + Atest. + F\u00e9rias + Afast.</div></div>';
+  h+='<div class="card"><div class="text-[10px] uppercase text-amber-400 font-bold mb-1">M\u00e9dia Op/Colab</div><div class="text-2xl font-extrabold text-amber-300">'+mediaOpPorColab+'</div><div class="text-[10px] text-slate-500 mt-1">dias trabalhados</div></div>';
+  h+='<div class="card"><div class="text-[10px] uppercase text-slate-400 font-bold mb-1">Total de Registros</div><div class="text-2xl font-extrabold text-slate-200">'+totalRegistros+'</div><div class="text-[10px] text-slate-500 mt-1">no per\u00edodo</div></div>';
+  h+='</div></div>';
+  
+  h+='<div class="bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 mb-4"><h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2"><i data-lucide="pie-chart" class="w-4 h-4"></i> Totais Gerais</h3><div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">';
+  h+='<div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-emerald-400 font-bold">Opera\u00e7\u00e3o</div><div class="text-2xl font-extrabold text-emerald-300">'+tg.operacao+'</div></div>';
+  h+='<div class="bg-slate-900 border border-yellow-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-yellow-400 font-bold">Faltas</div><div class="text-2xl font-extrabold text-yellow-300">'+tg.faltas+'</div></div>';
+  h+='<div class="bg-slate-900 border border-red-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-red-400 font-bold">Atestados</div><div class="text-2xl font-extrabold text-red-300">'+tg.atestados+'</div></div>';
+  h+='<div class="bg-slate-900 border border-purple-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-purple-400 font-bold">F\u00e9rias</div><div class="text-2xl font-extrabold text-purple-300">'+tg.ferias+'</div></div>';
+  h+='<div class="bg-slate-900 border border-slate-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-slate-400 font-bold">Afastamento</div><div class="text-2xl font-extrabold text-slate-300">'+tg.afastamento+'</div></div>';
+  h+='<div class="bg-slate-900 border border-orange-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-orange-400 font-bold">DSR</div><div class="text-2xl font-extrabold text-orange-300">'+tg.dsr+'</div></div>';
+  h+='<div class="bg-slate-900 border border-cyan-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-cyan-400 font-bold">DSR Extra</div><div class="text-2xl font-extrabold text-cyan-300">'+tg.dsrExtra+'</div></div>';
+  h+='<div class="bg-slate-900 border border-slate-700 rounded-xl p-3"><div class="text-[10px] uppercase text-slate-400 font-bold">Sem Escala</div><div class="text-2xl font-extrabold text-slate-300">'+tg.semEscala+'</div></div>';
+  h+='</div></div>';
+  
+  const fo=Object.keys(tp).sort(function(a,b){return tp[b]-tp[a]});
+  if(fo.length>0){
+    h+='<div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 mb-4"><h3 class="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2"><i data-lucide="trophy" class="w-4 h-4"></i> Ranking de Fun\u00e7\u00f5es</h3>';
+    h+='<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">';
+    fo.forEach(function(f,i){
+      const pos=i+1;
+      const cor=pos===1?'text-amber-400':pos===2?'text-slate-300':pos===3?'text-orange-400':'text-slate-500';
+      h+='<div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-3 py-2"><div class="flex items-center gap-2 min-w-0"><span class="text-xs font-bold '+cor+' w-5">'+pos+'</span><span class="text-[11px] text-slate-300 truncate">'+f+'</span></div><span class="text-sm font-extrabold text-amber-400">'+tp[f]+'</span></div>';
+    });
+    h+='</div></div>';
+  }
+  
+  h+='<div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4"><h3 class="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i> Detalhamento por Colaborador</h3><div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="bg-slate-950 border-b border-slate-800"><th class="text-left p-2 font-bold text-slate-300">Colaborador</th><th class="text-center p-2 font-bold text-emerald-400">Op.</th><th class="text-center p-2 font-bold text-yellow-400">Faltas</th><th class="text-center p-2 font-bold text-red-400">Atest.</th><th class="text-center p-2 font-bold text-purple-400">F\u00e9rias</th><th class="text-center p-2 font-bold text-slate-400">Afast.</th><th class="text-center p-2 font-bold text-orange-400">DSR</th><th class="text-center p-2 font-bold text-cyan-400">DSR+</th><th class="text-center p-2 font-bold text-slate-400">S/E</th><th class="text-left p-2 font-bold text-amber-400">Fun\u00e7\u00f5es</th></tr></thead><tbody>';
+  todos.forEach(function(x){
+    const ft=Object.keys(x.resumo.funcoes).sort(function(a,b){return x.resumo.funcoes[b]-x.resumo.funcoes[a]}).map(function(f){return f+' ('+x.resumo.funcoes[f]+')'}).join(' \u00b7 ')||'-';
+    h+='<tr class="border-b border-slate-800/60"><td class="p-2 bg-slate-900 font-semibold text-slate-200 whitespace-nowrap"><div>'+x.colab.nome+'</div><div class="text-[10px] text-slate-500">'+x.colab.escala+' \u00b7 DSR: '+x.colab.dsr+'</div></td><td class="text-center p-2 text-emerald-300 font-bold">'+x.resumo.totalOperacao+'</td><td class="text-center p-2 text-yellow-300 font-bold">'+x.resumo.faltas+'</td><td class="text-center p-2 text-red-300 font-bold">'+x.resumo.atestados+'</td><td class="text-center p-2 text-purple-300 font-bold">'+x.resumo.ferias+'</td><td class="text-center p-2 text-slate-300 font-bold">'+x.resumo.afastamento+'</td><td class="text-center p-2 text-orange-300 font-bold">'+x.resumo.dsr+'</td><td class="text-center p-2 text-cyan-300 font-bold">'+x.resumo.dsrExtra+'</td><td class="text-center p-2 text-slate-400 font-bold">'+x.resumo.semEscala+'</td><td class="p-2 text-slate-400 text-[10px] max-w-md">'+ft+'</td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  
+  cont.innerHTML=h;
+  document.getElementById('modal-relatorio-acumulado').classList.remove('hidden');
+  lucide.createIcons();
 }
+
 function fecharRelatorioAcumulado(){document.getElementById('modal-relatorio-acumulado').classList.add('hidden')}
 function imprimirRelatorio(){const cont=document.getElementById('relatorio-conteudo').innerHTML;const sub=document.getElementById('relatorio-subtitulo').innerText;const p=[];p.push('<html><head><title>Relatorio LogiRotator</title><style>body{font-family:system-ui;padding:20px;background:#fff;color:#000}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:6px 8px;text-align:center}th{background:#f3f4f6}td:first-child,th:first-child{text-align:left}h1{font-size:18px}h3{font-size:14px;margin-top:14px}.card{border:1px solid #ddd;padding:10px;border-radius:6px;margin-bottom:8px}</style></head><body>');p.push('<h1>Relatorio Acumulado - HUB-LCE-04</h1><p>'+sub+'</p>');p.push(cont);p.push('</bo'+'dy></ht'+'ml>');const w=window.open('','_blank');w.document.write(p.join(''));w.document.close();setTimeout(function(){w.print()},400)}
 
