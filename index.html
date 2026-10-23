@@ -75,9 +75,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <button onclick="setFiltro('dsr')" id="menu-dsr" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span><span id="badge-dsr" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('faltas')" id="menu-faltas" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-400"></i> Faltas Hoje</span><span id="badge-faltas" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('atestados')" id="menu-atestados" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="stethoscope" class="w-4 h-4 text-red-400"></i> Atestados Hoje</span><span id="badge-atestados" class="badge badge-default">0</span></button>
-<button onclick="setFiltro('sem_escala')" id="menu-sem_escala" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="user-x" class="w-4 h-4 text-slate-400"></i> Sem Escala</span><span id="badge-sem_escala" class="badge badge-default">0</span></button>
 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-4 pb-1">A&#231;&#245;es</p>
-<button onclick="abrirModalAdd()" class="sidebar-item text-amber-400"><span class="flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar</span></button>
 <button onclick="document.getElementById('input-excel').click()" class="sidebar-item text-blue-400"><span class="flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Importar Excel</span><span class="badge badge-info">Sync</span></button>
 <button onclick="abrirModalDiaristasPedidos()" class="sidebar-item text-cyan-400"><span class="flex items-center gap-2"><i data-lucide="clipboard-list" class="w-4 h-4"></i> Diaristas Pedidos</span></button>
 <button onclick="abrirModalMatriz()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="grid" class="w-4 h-4 text-amber-400"></i> Grade Mensal</span></button>
@@ -139,9 +137,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <button onclick="setFiltro('dsr');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span><span id="badge-dsr-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('faltas');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-400"></i> Faltas Hoje</span><span id="badge-faltas-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('atestados');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="stethoscope" class="w-4 h-4 text-red-400"></i> Atestados Hoje</span><span id="badge-atestados-m" class="badge badge-default">0</span></button>
-<button onclick="setFiltro('sem_escala');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="user-x" class="w-4 h-4 text-slate-400"></i> Sem Escala</span><span id="badge-sem_escala-m" class="badge badge-default">0</span></button>
 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-4 pb-1">A&#231;&#245;es</p>
-<button onclick="abrirModalAdd();toggleSidebarMobile()" class="sidebar-item text-amber-400"><span class="flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar</span></button>
 <button onclick="document.getElementById('input-excel').click();toggleSidebarMobile()" class="sidebar-item text-blue-400"><span class="flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Importar Excel</span><span class="badge badge-info">Sync</span></button>
 <button onclick="abrirModalDiaristasPedidos();toggleSidebarMobile()" class="sidebar-item text-cyan-400"><span class="flex items-center gap-2"><i data-lucide="clipboard-list" class="w-4 h-4"></i> Diaristas Pedidos</span></button>
 <button onclick="abrirModalMatriz();toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="grid" class="w-4 h-4 text-amber-400"></i> Grade Mensal</span></button>
@@ -456,7 +452,6 @@ function criarListaPresentes(colsOperacao) {
   return bloco;
 }
 
-// 🔥 v14: lista geral com TODOS os colaboradores
 function criarListaGeral(cols) {
   const bloco = document.createElement('div');
   bloco.className = 'bg-amber-950/10 border-2 border-amber-500/40 rounded-2xl p-4 shadow-2xl';
@@ -469,7 +464,6 @@ function criarListaGeral(cols) {
     return bloco;
   }
   
-  // Agrupa por status para contagem
   const contagem = {operacao:0, dsr:0, falta:0, atestado:0, ferias:0, afastamento:0, sem_escala:0};
   cols.forEach(function(c){ const st = obterStatusHoje(c); if (contagem[st] !== undefined) contagem[st]++; });
   
@@ -496,7 +490,6 @@ function criarListaGeral(cols) {
       sem_escala: {tipo:'sem_escala', label:'Sem Escala', badge:'badge-default'}
     }[st] || {tipo:'sem_escala', label:'-', badge:'badge-default'};
     
-    // Status label dinâmico
     let statusLabel = statusInfo.label;
     if (st === 'operacao') {
       const s = contarDiasNaFuncaoAtual(c.historicoDias);
@@ -539,7 +532,7 @@ const detP=document.getElementById('kpi-presentes-detalhe');
 if(detP)detP.innerText=g.operacao.length+' escal. + '+dd.presentes+' diar.';
 const det=document.getElementById('kpi-operacao-detalhe');
 if(det)det.innerText=g.operacao.length+' escal. + '+dd.presentes+' diar.';
-const bg={'badge-todos':colaboradores.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td,'badge-sem_escala':g.sem_escala.length};
+const bg={'badge-todos':colaboradores.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
 Object.keys(bg).forEach(function(id){const el=document.getElementById(id);if(el)el.innerText=bg[id];const elM=document.getElementById(id+'-m');if(elM)elM.innerText=bg[id]});
 
 // MODO BUSCA
@@ -553,7 +546,7 @@ if(termo){
     afF.map(function(c){return{c:c,tipo:'afastamento'}}),
     seF.map(function(c){return{c:c,tipo:'sem_escala'}})
   );
-  const fM={'todos':null,'presentes':'operacao','operacao':'operacao','diaristas':null,'dsr':'dsr','faltas':'falta','atestados':'atestado','sem_escala':'sem_escala'};
+  const fM={'todos':null,'presentes':'operacao','operacao':'operacao','diaristas':null,'dsr':'dsr','faltas':'falta','atestados':'atestado'};
   const tp=fM[filtroAtivo];
   const filt=tp?m.filter(function(x){return x.tipo===tp}):m;
   if(filt.length===0){cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum resultado.</p>';lucide.createIcons();return}
@@ -562,20 +555,20 @@ if(termo){
   cont.appendChild(b);lucide.createIcons();return;
 }
 
-// 🔥 v14: MODO TODOS — LISTA GERAL (todos os logistas, sem agrupamento)
+// MODO TODOS — LISTA GERAL
 if(filtroAtivo==='todos'){
   const todosVisiveis = [].concat(oF, dF, fF, aF, feF, afF, seF);
   cont.appendChild(criarListaGeral(todosVisiveis));
   return;
 }
 
-// MODO PRESENTES — LISTA ÚNICA (escalados + diaristas)
+// MODO PRESENTES
 if(filtroAtivo==='presentes'){
   cont.appendChild(criarListaPresentes(oF));
   return;
 }
 
-// MODO OPERACAO — mostra TODOS os setores (zerados) — SEM "Outros"
+// MODO OPERACAO
 if(filtroAtivo==='operacao'){
   renderizarSetores(oF,cont,true);
   return;
@@ -587,7 +580,7 @@ if(filtroAtivo==='diaristas'){
   return;
 }
 
-// MODO DSR / FALTAS / ATESTADOS / SEM ESCALA
+// MODO DSR / FALTAS / ATESTADOS
 if(filtroAtivo==='dsr'){
   if(dF.length>0){const b=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length);if(b)cont.appendChild(b);}
   else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>';
@@ -603,16 +596,9 @@ if(filtroAtivo==='atestados'){
   else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum atestado.</p>';
   return;
 }
-if(filtroAtivo==='sem_escala'){
-  if(seF.length>0){const b=criarBloco('Sem Escala Hoje','colaboradores sem funcao hoje',seF,'slate','',seF.length);if(b)cont.appendChild(b);}
-  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum sem escala.</p>';
-  return;
-}
 lucide.createIcons();
 }
 
-// forcarTodos = true → mostra TODOS os setores (mesmo com 0).
-// NÃO cria "Outros" — colaboradores com função não mapeada não aparecem aqui.
 function renderizarSetores(cols,cont,forcarTodos){
   const setoresComColabs={};
   for(const setor of Object.keys(SETORES_E_FUNCOES)){
@@ -649,7 +635,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v14 (LOTE + match melhorado + modal resultado)
+// IMPORTAÇÃO DO EXCEL — v15
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
