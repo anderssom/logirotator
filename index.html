@@ -471,7 +471,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v2
+// IMPORTAÇÃO DO EXCEL — v3 (lê matriz bruta, detecta cabeçalho)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -513,27 +513,15 @@ function encontrarColaboradorPorNome(nomeLimpo){
 }
 
 function normalizarChaveData(chave) {
+  if (chave instanceof Date && !isNaN(chave)) {
+    return chave.getFullYear() + '-' +
+      String(chave.getMonth()+1).padStart(2,'0') + '-' +
+      String(chave.getDate()).padStart(2,'0');
+  }
   let m = String(chave).match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return m[1] + '-' + m[2] + '-' + m[3];
   m = String(chave).match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
   if (m) return m[3] + '-' + m[2] + '-' + m[1];
-  return null;
-}
-
-function extrairNomeDaLinha(row) {
-  const candidatos = [
-    "Nome do colaborador(a)", "Nome do colaborador", "Nome do Colaborador",
-    "Nome", "nome", "NOME", "Colaborador", "colaborador", "COLABORADOR",
-    "Nome Completo", "Funcionário", "Funcionario"
-  ];
-  for (const c of candidatos) {
-    if (row[c] && String(row[c]).trim()) return String(row[c]).trim();
-  }
-  for (const k of Object.keys(row)) {
-    if (/nome|colaborador/i.test(k) && row[k] && String(row[k]).trim()) {
-      return String(row[k]).trim();
-    }
-  }
   return null;
 }
 
@@ -587,30 +575,76 @@ async function processarExcel(event) {
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const excelData = XLSX.utils.sheet_to_json(worksheet, {
+
+      const matriz = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,
         defval: "",
         raw: false,
         dateNF: 'yyyy-mm-dd'
       });
 
-      // 🔍 DIAGNÓSTICO — remover depois
-      console.group('🔍 DIAGNÓSTICO EXCEL');
-      console.log('Total de linhas:', excelData.length);
-      if (excelData.length > 0) {
-        const primeira = excelData[0];
-        console.log('Chaves da 1ª linha:', Object.keys(primeira));
-        console.log('Primeira linha completa:', JSON.stringify(primeira, null, 2));
-        const nomeDetectado = extrairNomeDaLinha(primeira);
-        console.log('Nome detectado na 1ª linha:', nomeDetectado);
-        const chavesData = Object.keys(primeira).filter(function(k){
-          return /^\d{4}-\d{2}-\d{2}/.test(k) || /^\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(k);
-        });
-        console.log('Chaves que parecem data (' + chavesData.length + '):', chavesData);
+      // 🔍 DIAGNÓSTICO
+      console.group('🔍 DIAGNÓSTICO EXCEL v3');
+      console.log('Total de linhas (matriz):', matriz.length);
+      for (let i = 0; i < Math.min(6, matriz.length); i++) {
+        console.log('Linha ' + (i+1) + ':', matriz[i].slice(0, 45));
       }
       console.groupEnd();
 
-      if (excelData.length === 0) {
+      if (matriz.length === 0) {
         toast("A planilha está vazia.", 'warn');
+        return;
+      }
+
+      // 1) Encontrar linha de cabeçalho
+      let idxCabecalho = -1;
+      for (let i = 0; i < matriz.length; i++) {
+        const linha = matriz[i];
+        if (!Array.isArray(linha)) continue;
+        const temNome = linha.some(function(c){
+          return /nome|colaborador/i.test(String(c || ''));
+        });
+        if (temNome) { idxCabecalho = i; break; }
+      }
+
+      if (idxCabecalho === -1) {
+        console.error('❌ Cabeçalho não encontrado. Nenhuma linha contém "nome" ou "colaborador".');
+        toast('❌ Cabeçalho não encontrado na planilha. Veja o console.', 'erro');
+        return;
+      }
+
+      const cabecalho = matriz[idxCabecalho];
+      console.log('✅ Cabeçalho detectado na linha', idxCabecalho + 1, ':', cabecalho.slice(0, 45));
+
+      // 2) Mapear colunas: nome + datas
+      let colNome = -1;
+      const colunasData = {};
+
+      for (let c = 0; c < cabecalho.length; c++) {
+        const cel = cabecalho[c];
+        if (!cel) continue;
+        const celStr = String(cel).trim();
+
+        if (colNome === -1 && /nome|colaborador/i.test(celStr)) {
+          colNome = c;
+          continue;
+        }
+
+        const dataISO = normalizarChaveData(celStr);
+        if (dataISO) {
+          colunasData[c] = dataISO;
+        }
+      }
+
+      console.log('📌 Coluna do nome: índice', colNome, '(', cabecalho[colNome], ')');
+      console.log('📅 Colunas de data detectadas:', colunasData);
+
+      if (colNome === -1) {
+        toast('❌ Coluna do nome não encontrada. Veja o console.', 'erro');
+        return;
+      }
+      if (Object.keys(colunasData).length === 0) {
+        toast('❌ Nenhuma coluna de data detectada. Veja o console.', 'erro');
         return;
       }
 
@@ -621,10 +655,16 @@ async function processarExcel(event) {
       const statusDesconhecidos = {};
       const linhasSemNome = [];
 
-      for (let idxLinha = 0; idxLinha < excelData.length; idxLinha++) {
-        const row = excelData[idxLinha];
-        const nomeBruto = extrairNomeDaLinha(row);
-        if (!nomeBruto) { linhasSemNome.push(idxLinha + 2); continue; }
+      // 3) Processar linhas de dados
+      for (let i = idxCabecalho + 1; i < matriz.length; i++) {
+        const linha = matriz[i];
+        if (!Array.isArray(linha)) continue;
+
+        const nomeBruto = linha[colNome];
+        if (!nomeBruto || !String(nomeBruto).trim()) {
+          linhasSemNome.push(i + 1);
+          continue;
+        }
 
         const nomeLimpo = limparNomeExcel(nomeBruto);
         if (!nomeLimpo) continue;
@@ -634,11 +674,10 @@ async function processarExcel(event) {
 
         let processouAlgumaData = false;
 
-        for (const chave in row) {
-          const dataISO = normalizarChaveData(chave);
-          if (!dataISO) continue;
-
-          const valorCelula = String(row[chave]).trim().toUpperCase();
+        for (const colIdxStr in colunasData) {
+          const colIdx = parseInt(colIdxStr, 10);
+          const dataISO = colunasData[colIdxStr];
+          const valorCelula = String(linha[colIdx] || '').trim().toUpperCase();
           if (!valorCelula) { stats.ignorados++; continue; }
 
           const statusMapeado = MAPA_STATUS_EXCEL[valorCelula];
