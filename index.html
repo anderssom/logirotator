@@ -403,13 +403,63 @@ function cardColaborador(c,tipo){
     bf='<div class="text-[11px] text-slate-400 mt-1.5 flex flex-col gap-0.5"><span>Funcao:</span><div class="flex items-center justify-between gap-1"><strong class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate">'+status.funcao+'</strong><span class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-mono text-[10px]">'+dr+'</span></div></div>';
   }
   
-  // 🔥 v12: sem botão de excluir — só "Alt" e "Dias"
   return '<div class="bg-slate-900 border '+borda+' rounded-xl p-3.5 shadow transition"><div class="flex flex-col gap-2"><div><h3 class="text-xs sm:text-sm font-bold '+titulo+'">'+c.nome+'</h3><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div><div class="text-[10px] text-slate-400 mt-1">'+c.horario+'</div>'+badge+alerta+bf+'</div><div class="grid grid-cols-2 gap-1 pt-2 border-t border-slate-800/80"><button onclick="abrirModalEditar(\''+c.id+'\')" class="btn btn-outline btn-sm"><i data-lucide="edit-3" class="w-3 h-3"></i> Alt</button><button onclick="abrirHistorico(\''+c.id+'\')" class="btn btn-secondary btn-sm"><i data-lucide="calendar" class="w-3 h-3"></i> Dias</button></div></div></div>';
 }
 
 function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)return null;const bloco=document.createElement('div');const cls={orange:'bg-orange-950/20 border-orange-500/40',yellow:'bg-yellow-950/20 border-yellow-500/40',red:'bg-red-950/20 border-red-500/40',purple:'bg-purple-950/20 border-purple-500/40',slate:'bg-slate-900/60 border-slate-700'}[cor]||'bg-slate-900/60 border-slate-800';bloco.className=cls+' border rounded-2xl p-4 shadow-xl';const iconMap={orange:'text-orange-400',yellow:'text-yellow-400',red:'text-red-400',purple:'text-purple-400',slate:'text-slate-400'};const badgeMap={orange:'badge-orange',yellow:'badge-warning',red:'badge-danger',purple:'badge-purple',slate:'badge-default'};bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 '+(cor==='orange'?'border-orange-500/30':cor==='yellow'?'border-yellow-500/30':cor==='red'?'border-red-500/30':cor==='purple'?'border-purple-500/30':'border-slate-700/30')+'"><h2 class="text-sm font-bold flex items-center gap-2 '+(iconMap[cor]||'text-slate-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(badgeMap[cor]||'badge-default')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor)}).join('')+'</div>';return bloco}
 
 function criarBlocoDiaristas(){const d=getDiaristasDia();const total=d.presentes+d.faltantes;const pd=d.pedidos>0;const dif=d.presentes-d.pedidos;const exc=d.presentes>=d.pedidos&&d.pedidos>0;let status='';let cs='';if(d.pedidos===0){status='Defina o pedido';cs='text-slate-400'}else if(dif===0){status='Meta atendida';cs='text-emerald-400'}else if(dif>0){status=dif+' alem';cs='text-cyan-400'}else{status='Faltam '+Math.abs(dif)+' do pedido';cs='text-yellow-400'}const bloco=document.createElement('div');bloco.className='bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl';const clP=pd&&!exc?'bg-slate-900 border border-emerald-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';const clF=pd?'bg-slate-900 border border-red-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-cyan-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-cyan-400">Diaristas Hoje <span class="text-[10px] font-normal opacity-70">- quantidades por dia</span></h2><span class="badge badge-info">'+total+' registrado(s)</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl"><button onclick="abrirModalDiaristasPedidos()" class="text-left bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5 cursor-pointer active:scale-[0.98]"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-cyan-400 font-bold">Pedidos</span><i data-lucide="edit-3" class="w-4 h-4 text-cyan-400"></i></div><div class="text-3xl font-extrabold text-cyan-300">'+d.pedidos+'</div><div class="text-[10px] '+cs+' font-semibold mt-1">'+status+'</div></button><button onclick="'+(pd&&!exc?"abrirModalAddDiarista('presente')":'')+'" '+(pd&&!exc?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clP+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-emerald-400 font-bold">Presentes</span><i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i></div><div class="text-3xl font-extrabold text-emerald-300">'+d.presentes+'</div><div class="text-[10px] text-slate-500 mt-1">'+(pd?'de '+d.pedidos+' pedido(s)':'sem pedido')+' \u00b7 somam em <span class="text-emerald-400 font-bold">Opera\u00e7\u00e3o</span></div></button><button onclick="'+(pd?"abrirModalAddDiarista('faltou')":'')+'" '+(pd?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clF+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-red-400 font-bold">Faltaram</span><i data-lucide="edit-3" class="w-4 h-4 text-red-400"></i></div><div class="text-3xl font-extrabold text-red-300">'+d.faltantes+'</div><div class="text-[10px] text-slate-500 mt-1">Total: '+total+' \u00b7 somam em <span class="text-yellow-400 font-bold">Faltas</span></div></button></div>'+(pd?'':'<div class="mt-3 pt-3 border-t border-cyan-500/20 text-[11px] text-yellow-400">Defina primeiro a quantidade de diaristas pedidos.</div>');return bloco}
+
+// 🔥 v13: lista única de presentes (escalados em operação + diaristas)
+function criarListaPresentes(colsOperacao) {
+  const d = getDiaristasDia();
+  const bloco = document.createElement('div');
+  bloco.className = 'bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 shadow-xl';
+  
+  const totalPres = colsOperacao.length + d.presentes;
+  let h = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Presentes Hoje <span class="text-[10px] font-normal opacity-70">- lista única</span></h2><span class="badge badge-success">' + totalPres + ' presente(s)</span></div>';
+  
+  // Contadores resumidos
+  h += '<div class="grid grid-cols-2 gap-2 mb-3">';
+  h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-emerald-400 font-bold">Escalados</div><div class="text-xl font-extrabold text-emerald-300">' + colsOperacao.length + '</div></div>';
+  h += '<div class="bg-slate-900 border border-cyan-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-cyan-400 font-bold">Diaristas</div><div class="text-xl font-extrabold text-cyan-300">' + d.presentes + '</div></div>';
+  h += '</div>';
+  
+  if (totalPres === 0) {
+    h += '<p class="text-xs text-slate-500 italic py-4 text-center">Nenhum presente hoje.</p>';
+    bloco.innerHTML = h;
+    return bloco;
+  }
+  
+  // Lista única (colaboradores escalados + diaristas como itens virtuais)
+  h += '<div class="space-y-2">';
+  
+  // Colaboradores escalados em operação
+  colsOperacao.forEach(function(c) {
+    const status = contarDiasNaFuncaoAtual(c.historicoDias);
+    const funcao = status.funcao || '-';
+    h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
+    h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">' + c.nome + '</div>';
+    h += '<div class="text-[10px] text-slate-400 truncate">' + c.escala + ' \u00b7 DSR: ' + c.dsr + '</div>';
+    h += '<div class="text-[10px] text-amber-400 font-semibold mt-0.5">Fun\u00e7\u00e3o: <strong>' + funcao + '</strong></div></div>';
+    h += '<span class="badge badge-success shrink-0">Escalado</span>';
+    h += '</div>';
+  });
+  
+  // Diaristas (itens virtuais — quantidade, não nomes)
+  for (let i = 1; i <= d.presentes; i++) {
+    h += '<div class="bg-slate-900 border border-cyan-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
+    h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100">Diarista ' + i + '</div>';
+    h += '<div class="text-[10px] text-slate-400">Sem cadastro \u00b7 alocado por quantidade</div>';
+    h += '<div class="text-[10px] text-amber-400 font-semibold mt-0.5">Fun\u00e7\u00e3o: <strong>Diarista</strong></div></div>';
+    h += '<span class="badge badge-info shrink-0">Diarista</span>';
+    h += '</div>';
+  }
+  
+  h += '</div>';
+  bloco.innerHTML = h;
+  return bloco;
+}
 
 function renderizar(){
 const termo=normalizarTexto(document.getElementById('input-busca').value);
@@ -473,17 +523,15 @@ if(filtroAtivo==='todos'){
   return;
 }
 
-// MODO PRESENTES (em operação + diaristas presentes)
+// 🔥 v13: MODO PRESENTES — LISTA ÚNICA (escalados + diaristas)
 if(filtroAtivo==='presentes'){
-  renderizarSetores(oF,cont);
-  const blocoD=criarBlocoDiaristas();
-  if(blocoD)cont.appendChild(blocoD);
+  cont.appendChild(criarListaPresentes(oF));
   return;
 }
 
-// 🔥 v12: MODO OPERACAO — mostra TODOS os setores (mesmo zerados) com botão Adicionar
+// 🔥 v13: MODO OPERACAO — mostra TODOS os setores (zerados) — SEM "Outros"
 if(filtroAtivo==='operacao'){
-  renderizarSetores(oF,cont,true); // true = forçar todos os setores
+  renderizarSetores(oF,cont,true);
   return;
 }
 
@@ -517,7 +565,9 @@ if(filtroAtivo==='sem_escala'){
 lucide.createIcons();
 }
 
-// 🔥 v12: forcarTodos = true → mostra TODOS os setores (mesmo com 0)
+// 🔥 v13: forcarTodos = true → mostra TODOS os setores (mesmo com 0).
+// NÃO cria mais o setor "Outros" — colaboradores com função não mapeada
+// simplesmente não aparecem aqui (aparecem em "Sem Escala" ou "Presentes").
 function renderizarSetores(cols,cont,forcarTodos){
   const setoresComColabs={};
   for(const setor of Object.keys(SETORES_E_FUNCOES)){
@@ -525,16 +575,14 @@ function renderizarSetores(cols,cont,forcarTodos){
     const cs=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return funcs.includes(f)});
     if(cs.length>0||forcarTodos)setoresComColabs[setor]=cs;
   }
-  const setoresConhecidos=Object.values(SETORES_E_FUNCOES).flat();
-  const semSetor=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return f!=="-"&&!isStatusEspecial(f)&&!setoresConhecidos.includes(f)});
-  if(semSetor.length>0){setoresComColabs["Outros"]=semSetor;}
+  // 🔥 v13: NÃO adiciona "Outros" — quem tiver função não mapeada fica de fora dos setores
 
   for(const setor of Object.keys(setoresComColabs)){
     const cs=setoresComColabs[setor];
     const b=document.createElement('div');
     b.className='bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl';
     const esc=setor.replace(/'/g,"\\'");
-    b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400">'+setor+'</h2><div class="flex items-center gap-2"><span class="badge '+(cs.length>0?'badge-success':'badge-default')+'">'+cs.length+' operador(es)</span>'+(SETORES_E_FUNCOES[setor]?'<button onclick="abrirModalAlocar(\''+esc+'\')" class="btn btn-primary btn-sm"><i data-lucide="user-plus" class="w-3 h-3"></i> Adicionar</button>':'')+'</div></div>'+(cs.length===0?'<p class="text-xs text-slate-500 italic py-2">Nenhum operador alocado. Clique em <strong>Adicionar</strong> para alocar.</p>':'<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+cs.map(function(c){return cardColaborador(c,'operacao')}).join('')+'</div>');
+    b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400">'+setor+'</h2><div class="flex items-center gap-2"><span class="badge '+(cs.length>0?'badge-success':'badge-default')+'">'+cs.length+' operador(es)</span><button onclick="abrirModalAlocar(\''+esc+'\')" class="btn btn-primary btn-sm"><i data-lucide="user-plus" class="w-3 h-3"></i> Adicionar</button></div></div>'+(cs.length===0?'<p class="text-xs text-slate-500 italic py-2">Nenhum operador alocado. Clique em <strong>Adicionar</strong> para alocar.</p>':'<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+cs.map(function(c){return cardColaborador(c,'operacao')}).join('')+'</div>');
     cont.appendChild(b);
   }
 }
@@ -557,8 +605,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v12 (LOTE + match melhorado + modal resultado)
-// Não importa setor — só histórico. Setores ficam zerados no dia atual.
+// IMPORTAÇÃO DO EXCEL — v13 (LOTE + match melhorado + modal resultado)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -760,8 +807,6 @@ async function processarExcel(event) {
           if (statusFinal === "-") {
             datasParaDelete.push(dataISO);
           } else {
-            // 🔥 v12: importa só funcao="Recebimento" (não aloca setor automaticamente)
-            // O usuário aloca o setor manualmente na aba "Em Operação"
             let setor = "Recebimento";
             if (isStatusEspecial(statusFinal)) setor = "Status";
             registrosParaUpsert.push({
