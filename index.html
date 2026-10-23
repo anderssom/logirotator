@@ -277,9 +277,7 @@ const STATUS_ESPECIAIS=[
 ];
 function isStatusEspecial(v){return STATUS_ESPECIAIS.some(function(s){return s.valor===v})}
 
-// 🔥 v18: status vindo do Excel que significa "presente mas sem setor alocado"
 const FUNCAO_PRESENTE_EXCEL = "PRESENTE";
-// 🔥 v18: status vindo da importação (o app não conta na operação até ser alocado)
 function isFuncaoAlocada(v){
   if (!v || isStatusEspecial(v)) return false;
   if (v === FUNCAO_PRESENTE_EXCEL) return false; // presente do Excel, sem setor
@@ -308,7 +306,6 @@ const DIAS_SEMANA_MAP={"dom":0,"domingo":0,"seg":1,"segunda":1,"ter":2,"terca":2
 function isDiaDSR(dsrTexto,dataObj){if(!dsrTexto)return false;const d=dataObj.getDay();const dn=normalizarTexto(dsrTexto).replace(/feira/g,"").replace(/-/g," ");const dn2=dn.replace(/\s+/g," ").trim();const p=dn2.split(/,|\se\s/).map(function(x){return x.trim().replace(/\s+/g," ")}).filter(function(x){return x});for(let i=0;i<p.length;i++){const parte=p[i];if(DIAS_SEMANA_MAP[parte]===d)return true;const prim=parte.split(" ")[0];if(DIAS_SEMANA_MAP[prim]===d)return true;if(DIAS_SEMANA_MAP[prim.slice(0,3)]===d)return true}return false}
 function isColabEmDSRHoje(c){const dataHoje=new Date(anoAtual,mesAtualIndex,diaHoje);return isDiaDSR(c.dsr,dataHoje)}
 
-// 🔥 v18: status "operacao" para qualquer funcao que nao seja especial (incluindo "PRESENTE")
 function obterStatusHoje(c){
   if(isColabEmDSRHoje(c))return'dsr';
   const raw=c.historicoDias[diaHoje-1]||"-";
@@ -451,11 +448,20 @@ function criarListaPresentes(colsOperacao) {
   colsOperacao.forEach(function(c) {
     const status = contarDiasNaFuncaoAtual(c.historicoDias);
     const funcao = status.funcao || '-';
+    
+    // 🔥 Verifica se está realmente alocado em setor ou se é só "PRESENTE" do Excel
+    const alocadoSetor = isFuncaoAlocada(funcao);
+    
     h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
     h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">' + c.nome + '</div>';
     h += '<div class="text-[10px] text-slate-400 truncate">' + c.escala + ' \u00b7 DSR: ' + c.dsr + '</div>';
-    h += '<div class="text-[10px] text-amber-400 font-semibold mt-0.5">Fun\u00e7\u00e3o: <strong>' + funcao + '</strong></div></div>';
-    h += '<span class="badge badge-success shrink-0">Escalado</span>';
+    h += '<div class="text-[10px] ' + (alocadoSetor ? 'text-amber-400' : 'text-slate-500') + ' font-semibold mt-0.5">Fun\u00e7\u00e3o: <strong>' + (alocadoSetor ? funcao : 'Sem setor (Excel)') + '</strong></div></div>';
+    
+    if (alocadoSetor) {
+      h += '<span class="badge badge-success shrink-0">Escalado</span>';
+    } else {
+      h += '<span class="badge badge-default shrink-0">Presente</span>';
+    }
     h += '</div>';
   });
   
@@ -514,7 +520,7 @@ function criarListaGeral(cols) {
     let statusLabel = statusInfo.label;
     if (st === 'operacao') {
       const s = contarDiasNaFuncaoAtual(c.historicoDias);
-      statusLabel = s.funcao || 'Em Opera\u00e7\u00e3o';
+      statusLabel = isFuncaoAlocada(s.funcao) ? s.funcao : 'Presente (Sem Setor)';
     }
     
     h += '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2">';
@@ -624,6 +630,7 @@ function renderizarSetores(cols,cont,forcarTodos){
   const setoresComColabs={};
   for(const setor of Object.keys(SETORES_E_FUNCOES)){
     const funcs=SETORES_E_FUNCOES[setor];
+    // 🔥 v19: conta apenas funções REAIS do setor (não conta "PRESENTE" ou "Recebimento" genérico)
     const cs=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return funcs.includes(f)});
     if(cs.length>0||forcarTodos)setoresComColabs[setor]=cs;
   }
@@ -656,7 +663,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v18
+// IMPORTAÇÃO DO EXCEL — v19
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -850,7 +857,7 @@ async function processarExcel(event) {
           }
 
           let statusFinal = statusMapeado;
-          // 🔥 v18: PRESENTE (Excel) → "PRESENTE" (não conta em operação até alocar)
+          // 🔥 v19: PRESENTE (Excel) → "PRESENTE" (não conta em operação até alocar)
           if (statusFinal === "OPERACAO") statusFinal = FUNCAO_PRESENTE_EXCEL;
 
           const diaNum = parseInt(dataISO.split('-')[2], 10);
