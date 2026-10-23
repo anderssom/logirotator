@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
 <title>LogiRotator - HUB-LCE-04 Juazeiro do Norte</title>
 <meta name="theme-color" content="#09090b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -470,16 +471,10 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — CORRIGIDA
-// - Não altera cadastros (só historico_escala)
-// - Regex de ID mais precisa
-// - Fallback de match parcial
-// - Tratamento de erros e estatísticas
+// IMPORTAÇÃO DO EXCEL — v2
 // ============================================================
 
-// Mapeamento completo dos status Shopee → sistema
 const MAPA_STATUS_EXCEL = {
-  // Presenças (viram função "Recebimento" por padrão)
   "P":  "OPERACAO",
   "S1": "OPERACAO",
   "S2": "OPERACAO",
@@ -488,39 +483,28 @@ const MAPA_STATUS_EXCEL = {
   "FO": "OPERACAO",
   "LM": "OPERACAO",
   "XPT":"OPERACAO",
-  // DSR / folgas
   "DSR": "-",
   "BH":  "-",
   "NC":  "-",
   "DF":  "-",
-  // Faltas
   "F":  "FALTA",
   "FJ": "FALTA",
-  // Atestado
   "AM": "ATESTADO",
-  // Férias
   "FE": "FERIAS",
-  // Afastamento
   "AF": "AFASTAMENTO"
 };
 
-// Remove sufixos de ID conhecidos do final do nome (SPXBR12345, GN44833, etc.)
 function limparNomeExcel(nomeBruto){
   let s = String(nomeBruto).trim();
-  // Remove sufixos tipo " SPXBR44266", " GN44833", " SPX 123", " HUB-123"
   s = s.replace(/\s+(SPXBR|SPX|GN|HUB)[\s-]?\d+$/i, '');
-  // Fallback: remove qualquer bloco final de letras+números com 4+ dígitos
   s = s.replace(/\s+[A-Z]{2,}\d{4,}$/i, '');
   return s.trim();
 }
 
-// Encontra o colaborador no banco: match exato primeiro, depois parcial
 function encontrarColaboradorPorNome(nomeLimpo){
   const alvoNorm = normalizarTexto(nomeLimpo);
-  // 1) Match exato
   let c = colaboradores.find(function(x){ return normalizarTexto(x.nome) === alvoNorm; });
   if (c) return c;
-  // 2) Fallback: match parcial (contains) — evita perder cadastros com pequenas diferenças
   c = colaboradores.find(function(x){
     const n = normalizarTexto(x.nome);
     return n.includes(alvoNorm) || alvoNorm.includes(n);
@@ -528,9 +512,32 @@ function encontrarColaboradorPorNome(nomeLimpo){
   return c || null;
 }
 
-// Atualiza o histórico usando string de data YYYY-MM-DD. Retorna true se OK.
+function normalizarChaveData(chave) {
+  let m = String(chave).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = String(chave).match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+  return null;
+}
+
+function extrairNomeDaLinha(row) {
+  const candidatos = [
+    "Nome do colaborador(a)", "Nome do colaborador", "Nome do Colaborador",
+    "Nome", "nome", "NOME", "Colaborador", "colaborador", "COLABORADOR",
+    "Nome Completo", "Funcionário", "Funcionario"
+  ];
+  for (const c of candidatos) {
+    if (row[c] && String(row[c]).trim()) return String(row[c]).trim();
+  }
+  for (const k of Object.keys(row)) {
+    if (/nome|colaborador/i.test(k) && row[k] && String(row[k]).trim()) {
+      return String(row[k]).trim();
+    }
+  }
+  return null;
+}
+
 async function atualizarDiaSupabaseData(colabId, dataStr, funcao) {
-  // Valida formato da data
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
     console.warn('Data inválida ignorada:', dataStr);
     return false;
@@ -566,7 +573,6 @@ async function processarExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  // Confirma com o usuário antes de sobrescrever histórico
   if (!confirm(
     "Esta importação vai ATUALIZAR o histórico de presenças/faltas/atestados " +
     "dos colaboradores encontrados na planilha.\n\n" +
@@ -578,10 +584,30 @@ async function processarExcel(event) {
   reader.onload = async function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, {type: 'array'});
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const excelData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      const excelData = XLSX.utils.sheet_to_json(worksheet, {
+        defval: "",
+        raw: false,
+        dateNF: 'yyyy-mm-dd'
+      });
+
+      // 🔍 DIAGNÓSTICO — remover depois
+      console.group('🔍 DIAGNÓSTICO EXCEL');
+      console.log('Total de linhas:', excelData.length);
+      if (excelData.length > 0) {
+        const primeira = excelData[0];
+        console.log('Chaves da 1ª linha:', Object.keys(primeira));
+        console.log('Primeira linha completa:', JSON.stringify(primeira, null, 2));
+        const nomeDetectado = extrairNomeDaLinha(primeira);
+        console.log('Nome detectado na 1ª linha:', nomeDetectado);
+        const chavesData = Object.keys(primeira).filter(function(k){
+          return /^\d{4}-\d{2}-\d{2}/.test(k) || /^\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(k);
+        });
+        console.log('Chaves que parecem data (' + chavesData.length + '):', chavesData);
+      }
+      console.groupEnd();
 
       if (excelData.length === 0) {
         toast("A planilha está vazia.", 'warn');
@@ -590,28 +616,28 @@ async function processarExcel(event) {
 
       toast("Sincronizando presenças/faltas/atestados... Aguarde.", 'ok');
 
-      const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0 };
+      const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0, semData: 0 };
       const naoEncontrados = [];
       const statusDesconhecidos = {};
+      const linhasSemNome = [];
 
-      for (const row of excelData) {
-        // Tenta vários nomes de coluna possíveis para o nome do colaborador
-        const nomeBruto = row["Nome do colaborador(a)"] || row["Nome"] || row["nome"] || row["NOME"] || row["Colaborador"];
-        if (!nomeBruto) continue;
+      for (let idxLinha = 0; idxLinha < excelData.length; idxLinha++) {
+        const row = excelData[idxLinha];
+        const nomeBruto = extrairNomeDaLinha(row);
+        if (!nomeBruto) { linhasSemNome.push(idxLinha + 2); continue; }
 
         const nomeLimpo = limparNomeExcel(nomeBruto);
         if (!nomeLimpo) continue;
 
         const colab = encontrarColaboradorPorNome(nomeLimpo);
-        if (!colab) {
-          naoEncontrados.push(nomeLimpo);
-          continue;
-        }
+        if (!colab) { naoEncontrados.push(nomeLimpo); continue; }
 
-        // Varre colunas procurando datas no formato YYYY-MM-DD
+        let processouAlgumaData = false;
+
         for (const chave in row) {
-          if (!/^\d{4}-\d{2}-\d{2}/.test(chave)) continue;
-          const dataFormatada = chave.split(" ")[0];
+          const dataISO = normalizarChaveData(chave);
+          if (!dataISO) continue;
+
           const valorCelula = String(row[chave]).trim().toUpperCase();
           if (!valorCelula) { stats.ignorados++; continue; }
 
@@ -623,22 +649,24 @@ async function processarExcel(event) {
           }
 
           let statusFinal = statusMapeado;
-          // Presenças genéricas viram função "Recebimento" (ajuste se quiser outra)
           if (statusFinal === "OPERACAO") statusFinal = "Recebimento";
 
-          // Verifica se já existia registro naquele dia (para contar inserido vs atualizado)
-          const existente = colab.historicoDias[new Date(dataFormatada + "T12:00:00").getDate() - 1];
-          const ok = await atualizarDiaSupabaseData(colab.id, dataFormatada, statusFinal);
+          const diaNum = parseInt(dataISO.split('-')[2], 10);
+          const existente = colab.historicoDias[diaNum - 1];
+
+          const ok = await atualizarDiaSupabaseData(colab.id, dataISO, statusFinal);
           if (ok) {
             if (existente && existente !== "-") stats.atualizados++;
             else stats.inseridos++;
+            processouAlgumaData = true;
           } else {
             stats.erros++;
           }
         }
+
+        if (!processouAlgumaData) stats.semData++;
       }
 
-      // Monta mensagem final
       let msg = 'Sincronização concluída! ';
       msg += stats.inseridos + ' inserido(s), ';
       msg += stats.atualizados + ' atualizado(s)';
@@ -646,18 +674,19 @@ async function processarExcel(event) {
       if (stats.ignorados > 0) msg += ', ' + stats.ignorados + ' ignorado(s)';
       toast(msg, stats.erros > 0 ? 'warn' : 'ok');
 
-      // Log detalhado no console para o usuário investigar
       console.group('📊 Resultado da importação Excel');
       console.log('Stats:', stats);
+      if (linhasSemNome.length) {
+        console.warn('⚠️ Linhas SEM nome (' + linhasSemNome.length + '):', linhasSemNome);
+      }
       if (naoEncontrados.length) {
-        console.warn('⚠️ Colaboradores NÃO encontrados no banco (' + naoEncontrados.length + '):', naoEncontrados);
+        console.warn('⚠️ Colaboradores NÃO encontrados (' + naoEncontrados.length + '):', naoEncontrados);
       }
       if (Object.keys(statusDesconhecidos).length) {
-        console.warn('⚠️ Status desconhecidos na planilha:', statusDesconhecidos);
+        console.warn('⚠️ Status desconhecidos:', statusDesconhecidos);
       }
       console.groupEnd();
 
-      // Alerta visível se muitos não foram encontrados
       if (naoEncontrados.length > 0) {
         setTimeout(function(){
           toast('⚠️ ' + naoEncontrados.length + ' nome(s) não encontrado(s). Veja o console (F12).', 'warn');
