@@ -61,6 +61,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
 <div class="flex min-h-screen">
 
+<!-- SIDEBAR DESKTOP -->
 <aside id="sidebar-desktop" class="hidden lg:flex lg:flex-col w-64 bg-slate-900/70 border-r border-slate-800 backdrop-blur-sm sticky top-0 h-screen">
 <div class="p-4 border-b border-slate-800"><div class="flex items-center gap-2.5">
 <div class="bg-amber-500/10 p-2 rounded-xl border border-amber-500/30 text-amber-400"><i data-lucide="layers" class="w-5 h-5"></i></div>
@@ -69,11 +70,13 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-2 pb-1">Filtros</p>
 <button onclick="setFiltro('todos')" id="menu-todos" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4 text-amber-400"></i> Todos</span><span id="badge-todos" class="badge badge-default">0</span></button>
+<button onclick="setFiltro('presentes')" id="menu-presentes" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Presentes</span><span id="badge-presentes" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('operacao')" id="menu-operacao" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Em Opera&#231;&#227;o</span><span id="badge-operacao" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('diaristas')" id="menu-diaristas" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="hard-hat" class="w-4 h-4 text-cyan-400"></i> Diaristas</span><span id="badge-diaristas" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('dsr')" id="menu-dsr" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span><span id="badge-dsr" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('faltas')" id="menu-faltas" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-400"></i> Faltas Hoje</span><span id="badge-faltas" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('atestados')" id="menu-atestados" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="stethoscope" class="w-4 h-4 text-red-400"></i> Atestados Hoje</span><span id="badge-atestados" class="badge badge-default">0</span></button>
+<button onclick="setFiltro('sem_escala')" id="menu-sem_escala" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="user-x" class="w-4 h-4 text-slate-400"></i> Sem Escala</span><span id="badge-sem_escala" class="badge badge-default">0</span></button>
 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-4 pb-1">A&#231;&#245;es</p>
 <button onclick="abrirModalAdd()" class="sidebar-item text-amber-400"><span class="flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar</span></button>
 <button onclick="document.getElementById('input-excel').click()" class="sidebar-item text-blue-400"><span class="flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Importar Excel</span><span class="badge badge-info">Sync</span></button>
@@ -99,8 +102,9 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 </div>
 </header>
 
-<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
 <button onclick="setFiltro('todos')" class="text-left card hover:border-blue-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</span><h2 id="kpi-total" class="text-2xl font-extrabold text-slate-100 mt-0.5">0</h2></div><div class="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400"><i data-lucide="users" class="w-5 h-5"></i></div></button>
+<button onclick="setFiltro('presentes')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Presentes</span><h2 id="kpi-presentes" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-presentes-detalhe" class="text-[9px] text-slate-500">&mdash;</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="check-circle-2" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('operacao')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em Opera&#231;&#227;o</span><h2 id="kpi-operacao" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-operacao-detalhe" class="text-[9px] text-slate-500">&mdash;</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="activity" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('diaristas')" class="text-left card hover:border-cyan-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-cyan-400">Diaristas</span><h2 id="kpi-diaristas" class="text-2xl font-extrabold text-cyan-400 mt-0.5">0</h2></div><div class="bg-cyan-500/10 p-2.5 rounded-lg border border-cyan-500/20 text-cyan-400"><i data-lucide="hard-hat" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('dsr')" class="text-left card hover:border-orange-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Em DSR</span><h2 id="kpi-dsr" class="text-2xl font-extrabold text-orange-400 mt-0.5">0</h2></div><div class="bg-orange-500/10 p-2.5 rounded-lg border border-orange-500/20 text-orange-400"><i data-lucide="palmtree" class="w-5 h-5"></i></div></button>
@@ -130,11 +134,13 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-2 pb-1">Filtros</p>
 <button onclick="setFiltro('todos');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4 text-amber-400"></i> Todos</span><span id="badge-todos-m" class="badge badge-default">0</span></button>
+<button onclick="setFiltro('presentes');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Presentes</span><span id="badge-presentes-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('operacao');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Em Opera&#231;&#227;o</span><span id="badge-operacao-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('diaristas');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="hard-hat" class="w-4 h-4 text-cyan-400"></i> Diaristas</span><span id="badge-diaristas-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('dsr');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span><span id="badge-dsr-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('faltas');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-400"></i> Faltas Hoje</span><span id="badge-faltas-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('atestados');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="stethoscope" class="w-4 h-4 text-red-400"></i> Atestados Hoje</span><span id="badge-atestados-m" class="badge badge-default">0</span></button>
+<button onclick="setFiltro('sem_escala');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="user-x" class="w-4 h-4 text-slate-400"></i> Sem Escala</span><span id="badge-sem_escala-m" class="badge badge-default">0</span></button>
 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-4 pb-1">A&#231;&#245;es</p>
 <button onclick="abrirModalAdd();toggleSidebarMobile()" class="sidebar-item text-amber-400"><span class="flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i> Novo Auxiliar</span></button>
 <button onclick="document.getElementById('input-excel').click();toggleSidebarMobile()" class="sidebar-item text-blue-400"><span class="flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Importar Excel</span><span class="badge badge-info">Sync</span></button>
@@ -230,11 +236,10 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 </div>
 </div>
 
-<!-- MODAL DE RESULTADO DA IMPORTAÇÃO -->
 <div id="modal-resultado-import" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
 <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
 <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
-<h3 class="text-base font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Resultado da Importação</h3>
+<h3 class="text-base font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Resultado da Importa&#231;&#227;o</h3>
 <button onclick="fecharModalResultadoImport()" class="btn btn-ghost btn-icon-sm"><i data-lucide="x" class="w-4 h-4"></i></button>
 </div>
 <div id="resultado-import-conteudo" class="space-y-3"></div>
@@ -361,7 +366,7 @@ function salvarDiaristasQtd(){
 
 function toggleSidebarMobile(){const s=document.getElementById('sidebar-mobile');const o=document.getElementById('sidebar-mobile-overlay');const ab=!s.classList.contains('-translate-x-full');if(ab){s.classList.add('-translate-x-full');o.classList.add('hidden')}else{s.classList.remove('-translate-x-full');o.classList.remove('hidden')}}
 
-function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','operacao':'Em Opera\u00e7\u00e3o','diaristas':'Diaristas','dsr':'Em DSR Hoje','faltas':'Faltas Hoje','atestados':'Atestados Hoje'};const icons={'todos':'layout-grid','operacao':'users','diaristas':'hard-hat','dsr':'palmtree','faltas':'alert-triangle','atestados':'stethoscope'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+icons[f]+'" class="w-3.5 h-3.5"></i> '+labels[f];renderizar();lucide.createIcons()}
+function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','presentes':'Presentes','operacao':'Em Opera\u00e7\u00e3o','diaristas':'Diaristas','dsr':'Em DSR Hoje','faltas':'Faltas Hoje','atestados':'Atestados Hoje','sem_escala':'Sem Escala'};const icons={'todos':'layout-grid','presentes':'check-circle-2','operacao':'users','diaristas':'hard-hat','dsr':'palmtree','faltas':'alert-triangle','atestados':'stethoscope','sem_escala':'user-x'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+icons[f]+'" class="w-3.5 h-3.5"></i> '+labels[f];renderizar();lucide.createIcons()}
 
 async function init(){const txt='HUB-LCE-04 \u2022 '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';document.getElementById('label-mes-ano').innerText=txt;document.getElementById('label-mes-ano-sidebar').innerText=txt;try{const r=await supabaseClient.from('colaboradores').select('id').limit(1);if(r.error)alert("Erro Supabase: "+r.error.message)}catch(e){console.error(e)}popularSelectFuncoesPorSetor();await carregarDadosSupabase();setFiltro('todos');lucide.createIcons()}
 
@@ -385,6 +390,7 @@ function cardColaborador(c,tipo){
   else if(tipo==='atestado'){borda='border-red-500/40';titulo='text-red-200';badge='<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded font-extrabold">ATESTADO registrado</div>'}
   else if(tipo==='ferias'){borda='border-purple-500/40';titulo='text-purple-200';badge='<div class="mt-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[10px] px-2 py-0.5 rounded font-extrabold">F\u00e9rias</div>'}
   else if(tipo==='afastamento'){borda='border-slate-500/40';titulo='text-slate-300';badge='<div class="mt-1.5 bg-slate-500/10 border border-slate-500/30 text-slate-300 text-[10px] px-2 py-0.5 rounded font-extrabold">Afastamento Tempor\u00e1rio</div>'}
+  else if(tipo==='sem_escala'){borda='border-slate-700';titulo='text-slate-300';badge='<div class="mt-1.5 bg-slate-800/50 border border-slate-700 text-slate-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Sem fun\u00e7\u00e3o hoje (folga/DSR extra)</div>'}
   else if(tipo==='operacao'){if(emBloqueio)borda='border-orange-500/60';else if(emAlerta)borda='border-red-500/60'}
   
   let alerta='';
@@ -412,45 +418,130 @@ cont.innerHTML="";
 const g={operacao:[],dsr:[],falta:[],atestado:[],ferias:[],afastamento:[],sem_escala:[]};
 colaboradores.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c)});
 const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
-const oF=fl(g.operacao);const dF=fl(g.dsr);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);
+const oF=fl(g.operacao);const dF=fl(g.dsr);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const seF=fl(g.sem_escala);
 const dd=getDiaristasDia();
 const td=dd.presentes;
-const eo=g.operacao.length+dd.presentes;
+const totalPresentes=g.operacao.length+dd.presentes;
 document.getElementById('kpi-total').innerText=colaboradores.length;
-document.getElementById('kpi-operacao').innerText=eo;
+document.getElementById('kpi-presentes').innerText=totalPresentes;
+document.getElementById('kpi-operacao').innerText=g.operacao.length;
 document.getElementById('kpi-dsr').innerText=g.dsr.length;
 document.getElementById('kpi-faltas').innerText=g.falta.length+dd.faltantes;
 document.getElementById('kpi-atestados').innerText=g.atestado.length;
 document.getElementById('kpi-diaristas').innerText=td;
+const detP=document.getElementById('kpi-presentes-detalhe');
+if(detP)detP.innerText=g.operacao.length+' escal. + '+dd.presentes+' diar.';
 const det=document.getElementById('kpi-operacao-detalhe');
 if(det)det.innerText=g.operacao.length+' escal. + '+dd.presentes+' diar.';
-const bg={'badge-todos':colaboradores.length,'badge-operacao':eo,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
+const bg={'badge-todos':colaboradores.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td,'badge-sem_escala':g.sem_escala.length};
 Object.keys(bg).forEach(function(id){const el=document.getElementById(id);if(el)el.innerText=bg[id];const elM=document.getElementById(id+'-m');if(elM)elM.innerText=bg[id]});
-if(termo){const m=[].concat(dF.map(function(c){return{c:c,tipo:'dsr'}}),fF.map(function(c){return{c:c,tipo:'falta'}}),aF.map(function(c){return{c:c,tipo:'atestado'}}),feF.map(function(c){return{c:c,tipo:'ferias'}}),afF.map(function(c){return{c:c,tipo:'afastamento'}}),oF.map(function(c){return{c:c,tipo:'operacao'}}));const fM={'todos':null,'operacao':'operacao','diaristas':null,'dsr':'dsr','faltas':'falta','atestados':'atestado'};const tp=fM[filtroAtivo];const filt=tp?m.filter(function(x){return x.tipo===tp}):m;if(filt.length===0){cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum resultado.</p>';lucide.createIcons();return}const b=document.createElement('div');b.className='bg-amber-950/10 border-2 border-amber-500/40 rounded-2xl p-4 shadow-2xl';b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-500/30"><h2 class="text-sm font-bold text-amber-400">Resultados</h2><span class="badge badge-warning">'+filt.length+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+filt.map(function(x){return cardColaborador(x.c,x.tipo)}).join('')+'</div>';cont.appendChild(b);lucide.createIcons();return}
-const bd=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length+' em descanso');
-const bf=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);
-const ba=criarBloco('Atestados Hoje','ausencias justificadas',aF,'red','',aF.length);
-const bfe=criarBloco('F\u00e9rias','afastamento programado',feF,'purple','',feF.length);
-const baf=criarBloco('Afastamento Tempor\u00e1rio','afastamento temporario',afF,'slate','',afF.length);
 
+// MODO BUSCA
+if(termo){
+  const m=[].concat(
+    oF.map(function(c){return{c:c,tipo:'operacao'}}),
+    dF.map(function(c){return{c:c,tipo:'dsr'}}),
+    fF.map(function(c){return{c:c,tipo:'falta'}}),
+    aF.map(function(c){return{c:c,tipo:'atestado'}}),
+    feF.map(function(c){return{c:c,tipo:'ferias'}}),
+    afF.map(function(c){return{c:c,tipo:'afastamento'}}),
+    seF.map(function(c){return{c:c,tipo:'sem_escala'}})
+  );
+  const fM={'todos':null,'presentes':'operacao','operacao':'operacao','diaristas':null,'dsr':'dsr','faltas':'falta','atestados':'atestado','sem_escala':'sem_escala'};
+  const tp=fM[filtroAtivo];
+  const filt=tp?m.filter(function(x){return x.tipo===tp}):m;
+  if(filt.length===0){cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum resultado.</p>';lucide.createIcons();return}
+  const b=document.createElement('div');b.className='bg-amber-950/10 border-2 border-amber-500/40 rounded-2xl p-4 shadow-2xl';
+  b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-500/30"><h2 class="text-sm font-bold text-amber-400">Resultados</h2><span class="badge badge-warning">'+filt.length+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+filt.map(function(x){return cardColaborador(x.c,x.tipo)}).join('')+'</div>';
+  cont.appendChild(b);lucide.createIcons();return;
+}
+
+// MODO TODOS
 if(filtroAtivo==='todos'){
+  // Blocos de status especiais
+  const bd=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length+' em descanso');
+  const bf=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);
+  const ba=criarBloco('Atestados Hoje','ausencias justificadas',aF,'red','',aF.length);
+  const bfe=criarBloco('F\u00e9rias','afastamento programado',feF,'purple','',feF.length);
+  const baf=criarBloco('Afastamento Tempor\u00e1rio','afastamento temporario',afF,'slate','',afF.length);
   if(bd)cont.appendChild(bd);if(bf)cont.appendChild(bf);if(ba)cont.appendChild(ba);
   if(bfe)cont.appendChild(bfe);if(baf)cont.appendChild(baf);
-  renderizarSetores(oF,cont)
-} else if(filtroAtivo==='operacao'){
-  renderizarSetores(oF,cont)
-} else if(filtroAtivo==='diaristas'){
-  cont.appendChild(criarBlocoDiaristas())
-} else if(filtroAtivo==='dsr'){
-  if(bd)cont.appendChild(bd);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>'
-} else if(filtroAtivo==='faltas'){
-  if(bf)cont.appendChild(bf);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>'
-} else if(filtroAtivo==='atestados'){
-  if(ba)cont.appendChild(ba);else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum atestado.</p>'
+  // Setores com operação
+  renderizarSetores(oF,cont);
+  // Sem escala (para não sumirem)
+  if(seF.length>0){
+    const bse=criarBloco('Sem Escala Hoje','colaboradores sem funcao hoje',seF,'slate','',seF.length);
+    if(bse)cont.appendChild(bse);
+  }
+  return;
 }
-lucide.createIcons()}
 
-function renderizarSetores(cols,cont){for(const setor of Object.keys(SETORES_E_FUNCOES)){const funcs=SETORES_E_FUNCOES[setor];const cs=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return funcs.includes(f)});const b=document.createElement('div');b.className='bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl';const esc=setor.replace(/'/g,"\\'");b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400">'+setor+'</h2><div class="flex items-center gap-2"><span class="badge badge-default">'+cs.length+' operador(es)</span><button onclick="abrirModalAlocar(\''+esc+'\')" class="btn btn-primary btn-sm"><i data-lucide="user-plus" class="w-3 h-3"></i> Adicionar</button></div></div>'+(cs.length===0?'<p class="text-xs text-slate-500 italic py-2">Nenhum auxiliar neste setor hoje.</p>':'<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+cs.map(function(c){return cardColaborador(c,'operacao')}).join('')+'</div>');cont.appendChild(b)}}
+// MODO PRESENTES (em operação + diaristas presentes)
+if(filtroAtivo==='presentes'){
+  renderizarSetores(oF,cont);
+  const blocoD=criarBlocoDiaristas();
+  if(blocoD)cont.appendChild(blocoD);
+  return;
+}
+
+// MODO OPERACAO (só setores)
+if(filtroAtivo==='operacao'){
+  renderizarSetores(oF,cont);
+  return;
+}
+
+// MODO DIARISTAS
+if(filtroAtivo==='diaristas'){
+  cont.appendChild(criarBlocoDiaristas());
+  return;
+}
+
+// MODO DSR / FALTAS / ATESTADOS / SEM ESCALA
+if(filtroAtivo==='dsr'){
+  if(dF.length>0){const b=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length);if(b)cont.appendChild(b);}
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>';
+  return;
+}
+if(filtroAtivo==='faltas'){
+  if(fF.length>0){const b=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);if(b)cont.appendChild(b);}
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>';
+  return;
+}
+if(filtroAtivo==='atestados'){
+  if(aF.length>0){const b=criarBloco('Atestados Hoje','ausencias justificadas',aF,'red','',aF.length);if(b)cont.appendChild(b);}
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum atestado.</p>';
+  return;
+}
+if(filtroAtivo==='sem_escala'){
+  if(seF.length>0){const b=criarBloco('Sem Escala Hoje','colaboradores sem funcao hoje',seF,'slate','',seF.length);if(b)cont.appendChild(b);}
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum sem escala.</p>';
+  return;
+}
+lucide.createIcons();
+}
+
+function renderizarSetores(cols,cont){
+  // Agrupa colaboradores em operação por setor
+  const setoresComColabs={};
+  for(const setor of Object.keys(SETORES_E_FUNCOES)){
+    const funcs=SETORES_E_FUNCOES[setor];
+    const cs=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return funcs.includes(f)});
+    if(cs.length>0)setoresComColabs[setor]=cs;
+  }
+  // Colaboradores em operação que não caíram em nenhum setor (função não mapeada)
+  const setoresConhecidos=Object.values(SETORES_E_FUNCOES).flat();
+  const semSetor=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return f!=="-"&&!isStatusEspecial(f)&&!setoresConhecidos.includes(f)});
+  if(semSetor.length>0){setoresComColabs["Outros"]=semSetor;}
+
+  for(const setor of Object.keys(setoresComColabs)){
+    const cs=setoresComColabs[setor];
+    const b=document.createElement('div');
+    b.className='bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl';
+    const esc=setor.replace(/'/g,"\\'");
+    b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400">'+setor+'</h2><div class="flex items-center gap-2"><span class="badge badge-default">'+cs.length+' operador(es)</span>'+(SETORES_E_FUNCOES[setor]?'<button onclick="abrirModalAlocar(\''+esc+'\')" class="btn btn-primary btn-sm"><i data-lucide="user-plus" class="w-3 h-3"></i> Adicionar</button>':'')+'</div></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+cs.map(function(c){return cardColaborador(c,'operacao')}).join('')+'</div>';
+    cont.appendChild(b);
+  }
+}
 function abrirModalAdd(){document.getElementById('edit-id').value='';document.getElementById('modal-titulo').innerHTML='Adicionar Auxiliar';document.getElementById('input-nome-colab').value='';document.getElementById('select-escala').value='6x1';document.getElementById('select-dsr').value='Domingo';document.getElementById('input-horario').value='08:00 - 17:00';document.getElementById('campos-add-extras').classList.remove('hidden');popularSelectFuncoesPorSetor();document.getElementById('modal-add').classList.remove('hidden');lucide.createIcons()}
 function abrirModalEditar(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('edit-id').value=c.id;document.getElementById('modal-titulo').innerHTML='Alterar Auxiliar';document.getElementById('input-nome-colab').value=c.nome;document.getElementById('campos-add-extras').classList.add('hidden');const f=c.historicoDias[diaHoje-1]||"-";popularSelectFuncoesPorSetor(f);document.getElementById('modal-add').classList.remove('hidden');lucide.createIcons()}
 function fecharModalAdd(){document.getElementById('modal-add').classList.add('hidden')}
@@ -484,7 +575,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v10 (LOTE + match melhorado + modal resultado)
+// IMPORTAÇÃO DO EXCEL — v11 (LOTE + match melhorado + modal resultado)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -514,21 +605,17 @@ function limparNomeExcel(nomeBruto){
   return s.trim();
 }
 
-// Match melhorado: exato → sem espaços → por palavras → fallback
 function encontrarColaboradorPorNome(nomeLimpo){
   const alvoNorm = normalizarTexto(nomeLimpo);
   const alvoSemEspaco = alvoNorm.replace(/\s+/g, '');
   const palavrasAlvo = alvoNorm.split(' ').filter(p => p.length > 2);
 
-  // 1) Match exato
   let c = colaboradores.find(x => normalizarTexto(x.nome) === alvoNorm);
   if (c) return c;
 
-  // 2) Match SEM espaços (resolve "IURECOSTA" vs "IURE COSTA")
   c = colaboradores.find(x => normalizarTexto(x.nome).replace(/\s+/g, '') === alvoSemEspaco);
   if (c) return c;
 
-  // 3) Match por palavras (pelo menos 2 palavras do alvo no nome do banco)
   c = colaboradores.find(x => {
     const palavrasBanco = normalizarTexto(x.nome).split(' ').filter(p => p.length > 2);
     const comuns = palavrasAlvo.filter(p => palavrasBanco.includes(p));
@@ -536,7 +623,6 @@ function encontrarColaboradorPorNome(nomeLimpo){
   });
   if (c) return c;
 
-  // 4) Fallback original (includes)
   c = colaboradores.find(x => {
     const n = normalizarTexto(x.nome);
     return n.includes(alvoNorm) || alvoNorm.includes(n);
@@ -619,7 +705,6 @@ async function processarExcel(event) {
 
       if (matriz.length === 0) { toast("A planilha está vazia.", 'warn'); return; }
 
-      // 1) Cabeçalho
       let idxCabecalho = -1;
       for (let i = 0; i < matriz.length; i++) {
         const linha = matriz[i];
@@ -628,10 +713,7 @@ async function processarExcel(event) {
           idxCabecalho = i; break;
         }
       }
-      if (idxCabecalho === -1) {
-        toast('❌ Cabeçalho não encontrado na planilha.', 'erro');
-        return;
-      }
+      if (idxCabecalho === -1) { toast('❌ Cabeçalho não encontrado na planilha.', 'erro'); return; }
 
       const cabecalho = matriz[idxCabecalho];
       let colNome = -1;
@@ -667,10 +749,7 @@ async function processarExcel(event) {
         if (!nomeLimpo) continue;
 
         const colab = encontrarColaboradorPorNome(nomeLimpo);
-        if (!colab) {
-          naoEncontrados.push(nomeLimpo);
-          continue;
-        }
+        if (!colab) { naoEncontrados.push(nomeLimpo); continue; }
 
         const registrosParaUpsert = [];
         const datasParaDelete = [];
@@ -715,30 +794,21 @@ async function processarExcel(event) {
           }
         }
 
-        // UPSERT EM LOTE
         if (registrosParaUpsert.length > 0) {
           const r = await supabaseClient.from('historico_escala').upsert(
-            registrosParaUpsert,
-            { onConflict: 'colaborador_id,data' }
+            registrosParaUpsert, { onConflict: 'colaborador_id,data' }
           );
-          if (r.error) {
-            console.error('Upsert lote erro:', r.error);
-            stats.erros += registrosParaUpsert.length;
-          }
+          if (r.error) { console.error('Upsert lote erro:', r.error); stats.erros += registrosParaUpsert.length; }
         }
 
-        // DELETE EM LOTE
         if (datasParaDelete.length > 0) {
           const rDel = await supabaseClient.from('historico_escala')
-            .delete()
-            .eq('colaborador_id', colab.id)
-            .in('data', datasParaDelete);
+            .delete().eq('colaborador_id', colab.id).in('data', datasParaDelete);
           if (rDel.error) console.error('Delete lote erro:', rDel.error);
         }
       }
 
       renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos);
-
       await carregarDadosSupabase();
       renderizar();
 
