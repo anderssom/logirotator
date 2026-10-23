@@ -469,128 +469,212 @@ function abrirModalMatriz(){document.getElementById('titulo-matriz-mes').innerHT
 function renderizarMatriz(){const t=normalizarTexto(document.getElementById('matriz-busca').value||'');const tab=document.getElementById('tabela-matriz-unica');const cont=document.getElementById('matriz-busca-contador');tab.innerHTML='';const cf=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome,c.escala,c.dsr)});if(cont)cont.innerText=t?cf.length+' de '+colaboradores.length:colaboradores.length+' cols';const dP=[];const dF=[];for(let d=1;d<=totalDiasDoMes;d++){if(d<diaHoje)dP.push(d);else if(d>diaHoje)dF.push(d)}const dO=[].concat(dP,[diaHoje],dF);let th='<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador</th>';dO.forEach(function(d){const eH=d===diaHoje;const eP=d<diaHoje;let c='p-2 text-center font-semibold min-w-[120px] text-[10px] ';if(eH)c+='text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500';else if(eP)c+='text-slate-400 border-l border-slate-800/50 bg-slate-950/40';else c+='text-slate-200 border-l border-slate-800/50';th+='<th class="'+c+'">'+(eH?'HOJE - ':'')+'Dia '+d+'</th>'});th+='</tr></thead>';if(cf.length===0){tab.innerHTML=th+'<tbody><tr><td colspan="'+(dO.length+1)+'" class="text-center text-slate-500 italic py-8">Nenhum.</td></tr></tbody>';return}let tb='<tbody>';cf.forEach(function(c){tb+='<tr class="border-b border-slate-800/60"><td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]"><div class="text-xs font-bold text-slate-200">'+c.nome+'</div><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div></td>';dO.forEach(function(d){const iD=d-1;const fD=c.historicoDias[iD]||"-";const eH=d===diaHoje;const eP=d<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,d);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===fD?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===fD?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}let tc='p-1 text-center ';if(eH)tc+='bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40';else if(eD)tc+='bg-orange-950/20';else if(eP)tc+='bg-slate-950/60';tb+='<td class="'+tc+'"><select '+(bl?'disabled':'')+' onchange="tentarAlterarDia(\''+c.id+'\', '+iD+', this)" class="w-full text-[10px] rounded p-1 '+(bl?'opacity-40 bg-slate-950 border-slate-800 text-slate-500':'bg-slate-950 border-slate-700 text-slate-200')+' border">'+op+'</select></td>'});tb+='</tr>'});tb+='</tbody>';tab.innerHTML=th+tb}
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
-// --- FUNÇÃO DE IMPORTAÇÃO DO EXCEL CORRIGIDA ---
-async function processarExcel(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+// ============================================================
+// IMPORTAÇÃO DO EXCEL — CORRIGIDA
+// - Não altera cadastros (só historico_escala)
+// - Regex de ID mais precisa
+// - Fallback de match parcial
+// - Tratamento de erros e estatísticas
+// ============================================================
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            
-            // Pega a primeira aba (Controle-Outubro)
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            
-            // Converte para JSON
-            const excelData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-            
-            if (excelData.length === 0) {
-                toast("A planilha está vazia.", 'warn');
-                return;
-            }
+// Mapeamento completo dos status Shopee → sistema
+const MAPA_STATUS_EXCEL = {
+  // Presenças (viram função "Recebimento" por padrão)
+  "P":  "OPERACAO",
+  "S1": "OPERACAO",
+  "S2": "OPERACAO",
+  "TD": "OPERACAO",
+  "SU": "OPERACAO",
+  "FO": "OPERACAO",
+  "LM": "OPERACAO",
+  "XPT":"OPERACAO",
+  // DSR / folgas
+  "DSR": "-",
+  "BH":  "-",
+  "NC":  "-",
+  "DF":  "-",
+  // Faltas
+  "F":  "FALTA",
+  "FJ": "FALTA",
+  // Atestado
+  "AM": "ATESTADO",
+  // Férias
+  "FE": "FERIAS",
+  // Afastamento
+  "AF": "AFASTAMENTO"
+};
 
-            // Mapeamento de status da Shopee para o sistema
-            const mapaStatus = {
-                "P": "OPERACAO",
-                "DSR": "-",
-                "F": "FALTA",
-                "FJ": "FALTA",
-                "AM": "ATESTADO",
-                "AF": "AFASTAMENTO",
-                "FE": "FERIAS",
-                "BH": "-", // Banco de horas/folga
-                "S1": "OPERACAO",
-                "S2": "OPERACAO",
-                "TD": "OPERACAO",
-                "SU": "OPERACAO",
-                "FO": "OPERACAO",
-                "NC": "-",
-                "DF": "-"
-            };
-
-            toast("Sincronizando presenças e faltas... Aguarde.", 'ok');
-            let atualizados = 0;
-
-            // Itera sobre cada linha do Excel
-            for (const row of excelData) {
-                let nomeBruto = row["Nome do colaborador(a)"] || row["Nome"] || row["nome"];
-                if (!nomeBruto) continue;
-
-                // Remove o ID do final (ex: " SPXBR44266") para bater com o nome no banco
-                let nomeLimpo = String(nomeBruto).replace(/\s+[A-Z0-9]+$/g, '').trim();
-                const nomeNorm = normalizarTexto(nomeLimpo);
-
-                // Busca o colaborador no banco atual
-                const colab = colaboradores.find(c => normalizarTexto(c.nome) === nomeNorm);
-                
-                if (!colab) {
-                    console.warn("Colaborador não encontrado:", nomeLimpo);
-                    continue; 
-                }
-
-                // Varre as colunas em busca de datas (YYYY-MM-DD)
-                for (const chave in row) {
-                    if (/^\d{4}-\d{2}-\d{2}/.test(chave)) {
-                        const dataFormatada = chave.split(" ")[0]; // Pega só o YYYY-MM-DD
-                        const valorCelula = String(row[chave]).trim().toUpperCase();
-                        
-                        if (mapaStatus[valorCelula] !== undefined) {
-                            let statusFinal = mapaStatus[valorCelula];
-                            
-                            // Se for presença (P), define a função padrão. 
-                            // Altere "Recebimento" se quiser que caia em outro setor.
-                            if (statusFinal === "OPERACAO") {
-                                statusFinal = "Recebimento"; 
-                            }
-
-                            await atualizarDiaSupabaseData(colab.id, dataFormatada, statusFinal);
-                            atualizados++;
-                        }
-                    }
-                }
-            }
-
-            toast(`Sincronização concluída! ${atualizados} registros atualizados.`, 'ok');
-            await carregarDadosSupabase();
-            renderizar();
-
-        } catch (err) {
-            console.error(err);
-            toast("Erro ao ler planilha: " + err.message, 'erro');
-        } finally {
-            event.target.value = ''; // Limpa input
-        }
-    };
-    reader.readAsArrayBuffer(file);
+// Remove sufixos de ID conhecidos do final do nome (SPXBR12345, GN44833, etc.)
+function limparNomeExcel(nomeBruto){
+  let s = String(nomeBruto).trim();
+  // Remove sufixos tipo " SPXBR44266", " GN44833", " SPX 123", " HUB-123"
+  s = s.replace(/\s+(SPXBR|SPX|GN|HUB)[\s-]?\d+$/i, '');
+  // Fallback: remove qualquer bloco final de letras+números com 4+ dígitos
+  s = s.replace(/\s+[A-Z]{2,}\d{4,}$/i, '');
+  return s.trim();
 }
 
-// Função auxiliar para atualizar usando a string de data exata (YYYY-MM-DD)
+// Encontra o colaborador no banco: match exato primeiro, depois parcial
+function encontrarColaboradorPorNome(nomeLimpo){
+  const alvoNorm = normalizarTexto(nomeLimpo);
+  // 1) Match exato
+  let c = colaboradores.find(function(x){ return normalizarTexto(x.nome) === alvoNorm; });
+  if (c) return c;
+  // 2) Fallback: match parcial (contains) — evita perder cadastros com pequenas diferenças
+  c = colaboradores.find(function(x){
+    const n = normalizarTexto(x.nome);
+    return n.includes(alvoNorm) || alvoNorm.includes(n);
+  });
+  return c || null;
+}
+
+// Atualiza o histórico usando string de data YYYY-MM-DD. Retorna true se OK.
 async function atualizarDiaSupabaseData(colabId, dataStr, funcao) {
+  // Valida formato da data
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
+    console.warn('Data inválida ignorada:', dataStr);
+    return false;
+  }
+  try {
     if (funcao === "-") {
-        await supabaseClient.from('historico_escala').delete().eq('colaborador_id', colabId).eq('data', dataStr);
-        return;
+      const r = await supabaseClient.from('historico_escala')
+        .delete().eq('colaborador_id', colabId).eq('data', dataStr);
+      return !r.error;
     }
-    
     let setor = "Status";
     if (!isStatusEspecial(funcao)) {
-        setor = "Recebimento";
-        for (const s of Object.keys(SETORES_E_FUNCOES)) {
-            if (SETORES_E_FUNCOES[s].includes(funcao)) {
-                setor = s;
-                break;
-            }
-        }
+      setor = "Recebimento";
+      for (const s of Object.keys(SETORES_E_FUNCOES)) {
+        if (SETORES_E_FUNCOES[s].includes(funcao)) { setor = s; break; }
+      }
     }
-    
-    await supabaseClient.from('historico_escala').upsert({
-        colaborador_id: colabId,
-        data: dataStr,
-        setor: setor,
-        funcao: funcao
+    const r = await supabaseClient.from('historico_escala').upsert({
+      colaborador_id: colabId,
+      data: dataStr,
+      setor: setor,
+      funcao: funcao
     }, { onConflict: 'colaborador_id,data' });
+    if (r.error) { console.error('Upsert erro:', r.error); return false; }
+    return true;
+  } catch (e) {
+    console.error('Exceção ao atualizar dia:', e);
+    return false;
+  }
+}
+
+async function processarExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Confirma com o usuário antes de sobrescrever histórico
+  if (!confirm(
+    "Esta importação vai ATUALIZAR o histórico de presenças/faltas/atestados " +
+    "dos colaboradores encontrados na planilha.\n\n" +
+    "Os CADASTROS (nome, escala, DSR, horário) NÃO serão alterados.\n\n" +
+    "Deseja continuar?"
+  )) { event.target.value = ''; return; }
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const excelData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+      if (excelData.length === 0) {
+        toast("A planilha está vazia.", 'warn');
+        return;
+      }
+
+      toast("Sincronizando presenças/faltas/atestados... Aguarde.", 'ok');
+
+      const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0 };
+      const naoEncontrados = [];
+      const statusDesconhecidos = {};
+
+      for (const row of excelData) {
+        // Tenta vários nomes de coluna possíveis para o nome do colaborador
+        const nomeBruto = row["Nome do colaborador(a)"] || row["Nome"] || row["nome"] || row["NOME"] || row["Colaborador"];
+        if (!nomeBruto) continue;
+
+        const nomeLimpo = limparNomeExcel(nomeBruto);
+        if (!nomeLimpo) continue;
+
+        const colab = encontrarColaboradorPorNome(nomeLimpo);
+        if (!colab) {
+          naoEncontrados.push(nomeLimpo);
+          continue;
+        }
+
+        // Varre colunas procurando datas no formato YYYY-MM-DD
+        for (const chave in row) {
+          if (!/^\d{4}-\d{2}-\d{2}/.test(chave)) continue;
+          const dataFormatada = chave.split(" ")[0];
+          const valorCelula = String(row[chave]).trim().toUpperCase();
+          if (!valorCelula) { stats.ignorados++; continue; }
+
+          const statusMapeado = MAPA_STATUS_EXCEL[valorCelula];
+          if (statusMapeado === undefined) {
+            statusDesconhecidos[valorCelula] = (statusDesconhecidos[valorCelula] || 0) + 1;
+            stats.ignorados++;
+            continue;
+          }
+
+          let statusFinal = statusMapeado;
+          // Presenças genéricas viram função "Recebimento" (ajuste se quiser outra)
+          if (statusFinal === "OPERACAO") statusFinal = "Recebimento";
+
+          // Verifica se já existia registro naquele dia (para contar inserido vs atualizado)
+          const existente = colab.historicoDias[new Date(dataFormatada + "T12:00:00").getDate() - 1];
+          const ok = await atualizarDiaSupabaseData(colab.id, dataFormatada, statusFinal);
+          if (ok) {
+            if (existente && existente !== "-") stats.atualizados++;
+            else stats.inseridos++;
+          } else {
+            stats.erros++;
+          }
+        }
+      }
+
+      // Monta mensagem final
+      let msg = 'Sincronização concluída! ';
+      msg += stats.inseridos + ' inserido(s), ';
+      msg += stats.atualizados + ' atualizado(s)';
+      if (stats.erros > 0) msg += ', ' + stats.erros + ' erro(s)';
+      if (stats.ignorados > 0) msg += ', ' + stats.ignorados + ' ignorado(s)';
+      toast(msg, stats.erros > 0 ? 'warn' : 'ok');
+
+      // Log detalhado no console para o usuário investigar
+      console.group('📊 Resultado da importação Excel');
+      console.log('Stats:', stats);
+      if (naoEncontrados.length) {
+        console.warn('⚠️ Colaboradores NÃO encontrados no banco (' + naoEncontrados.length + '):', naoEncontrados);
+      }
+      if (Object.keys(statusDesconhecidos).length) {
+        console.warn('⚠️ Status desconhecidos na planilha:', statusDesconhecidos);
+      }
+      console.groupEnd();
+
+      // Alerta visível se muitos não foram encontrados
+      if (naoEncontrados.length > 0) {
+        setTimeout(function(){
+          toast('⚠️ ' + naoEncontrados.length + ' nome(s) não encontrado(s). Veja o console (F12).', 'warn');
+        }, 3000);
+      }
+
+      await carregarDadosSupabase();
+      renderizar();
+
+    } catch (err) {
+      console.error(err);
+      toast("Erro ao ler planilha: " + err.message, 'erro');
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function calcularAcumuladoColab(c){
