@@ -234,7 +234,7 @@ const SUPABASE_URL='https://ycjsqsrhttbclchyeuzz.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_-avZEKSM1j7QOddKCxIb3g_F5emv6np';
 const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-function toast(msg,tipo){tipo=tipo||'ok';const el=document.createElement('div');el.className='fixed top-4 right-4 z-[999] px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold border '+(tipo==='ok'?'bg-emerald-500/20 border-emerald-500/40 text-emerald-200':tipo==='warn'?'bg-yellow-500/20 border-yellow-500/40 text-yellow-200':'bg-red-500/20 border-red-500/40 text-red-200');el.textContent=msg;document.body.appendChild(el);setTimeout(function(){el.remove()},2800)}
+function toast(msg,tipo){tipo=tipo||'ok';const el=document.createElement('div');el.className='fixed top-4 right-4 z-[999] px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold border '+(tipo==='ok'?'bg-emerald-500/20 border-emerald-500/40 text-emerald-200':tipo==='warn'?'bg-yellow-500/20 border-yellow-500/40 text-yellow-200':'bg-red-500/20 border-red-500/40 text-red-200');el.textContent=msg;document.body.appendChild(el);setTimeout(function(){el.remove()},3500)}
 
 const SETORES_E_FUNCOES={
 "Recebimento":["Bipador Recebimento","Patoleiro"],
@@ -471,7 +471,8 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v4 (logs linha a linha)
+// IMPORTAÇÃO DO EXCEL — v5 (LOTE / BATCH)
+// 1 upsert por colaborador (todos os dias de uma vez)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -525,38 +526,6 @@ function normalizarChaveData(chave) {
   return null;
 }
 
-async function atualizarDiaSupabaseData(colabId, dataStr, funcao) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
-    console.warn('Data inválida ignorada:', dataStr);
-    return false;
-  }
-  try {
-    if (funcao === "-") {
-      const r = await supabaseClient.from('historico_escala')
-        .delete().eq('colaborador_id', colabId).eq('data', dataStr);
-      return !r.error;
-    }
-    let setor = "Status";
-    if (!isStatusEspecial(funcao)) {
-      setor = "Recebimento";
-      for (const s of Object.keys(SETORES_E_FUNCOES)) {
-        if (SETORES_E_FUNCOES[s].includes(funcao)) { setor = s; break; }
-      }
-    }
-    const r = await supabaseClient.from('historico_escala').upsert({
-      colaborador_id: colabId,
-      data: dataStr,
-      setor: setor,
-      funcao: funcao
-    }, { onConflict: 'colaborador_id,data' });
-    if (r.error) { console.error('Upsert erro:', r.error); return false; }
-    return true;
-  } catch (e) {
-    console.error('Exceção ao atualizar dia:', e);
-    return false;
-  }
-}
-
 async function processarExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -571,13 +540,11 @@ async function processarExcel(event) {
   const reader = new FileReader();
   reader.onload = async function(e) {
     try {
-      console.log('▶️ INÍCIO processarExcel');
+      console.log('▶️ INÍCIO processarExcel (v5 - LOTE)');
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      console.log('▶️ Planilha lida:', firstSheetName);
-
       const matriz = XLSX.utils.sheet_to_json(worksheet, {
         header: 1, defval: "", raw: false, dateNF: 'yyyy-mm-dd'
       });
@@ -619,8 +586,8 @@ async function processarExcel(event) {
         return;
       }
 
-      toast("Sincronizando... Aguarde.", 'ok');
-      console.log('▶️ Iniciando loop de dados...');
+      toast("Sincronizando em lote... Aguarde.", 'ok');
+      console.log('▶️ Iniciando loop de dados (LOTE)...');
 
       const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0, semData: 0 };
       const naoEncontrados = [];
@@ -640,14 +607,15 @@ async function processarExcel(event) {
         const colab = encontrarColaboradorPorNome(nomeLimpo);
         if (!colab) {
           naoEncontrados.push(nomeLimpo);
-          console.log('⚠️ Não encontrado:', nomeLimpo);
           continue;
         }
 
         linhasProcessadas++;
         console.log('👤 [' + linhasProcessadas + ']', nomeLimpo, '→ ID', colab.id);
 
-        let processouAlgumaData = false;
+        // Monta array com TODOS os registros desse colaborador
+        const registrosParaUpsert = [];
+        const datasParaDelete = [];
 
         for (const colIdxStr in colunasData) {
           const colIdx = parseInt(colIdxStr, 10);
@@ -668,27 +636,72 @@ async function processarExcel(event) {
           const diaNum = parseInt(dataISO.split('-')[2], 10);
           const existente = colab.historicoDias[diaNum - 1];
 
-          console.log('  📅', dataISO, 'valor="' + valorCelula + '" →', statusFinal);
-
-          const ok = await atualizarDiaSupabaseData(colab.id, dataISO, statusFinal);
-          console.log('  ↳ resultado:', ok);
-
-          if (ok) {
+          if (statusFinal === "-") {
+            datasParaDelete.push(dataISO);
+          } else {
+            let setor = "Status";
+            if (!isStatusEspecial(statusFinal)) {
+              setor = "Recebimento";
+              for (const s of Object.keys(SETORES_E_FUNCOES)) {
+                if (SETORES_E_FUNCOES[s].includes(statusFinal)) { setor = s; break; }
+              }
+            }
+            registrosParaUpsert.push({
+              colaborador_id: colab.id,
+              data: dataISO,
+              setor: setor,
+              funcao: statusFinal
+            });
             if (existente && existente !== "-") stats.atualizados++;
             else stats.inseridos++;
-            processouAlgumaData = true;
-          } else {
-            stats.erros++;
           }
         }
-        if (!processouAlgumaData) stats.semData++;
+
+        // 🔥 UPSERT EM LOTE — 1 chamada por colaborador
+        if (registrosParaUpsert.length > 0) {
+          const t0 = performance.now();
+          const r = await supabaseClient.from('historico_escala').upsert(
+            registrosParaUpsert,
+            { onConflict: 'colaborador_id,data' }
+          );
+          const t1 = performance.now();
+          if (r.error) {
+            console.error('  ❌ Upsert lote erro:', r.error);
+            stats.erros += registrosParaUpsert.length;
+          } else {
+            console.log('  ✅ Upsert lote OK:', registrosParaUpsert.length, 'registros em', (t1-t0).toFixed(0) + 'ms');
+          }
+        }
+
+        // 🗑️ DELETE EM LOTE — para os dias que viraram "-"
+        if (datasParaDelete.length > 0) {
+          const rDel = await supabaseClient.from('historico_escala')
+            .delete()
+            .eq('colaborador_id', colab.id)
+            .in('data', datasParaDelete);
+          if (rDel.error) {
+            console.error('  ❌ Delete lote erro:', rDel.error);
+          } else {
+            console.log('  🗑️ Delete lote OK:', datasParaDelete.length, 'dias');
+          }
+        }
       }
 
       console.log('▶️ Loop terminou. Stats:', stats);
       console.log('▶️ Não encontrados:', naoEncontrados);
       console.log('▶️ Status desconhecidos:', statusDesconhecidos);
 
-      toast('Concluído! ' + stats.inseridos + ' ins, ' + stats.atualizados + ' atu', 'ok');
+      let msg = 'Concluído! ' + stats.inseridos + ' inserido(s), ' + stats.atualizados + ' atualizado(s)';
+      if (stats.erros > 0) msg += ', ' + stats.erros + ' erro(s)';
+      if (stats.ignorados > 0) msg += ', ' + stats.ignorados + ' ignorado(s)';
+      toast(msg, stats.erros > 0 ? 'warn' : 'ok');
+
+      if (naoEncontrados.length > 0) {
+        setTimeout(function(){
+          toast('⚠️ ' + naoEncontrados.length + ' nome(s) não encontrado(s). Veja o console (F12).', 'warn');
+        }, 4000);
+      }
+
       await carregarDadosSupabase();
       renderizar();
 
