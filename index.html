@@ -277,15 +277,6 @@ const STATUS_ESPECIAIS=[
 ];
 function isStatusEspecial(v){return STATUS_ESPECIAIS.some(function(s){return s.valor===v})}
 
-// 🔥 v16: função que verifica se é uma função VÁLIDA (alocada manualmente em setor)
-// "Recebimento" genérico da importação NÃO conta como operação
-const FUNCAO_GENERICA_IMPORT = "Recebimento";
-function isFuncaoAlocada(v){
-  if (!v || isStatusEspecial(v)) return false;
-  if (v === FUNCAO_GENERICA_IMPORT) return false; // recebimento genérico da planilha
-  return true;
-}
-
 const dataAtualSistema=new Date();
 const anoAtual=dataAtualSistema.getFullYear();
 const mesAtualIndex=dataAtualSistema.getMonth();
@@ -306,7 +297,7 @@ function matchBuscaAvancada(termo){if(!termo)return true;const palavras=termo.sp
 const DIAS_SEMANA_MAP={"dom":0,"domingo":0,"seg":1,"segunda":1,"ter":2,"terca":2,"terca feira":2,"qua":3,"quarta":3,"quarta feira":3,"qui":4,"quinta":4,"quinta feira":4,"sex":5,"sexta":5,"sexta feira":5,"sab":6,"sabado":6,"sabado feira":6};
 function isDiaDSR(dsrTexto,dataObj){if(!dsrTexto)return false;const d=dataObj.getDay();const dn=normalizarTexto(dsrTexto).replace(/feira/g,"").replace(/-/g," ");const dn2=dn.replace(/\s+/g," ").trim();const p=dn2.split(/,|\se\s/).map(function(x){return x.trim().replace(/\s+/g," ")}).filter(function(x){return x});for(let i=0;i<p.length;i++){const parte=p[i];if(DIAS_SEMANA_MAP[parte]===d)return true;const prim=parte.split(" ")[0];if(DIAS_SEMANA_MAP[prim]===d)return true;if(DIAS_SEMANA_MAP[prim.slice(0,3)]===d)return true}return false}
 function isColabEmDSRHoje(c){const dataHoje=new Date(anoAtual,mesAtualIndex,diaHoje);return isDiaDSR(c.dsr,dataHoje)}
-// 🔥 v16: status "operacao" só se a função for alocada manualmente (não genérica)
+// 🔥 v17: status "operacao" para qualquer funcao que nao seja especial (incluindo "Recebimento")
 function obterStatusHoje(c){
   if(isColabEmDSRHoje(c))return'dsr';
   const raw=c.historicoDias[diaHoje-1]||"-";
@@ -315,10 +306,9 @@ function obterStatusHoje(c){
   if(raw==="FERIAS")return'ferias';
   if(raw==="AFASTAMENTO")return'afastamento';
   if(raw==="-"||raw==="DSR_EXTRA")return'sem_escala';
-  if(!isFuncaoAlocada(raw))return'sem_escala'; // Recebimento genérico → sem escala
-  return'operacao';
+  return'operacao'; // qualquer funcao valida (inclusive "Recebimento") conta como operacao
 }
-function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f)||!isFuncaoAlocada(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
+function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
 function formatarDataDDMM(d){if(!d)return'';return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
 
 function obterChaveDiaristasDia(){return'diaristas_'+anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(diaHoje).padStart(2,'0')}
@@ -655,7 +645,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v16
+// IMPORTAÇÃO DO EXCEL — v17
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
