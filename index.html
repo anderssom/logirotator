@@ -471,7 +471,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v3 (lê matriz bruta, detecta cabeçalho)
+// IMPORTAÇÃO DO EXCEL — v4 (logs linha a linha)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -571,106 +571,81 @@ async function processarExcel(event) {
   const reader = new FileReader();
   reader.onload = async function(e) {
     try {
+      console.log('▶️ INÍCIO processarExcel');
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
+      console.log('▶️ Planilha lida:', firstSheetName);
 
       const matriz = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1,
-        defval: "",
-        raw: false,
-        dateNF: 'yyyy-mm-dd'
+        header: 1, defval: "", raw: false, dateNF: 'yyyy-mm-dd'
       });
+      console.log('▶️ Matriz:', matriz.length, 'linhas');
 
-      // 🔍 DIAGNÓSTICO
-      console.group('🔍 DIAGNÓSTICO EXCEL v3');
-      console.log('Total de linhas (matriz):', matriz.length);
-      for (let i = 0; i < Math.min(6, matriz.length); i++) {
-        console.log('Linha ' + (i+1) + ':', matriz[i].slice(0, 45));
-      }
-      console.groupEnd();
+      if (matriz.length === 0) { toast("A planilha está vazia.", 'warn'); return; }
 
-      if (matriz.length === 0) {
-        toast("A planilha está vazia.", 'warn');
-        return;
-      }
-
-      // 1) Encontrar linha de cabeçalho
+      // 1) Cabeçalho
       let idxCabecalho = -1;
       for (let i = 0; i < matriz.length; i++) {
         const linha = matriz[i];
         if (!Array.isArray(linha)) continue;
-        const temNome = linha.some(function(c){
-          return /nome|colaborador/i.test(String(c || ''));
-        });
-        if (temNome) { idxCabecalho = i; break; }
+        if (linha.some(c => /nome|colaborador/i.test(String(c || '')))) {
+          idxCabecalho = i; break;
+        }
       }
-
       if (idxCabecalho === -1) {
-        console.error('❌ Cabeçalho não encontrado. Nenhuma linha contém "nome" ou "colaborador".');
-        toast('❌ Cabeçalho não encontrado na planilha. Veja o console.', 'erro');
+        console.error('❌ Cabeçalho não encontrado');
+        toast('❌ Cabeçalho não encontrado', 'erro');
         return;
       }
+      console.log('▶️ Cabeçalho na linha', idxCabecalho + 1);
 
       const cabecalho = matriz[idxCabecalho];
-      console.log('✅ Cabeçalho detectado na linha', idxCabecalho + 1, ':', cabecalho.slice(0, 45));
-
-      // 2) Mapear colunas: nome + datas
       let colNome = -1;
       const colunasData = {};
-
       for (let c = 0; c < cabecalho.length; c++) {
         const cel = cabecalho[c];
         if (!cel) continue;
         const celStr = String(cel).trim();
-
-        if (colNome === -1 && /nome|colaborador/i.test(celStr)) {
-          colNome = c;
-          continue;
-        }
-
+        if (colNome === -1 && /nome|colaborador/i.test(celStr)) { colNome = c; continue; }
         const dataISO = normalizarChaveData(celStr);
-        if (dataISO) {
-          colunasData[c] = dataISO;
-        }
+        if (dataISO) colunasData[c] = dataISO;
       }
+      console.log('▶️ colNome =', colNome, '| colunasData =', Object.keys(colunasData).length);
 
-      console.log('📌 Coluna do nome: índice', colNome, '(', cabecalho[colNome], ')');
-      console.log('📅 Colunas de data detectadas:', colunasData);
-
-      if (colNome === -1) {
-        toast('❌ Coluna do nome não encontrada. Veja o console.', 'erro');
-        return;
-      }
-      if (Object.keys(colunasData).length === 0) {
-        toast('❌ Nenhuma coluna de data detectada. Veja o console.', 'erro');
+      if (colNome === -1 || Object.keys(colunasData).length === 0) {
+        toast('❌ Mapeamento falhou', 'erro');
         return;
       }
 
-      toast("Sincronizando presenças/faltas/atestados... Aguarde.", 'ok');
+      toast("Sincronizando... Aguarde.", 'ok');
+      console.log('▶️ Iniciando loop de dados...');
 
       const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0, semData: 0 };
       const naoEncontrados = [];
       const statusDesconhecidos = {};
-      const linhasSemNome = [];
+      let linhasProcessadas = 0;
 
-      // 3) Processar linhas de dados
       for (let i = idxCabecalho + 1; i < matriz.length; i++) {
         const linha = matriz[i];
         if (!Array.isArray(linha)) continue;
 
         const nomeBruto = linha[colNome];
-        if (!nomeBruto || !String(nomeBruto).trim()) {
-          linhasSemNome.push(i + 1);
-          continue;
-        }
+        if (!nomeBruto || !String(nomeBruto).trim()) continue;
 
         const nomeLimpo = limparNomeExcel(nomeBruto);
         if (!nomeLimpo) continue;
 
         const colab = encontrarColaboradorPorNome(nomeLimpo);
-        if (!colab) { naoEncontrados.push(nomeLimpo); continue; }
+        if (!colab) {
+          naoEncontrados.push(nomeLimpo);
+          console.log('⚠️ Não encontrado:', nomeLimpo);
+          continue;
+        }
+
+        linhasProcessadas++;
+        console.log('👤 [' + linhasProcessadas + ']', nomeLimpo, '→ ID', colab.id);
 
         let processouAlgumaData = false;
 
@@ -693,7 +668,11 @@ async function processarExcel(event) {
           const diaNum = parseInt(dataISO.split('-')[2], 10);
           const existente = colab.historicoDias[diaNum - 1];
 
+          console.log('  📅', dataISO, 'valor="' + valorCelula + '" →', statusFinal);
+
           const ok = await atualizarDiaSupabaseData(colab.id, dataISO, statusFinal);
+          console.log('  ↳ resultado:', ok);
+
           if (ok) {
             if (existente && existente !== "-") stats.atualizados++;
             else stats.inseridos++;
@@ -702,42 +681,20 @@ async function processarExcel(event) {
             stats.erros++;
           }
         }
-
         if (!processouAlgumaData) stats.semData++;
       }
 
-      let msg = 'Sincronização concluída! ';
-      msg += stats.inseridos + ' inserido(s), ';
-      msg += stats.atualizados + ' atualizado(s)';
-      if (stats.erros > 0) msg += ', ' + stats.erros + ' erro(s)';
-      if (stats.ignorados > 0) msg += ', ' + stats.ignorados + ' ignorado(s)';
-      toast(msg, stats.erros > 0 ? 'warn' : 'ok');
+      console.log('▶️ Loop terminou. Stats:', stats);
+      console.log('▶️ Não encontrados:', naoEncontrados);
+      console.log('▶️ Status desconhecidos:', statusDesconhecidos);
 
-      console.group('📊 Resultado da importação Excel');
-      console.log('Stats:', stats);
-      if (linhasSemNome.length) {
-        console.warn('⚠️ Linhas SEM nome (' + linhasSemNome.length + '):', linhasSemNome);
-      }
-      if (naoEncontrados.length) {
-        console.warn('⚠️ Colaboradores NÃO encontrados (' + naoEncontrados.length + '):', naoEncontrados);
-      }
-      if (Object.keys(statusDesconhecidos).length) {
-        console.warn('⚠️ Status desconhecidos:', statusDesconhecidos);
-      }
-      console.groupEnd();
-
-      if (naoEncontrados.length > 0) {
-        setTimeout(function(){
-          toast('⚠️ ' + naoEncontrados.length + ' nome(s) não encontrado(s). Veja o console (F12).', 'warn');
-        }, 3000);
-      }
-
+      toast('Concluído! ' + stats.inseridos + ' ins, ' + stats.atualizados + ' atu', 'ok');
       await carregarDadosSupabase();
       renderizar();
 
     } catch (err) {
-      console.error(err);
-      toast("Erro ao ler planilha: " + err.message, 'erro');
+      console.error('❌ ERRO em processarExcel:', err);
+      toast("Erro: " + err.message, 'erro');
     } finally {
       event.target.value = '';
     }
