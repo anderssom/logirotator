@@ -229,6 +229,19 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <div class="flex justify-end pt-3 border-t border-slate-800 mt-3"><button onclick="fecharModalHistorico()" class="btn btn-primary">Concluir</button></div>
 </div>
 </div>
+
+<!-- MODAL DE RESULTADO DA IMPORTAÇÃO -->
+<div id="modal-resultado-import" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+<div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
+<div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
+<h3 class="text-base font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Resultado da Importação</h3>
+<button onclick="fecharModalResultadoImport()" class="btn btn-ghost btn-icon-sm"><i data-lucide="x" class="w-4 h-4"></i></button>
+</div>
+<div id="resultado-import-conteudo" class="space-y-3"></div>
+<div class="flex justify-end pt-3 border-t border-slate-800 mt-4"><button onclick="fecharModalResultadoImport()" class="btn btn-primary">OK</button></div>
+</div>
+</div>
+
 <script>
 const SUPABASE_URL='https://ycjsqsrhttbclchyeuzz.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_-avZEKSM1j7QOddKCxIb3g_F5emv6np';
@@ -471,8 +484,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v5 (LOTE / BATCH)
-// 1 upsert por colaborador (todos os dias de uma vez)
+// IMPORTAÇÃO DO EXCEL — v10 (LOTE + match melhorado + modal resultado)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -502,11 +514,30 @@ function limparNomeExcel(nomeBruto){
   return s.trim();
 }
 
+// Match melhorado: exato → sem espaços → por palavras → fallback
 function encontrarColaboradorPorNome(nomeLimpo){
   const alvoNorm = normalizarTexto(nomeLimpo);
-  let c = colaboradores.find(function(x){ return normalizarTexto(x.nome) === alvoNorm; });
+  const alvoSemEspaco = alvoNorm.replace(/\s+/g, '');
+  const palavrasAlvo = alvoNorm.split(' ').filter(p => p.length > 2);
+
+  // 1) Match exato
+  let c = colaboradores.find(x => normalizarTexto(x.nome) === alvoNorm);
   if (c) return c;
-  c = colaboradores.find(function(x){
+
+  // 2) Match SEM espaços (resolve "IURECOSTA" vs "IURE COSTA")
+  c = colaboradores.find(x => normalizarTexto(x.nome).replace(/\s+/g, '') === alvoSemEspaco);
+  if (c) return c;
+
+  // 3) Match por palavras (pelo menos 2 palavras do alvo no nome do banco)
+  c = colaboradores.find(x => {
+    const palavrasBanco = normalizarTexto(x.nome).split(' ').filter(p => p.length > 2);
+    const comuns = palavrasAlvo.filter(p => palavrasBanco.includes(p));
+    return comuns.length >= 2;
+  });
+  if (c) return c;
+
+  // 4) Fallback original (includes)
+  c = colaboradores.find(x => {
     const n = normalizarTexto(x.nome);
     return n.includes(alvoNorm) || alvoNorm.includes(n);
   });
@@ -526,6 +557,44 @@ function normalizarChaveData(chave) {
   return null;
 }
 
+function abrirModalResultadoImport() { document.getElementById('modal-resultado-import').classList.remove('hidden'); }
+function fecharModalResultadoImport() { document.getElementById('modal-resultado-import').classList.add('hidden'); }
+
+function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos) {
+  const cont = document.getElementById('resultado-import-conteudo');
+  let h = '';
+  h += '<div class="grid grid-cols-2 gap-2">';
+  h += '<div class="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-3"><div class="text-[10px] uppercase text-emerald-400 font-bold">Inseridos</div><div class="text-2xl font-extrabold text-emerald-300">' + stats.inseridos + '</div></div>';
+  h += '<div class="bg-cyan-950/30 border border-cyan-500/40 rounded-xl p-3"><div class="text-[10px] uppercase text-cyan-400 font-bold">Atualizados</div><div class="text-2xl font-extrabold text-cyan-300">' + stats.atualizados + '</div></div>';
+  h += '<div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3"><div class="text-[10px] uppercase text-slate-400 font-bold">Ignorados</div><div class="text-2xl font-extrabold text-slate-300">' + stats.ignorados + '</div></div>';
+  h += '<div class="' + (stats.erros > 0 ? 'bg-red-950/30 border border-red-500/40' : 'bg-slate-800/50 border border-slate-700') + ' rounded-xl p-3"><div class="text-[10px] uppercase ' + (stats.erros > 0 ? 'text-red-400' : 'text-slate-400') + ' font-bold">Erros</div><div class="text-2xl font-extrabold ' + (stats.erros > 0 ? 'text-red-300' : 'text-slate-300') + '">' + stats.erros + '</div></div>';
+  h += '</div>';
+
+  if (naoEncontrados.length > 0) {
+    h += '<div class="bg-yellow-950/20 border border-yellow-500/40 rounded-xl p-3">';
+    h += '<div class="text-[11px] uppercase text-yellow-400 font-bold mb-1">⚠️ ' + naoEncontrados.length + ' nome(s) não encontrado(s) no banco</div>';
+    h += '<div class="text-[10px] text-slate-400 mb-2">Provavelmente demitidos ou cadastrados com nome diferente.</div>';
+    h += '<div class="max-h-32 overflow-y-auto bg-slate-950 rounded p-2 text-[10px] text-slate-300 font-mono space-y-0.5">';
+    naoEncontrados.forEach(n => { h += '<div>' + n + '</div>'; });
+    h += '</div></div>';
+  }
+
+  if (Object.keys(statusDesconhecidos).length > 0) {
+    h += '<div class="bg-orange-950/20 border border-orange-500/40 rounded-xl p-3">';
+    h += '<div class="text-[11px] uppercase text-orange-400 font-bold mb-1">⚠️ Status desconhecidos na planilha</div>';
+    h += '<div class="max-h-24 overflow-y-auto bg-slate-950 rounded p-2 text-[10px] text-slate-300 font-mono space-y-0.5">';
+    Object.keys(statusDesconhecidos).forEach(k => { h += '<div>"' + k + '" → ' + statusDesconhecidos[k] + ' ocorrência(s)</div>'; });
+    h += '</div></div>';
+  }
+
+  if (naoEncontrados.length === 0 && Object.keys(statusDesconhecidos).length === 0 && stats.erros === 0) {
+    h += '<div class="bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 text-center text-emerald-300 text-sm font-bold">✅ Tudo certo! Nenhum erro.</div>';
+  }
+
+  cont.innerHTML = h;
+  abrirModalResultadoImport();
+}
+
 async function processarExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -540,7 +609,6 @@ async function processarExcel(event) {
   const reader = new FileReader();
   reader.onload = async function(e) {
     try {
-      console.log('▶️ INÍCIO processarExcel (v5 - LOTE)');
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const firstSheetName = workbook.SheetNames[0];
@@ -548,7 +616,6 @@ async function processarExcel(event) {
       const matriz = XLSX.utils.sheet_to_json(worksheet, {
         header: 1, defval: "", raw: false, dateNF: 'yyyy-mm-dd'
       });
-      console.log('▶️ Matriz:', matriz.length, 'linhas');
 
       if (matriz.length === 0) { toast("A planilha está vazia.", 'warn'); return; }
 
@@ -562,11 +629,9 @@ async function processarExcel(event) {
         }
       }
       if (idxCabecalho === -1) {
-        console.error('❌ Cabeçalho não encontrado');
-        toast('❌ Cabeçalho não encontrado', 'erro');
+        toast('❌ Cabeçalho não encontrado na planilha.', 'erro');
         return;
       }
-      console.log('▶️ Cabeçalho na linha', idxCabecalho + 1);
 
       const cabecalho = matriz[idxCabecalho];
       let colNome = -1;
@@ -579,20 +644,17 @@ async function processarExcel(event) {
         const dataISO = normalizarChaveData(celStr);
         if (dataISO) colunasData[c] = dataISO;
       }
-      console.log('▶️ colNome =', colNome, '| colunasData =', Object.keys(colunasData).length);
 
       if (colNome === -1 || Object.keys(colunasData).length === 0) {
-        toast('❌ Mapeamento falhou', 'erro');
+        toast('❌ Coluna de nome ou data não encontrada.', 'erro');
         return;
       }
 
       toast("Sincronizando em lote... Aguarde.", 'ok');
-      console.log('▶️ Iniciando loop de dados (LOTE)...');
 
       const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0, semData: 0 };
       const naoEncontrados = [];
       const statusDesconhecidos = {};
-      let linhasProcessadas = 0;
 
       for (let i = idxCabecalho + 1; i < matriz.length; i++) {
         const linha = matriz[i];
@@ -610,10 +672,6 @@ async function processarExcel(event) {
           continue;
         }
 
-        linhasProcessadas++;
-        console.log('👤 [' + linhasProcessadas + ']', nomeLimpo, '→ ID', colab.id);
-
-        // Monta array com TODOS os registros desse colaborador
         const registrosParaUpsert = [];
         const datasParaDelete = [];
 
@@ -657,57 +715,36 @@ async function processarExcel(event) {
           }
         }
 
-        // 🔥 UPSERT EM LOTE — 1 chamada por colaborador
+        // UPSERT EM LOTE
         if (registrosParaUpsert.length > 0) {
-          const t0 = performance.now();
           const r = await supabaseClient.from('historico_escala').upsert(
             registrosParaUpsert,
             { onConflict: 'colaborador_id,data' }
           );
-          const t1 = performance.now();
           if (r.error) {
-            console.error('  ❌ Upsert lote erro:', r.error);
+            console.error('Upsert lote erro:', r.error);
             stats.erros += registrosParaUpsert.length;
-          } else {
-            console.log('  ✅ Upsert lote OK:', registrosParaUpsert.length, 'registros em', (t1-t0).toFixed(0) + 'ms');
           }
         }
 
-        // 🗑️ DELETE EM LOTE — para os dias que viraram "-"
+        // DELETE EM LOTE
         if (datasParaDelete.length > 0) {
           const rDel = await supabaseClient.from('historico_escala')
             .delete()
             .eq('colaborador_id', colab.id)
             .in('data', datasParaDelete);
-          if (rDel.error) {
-            console.error('  ❌ Delete lote erro:', rDel.error);
-          } else {
-            console.log('  🗑️ Delete lote OK:', datasParaDelete.length, 'dias');
-          }
+          if (rDel.error) console.error('Delete lote erro:', rDel.error);
         }
       }
 
-      console.log('▶️ Loop terminou. Stats:', stats);
-      console.log('▶️ Não encontrados:', naoEncontrados);
-      console.log('▶️ Status desconhecidos:', statusDesconhecidos);
-
-      let msg = 'Concluído! ' + stats.inseridos + ' inserido(s), ' + stats.atualizados + ' atualizado(s)';
-      if (stats.erros > 0) msg += ', ' + stats.erros + ' erro(s)';
-      if (stats.ignorados > 0) msg += ', ' + stats.ignorados + ' ignorado(s)';
-      toast(msg, stats.erros > 0 ? 'warn' : 'ok');
-
-      if (naoEncontrados.length > 0) {
-        setTimeout(function(){
-          toast('⚠️ ' + naoEncontrados.length + ' nome(s) não encontrado(s). Veja o console (F12).', 'warn');
-        }, 4000);
-      }
+      renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos);
 
       await carregarDadosSupabase();
       renderizar();
 
     } catch (err) {
-      console.error('❌ ERRO em processarExcel:', err);
-      toast("Erro: " + err.message, 'erro');
+      console.error('ERRO em processarExcel:', err);
+      toast("Erro ao processar planilha: " + err.message, 'erro');
     } finally {
       event.target.value = '';
     }
