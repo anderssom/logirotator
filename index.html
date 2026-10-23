@@ -410,16 +410,14 @@ function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)retu
 
 function criarBlocoDiaristas(){const d=getDiaristasDia();const total=d.presentes+d.faltantes;const pd=d.pedidos>0;const dif=d.presentes-d.pedidos;const exc=d.presentes>=d.pedidos&&d.pedidos>0;let status='';let cs='';if(d.pedidos===0){status='Defina o pedido';cs='text-slate-400'}else if(dif===0){status='Meta atendida';cs='text-emerald-400'}else if(dif>0){status=dif+' alem';cs='text-cyan-400'}else{status='Faltam '+Math.abs(dif)+' do pedido';cs='text-yellow-400'}const bloco=document.createElement('div');bloco.className='bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl';const clP=pd&&!exc?'bg-slate-900 border border-emerald-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';const clF=pd?'bg-slate-900 border border-red-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-cyan-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-cyan-400">Diaristas Hoje <span class="text-[10px] font-normal opacity-70">- quantidades por dia</span></h2><span class="badge badge-info">'+total+' registrado(s)</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl"><button onclick="abrirModalDiaristasPedidos()" class="text-left bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5 cursor-pointer active:scale-[0.98]"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-cyan-400 font-bold">Pedidos</span><i data-lucide="edit-3" class="w-4 h-4 text-cyan-400"></i></div><div class="text-3xl font-extrabold text-cyan-300">'+d.pedidos+'</div><div class="text-[10px] '+cs+' font-semibold mt-1">'+status+'</div></button><button onclick="'+(pd&&!exc?"abrirModalAddDiarista('presente')":'')+'" '+(pd&&!exc?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clP+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-emerald-400 font-bold">Presentes</span><i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i></div><div class="text-3xl font-extrabold text-emerald-300">'+d.presentes+'</div><div class="text-[10px] text-slate-500 mt-1">'+(pd?'de '+d.pedidos+' pedido(s)':'sem pedido')+' \u00b7 somam em <span class="text-emerald-400 font-bold">Opera\u00e7\u00e3o</span></div></button><button onclick="'+(pd?"abrirModalAddDiarista('faltou')":'')+'" '+(pd?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clF+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-red-400 font-bold">Faltaram</span><i data-lucide="edit-3" class="w-4 h-4 text-red-400"></i></div><div class="text-3xl font-extrabold text-red-300">'+d.faltantes+'</div><div class="text-[10px] text-slate-500 mt-1">Total: '+total+' \u00b7 somam em <span class="text-yellow-400 font-bold">Faltas</span></div></button></div>'+(pd?'':'<div class="mt-3 pt-3 border-t border-cyan-500/20 text-[11px] text-yellow-400">Defina primeiro a quantidade de diaristas pedidos.</div>');return bloco}
 
-// 🔥 v13: lista única de presentes (escalados em operação + diaristas)
 function criarListaPresentes(colsOperacao) {
   const d = getDiaristasDia();
   const bloco = document.createElement('div');
   bloco.className = 'bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 shadow-xl';
   
   const totalPres = colsOperacao.length + d.presentes;
-  let h = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Presentes Hoje <span class="text-[10px] font-normal opacity-70">- lista única</span></h2><span class="badge badge-success">' + totalPres + ' presente(s)</span></div>';
+  let h = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Presentes Hoje <span class="text-[10px] font-normal opacity-70">- lista \u00fanica</span></h2><span class="badge badge-success">' + totalPres + ' presente(s)</span></div>';
   
-  // Contadores resumidos
   h += '<div class="grid grid-cols-2 gap-2 mb-3">';
   h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-emerald-400 font-bold">Escalados</div><div class="text-xl font-extrabold text-emerald-300">' + colsOperacao.length + '</div></div>';
   h += '<div class="bg-slate-900 border border-cyan-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-cyan-400 font-bold">Diaristas</div><div class="text-xl font-extrabold text-cyan-300">' + d.presentes + '</div></div>';
@@ -431,10 +429,8 @@ function criarListaPresentes(colsOperacao) {
     return bloco;
   }
   
-  // Lista única (colaboradores escalados + diaristas como itens virtuais)
   h += '<div class="space-y-2">';
   
-  // Colaboradores escalados em operação
   colsOperacao.forEach(function(c) {
     const status = contarDiasNaFuncaoAtual(c.historicoDias);
     const funcao = status.funcao || '-';
@@ -446,7 +442,6 @@ function criarListaPresentes(colsOperacao) {
     h += '</div>';
   });
   
-  // Diaristas (itens virtuais — quantidade, não nomes)
   for (let i = 1; i <= d.presentes; i++) {
     h += '<div class="bg-slate-900 border border-cyan-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
     h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100">Diarista ' + i + '</div>';
@@ -457,6 +452,67 @@ function criarListaPresentes(colsOperacao) {
   }
   
   h += '</div>';
+  bloco.innerHTML = h;
+  return bloco;
+}
+
+// 🔥 v14: lista geral com TODOS os colaboradores
+function criarListaGeral(cols) {
+  const bloco = document.createElement('div');
+  bloco.className = 'bg-amber-950/10 border-2 border-amber-500/40 rounded-2xl p-4 shadow-2xl';
+  
+  let h = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400 flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4"></i> Lista Geral <span class="text-[10px] font-normal opacity-70">- todos os logistas</span></h2><span class="badge badge-warning">' + cols.length + ' colaborador(es)</span></div>';
+  
+  if (cols.length === 0) {
+    h += '<p class="text-xs text-slate-500 italic py-4 text-center">Nenhum colaborador cadastrado.</p>';
+    bloco.innerHTML = h;
+    return bloco;
+  }
+  
+  // Agrupa por status para contagem
+  const contagem = {operacao:0, dsr:0, falta:0, atestado:0, ferias:0, afastamento:0, sem_escala:0};
+  cols.forEach(function(c){ const st = obterStatusHoje(c); if (contagem[st] !== undefined) contagem[st]++; });
+  
+  h += '<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-3">';
+  h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-emerald-400 font-bold">Opera\u00e7\u00e3o</div><div class="text-lg font-extrabold text-emerald-300">' + contagem.operacao + '</div></div>';
+  h += '<div class="bg-slate-900 border border-orange-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-orange-400 font-bold">DSR</div><div class="text-lg font-extrabold text-orange-300">' + contagem.dsr + '</div></div>';
+  h += '<div class="bg-slate-900 border border-yellow-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-yellow-400 font-bold">Faltas</div><div class="text-lg font-extrabold text-yellow-300">' + contagem.falta + '</div></div>';
+  h += '<div class="bg-slate-900 border border-red-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-red-400 font-bold">Atestados</div><div class="text-lg font-extrabold text-red-300">' + contagem.atestado + '</div></div>';
+  h += '<div class="bg-slate-900 border border-purple-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-purple-400 font-bold">F\u00e9rias</div><div class="text-lg font-extrabold text-purple-300">' + contagem.ferias + '</div></div>';
+  h += '<div class="bg-slate-900 border border-slate-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-slate-400 font-bold">Afast.</div><div class="text-lg font-extrabold text-slate-300">' + contagem.afastamento + '</div></div>';
+  h += '<div class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-slate-400 font-bold">Sem Escala</div><div class="text-lg font-extrabold text-slate-300">' + contagem.sem_escala + '</div></div>';
+  h += '</div>';
+  
+  h += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
+  cols.forEach(function(c){
+    const st = obterStatusHoje(c);
+    const statusInfo = {
+      operacao: {tipo:'operacao', label:'Em Opera\u00e7\u00e3o', badge:'badge-success'},
+      dsr: {tipo:'dsr', label:'DSR', badge:'badge-orange'},
+      falta: {tipo:'falta', label:'FALTA', badge:'badge-warning'},
+      atestado: {tipo:'atestado', label:'ATESTADO', badge:'badge-danger'},
+      ferias: {tipo:'ferias', label:'F\u00e9rias', badge:'badge-purple'},
+      afastamento: {tipo:'afastamento', label:'Afastamento', badge:'badge-default'},
+      sem_escala: {tipo:'sem_escala', label:'Sem Escala', badge:'badge-default'}
+    }[st] || {tipo:'sem_escala', label:'-', badge:'badge-default'};
+    
+    // Status label dinâmico
+    let statusLabel = statusInfo.label;
+    if (st === 'operacao') {
+      const s = contarDiasNaFuncaoAtual(c.historicoDias);
+      statusLabel = s.funcao || 'Em Opera\u00e7\u00e3o';
+    }
+    
+    h += '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2">';
+    h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">' + c.nome + '</div>';
+    h += '<div class="text-[10px] text-slate-400 truncate">' + c.escala + ' \u00b7 DSR: ' + c.dsr + '</div>';
+    h += '<div class="text-[10px] text-slate-500 mt-0.5 truncate">' + c.horario + '</div>';
+    h += '<div class="text-[10px] text-amber-400 font-semibold mt-1">' + statusLabel + '</div></div>';
+    h += '<span class="badge ' + statusInfo.badge + ' shrink-0">' + statusInfo.label + '</span>';
+    h += '</div>';
+  });
+  h += '</div>';
+  
   bloco.innerHTML = h;
   return bloco;
 }
@@ -506,30 +562,20 @@ if(termo){
   cont.appendChild(b);lucide.createIcons();return;
 }
 
-// MODO TODOS
+// 🔥 v14: MODO TODOS — LISTA GERAL (todos os logistas, sem agrupamento)
 if(filtroAtivo==='todos'){
-  const bd=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length+' em descanso');
-  const bf=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);
-  const ba=criarBloco('Atestados Hoje','ausencias justificadas',aF,'red','',aF.length);
-  const bfe=criarBloco('F\u00e9rias','afastamento programado',feF,'purple','',feF.length);
-  const baf=criarBloco('Afastamento Tempor\u00e1rio','afastamento temporario',afF,'slate','',afF.length);
-  if(bd)cont.appendChild(bd);if(bf)cont.appendChild(bf);if(ba)cont.appendChild(ba);
-  if(bfe)cont.appendChild(bfe);if(baf)cont.appendChild(baf);
-  renderizarSetores(oF,cont);
-  if(seF.length>0){
-    const bse=criarBloco('Sem Escala Hoje','colaboradores sem funcao hoje',seF,'slate','',seF.length);
-    if(bse)cont.appendChild(bse);
-  }
+  const todosVisiveis = [].concat(oF, dF, fF, aF, feF, afF, seF);
+  cont.appendChild(criarListaGeral(todosVisiveis));
   return;
 }
 
-// 🔥 v13: MODO PRESENTES — LISTA ÚNICA (escalados + diaristas)
+// MODO PRESENTES — LISTA ÚNICA (escalados + diaristas)
 if(filtroAtivo==='presentes'){
   cont.appendChild(criarListaPresentes(oF));
   return;
 }
 
-// 🔥 v13: MODO OPERACAO — mostra TODOS os setores (zerados) — SEM "Outros"
+// MODO OPERACAO — mostra TODOS os setores (zerados) — SEM "Outros"
 if(filtroAtivo==='operacao'){
   renderizarSetores(oF,cont,true);
   return;
@@ -565,9 +611,8 @@ if(filtroAtivo==='sem_escala'){
 lucide.createIcons();
 }
 
-// 🔥 v13: forcarTodos = true → mostra TODOS os setores (mesmo com 0).
-// NÃO cria mais o setor "Outros" — colaboradores com função não mapeada
-// simplesmente não aparecem aqui (aparecem em "Sem Escala" ou "Presentes").
+// forcarTodos = true → mostra TODOS os setores (mesmo com 0).
+// NÃO cria "Outros" — colaboradores com função não mapeada não aparecem aqui.
 function renderizarSetores(cols,cont,forcarTodos){
   const setoresComColabs={};
   for(const setor of Object.keys(SETORES_E_FUNCOES)){
@@ -575,7 +620,6 @@ function renderizarSetores(cols,cont,forcarTodos){
     const cs=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return funcs.includes(f)});
     if(cs.length>0||forcarTodos)setoresComColabs[setor]=cs;
   }
-  // 🔥 v13: NÃO adiciona "Outros" — quem tiver função não mapeada fica de fora dos setores
 
   for(const setor of Object.keys(setoresComColabs)){
     const cs=setoresComColabs[setor];
@@ -605,7 +649,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v13 (LOTE + match melhorado + modal resultado)
+// IMPORTAÇÃO DO EXCEL — v14 (LOTE + match melhorado + modal resultado)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
