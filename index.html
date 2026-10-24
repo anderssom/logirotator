@@ -383,7 +383,59 @@ function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').f
 
 async function init(){const txt='HUB-LCE-04 \u2022 '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';document.getElementById('label-mes-ano').innerText=txt;document.getElementById('label-mes-ano-sidebar').innerText=txt;try{const r=await supabaseClient.from('colaboradores').select('id').limit(1);if(r.error)alert("Erro Supabase: "+r.error.message)}catch(e){console.error(e)}popularSelectFuncoesPorSetor();await carregarDadosSupabase();setFiltro('todos');lucide.createIcons()}
 
-async function carregarDadosSupabase(){try{const rc=await supabaseClient.from('colaboradores').select('*').order('nome');if(rc.error)throw rc.error;const rh=await supabaseClient.from('historico_escala').select('*');if(rh.error)throw rh.error;colaboradores=(rc.data||[]).map(function(c){const hd=new Array(totalDiasDoMes).fill("-");const regs=(rh.data||[]).filter(function(h){return h.colaborador_id===c.id});regs.forEach(function(r){const dn=new Date(r.data+'T00:00:00').getDate();if(dn>=1&&dn<=totalDiasDoMes)hd[dn-1]=r.funcao});return{id:c.id,nome:c.nome,escala:c.escala||"6x1",horario:c.horario||"08:00 - 17:00",dsr:c.dsr||"Domingo",historicoDias:hd}});colaboradores.forEach(function(c){c.historicoDias=c.historicoDias.map(function(f,idx){const d=new Date(anoAtual,mesAtualIndex,idx+1);if(isDiaDSR(c.dsr,d)&&!isStatusEspecial(f))return"-";return f})})}catch(e){console.error(e);alert("Erro: "+e.message)}}
+async function carregarDadosSupabase(){
+  try{
+    const rc=await supabaseClient.from('colaboradores').select('*').order('nome');
+    if(rc.error)throw rc.error;
+    const rh=await supabaseClient.from('historico_escala').select('*');
+    if(rh.error)throw rh.error;
+
+    // Agrupa colaboradores com o mesmo nome normalizado para impedir contagem duplicada.
+    // Ex.: "JOAO DA SILVA", "João da Silva" e nomes com espaços extras viram uma única pessoa na tela.
+    const grupos=new Map();
+    (rc.data||[]).forEach(function(c){
+      const chave=normalizarTexto(c.nome).replace(/\s+/g,' ').trim();
+      if(!chave)return;
+      if(!grupos.has(chave))grupos.set(chave,[]);
+      grupos.get(chave).push(c);
+    });
+
+    colaboradores=[];
+    grupos.forEach(function(lista){
+      const principal=lista[0];
+      const ids=new Set(lista.map(function(x){return x.id}));
+      const hd=new Array(totalDiasDoMes).fill('-');
+      (rh.data||[]).filter(function(h){return ids.has(h.colaborador_id)}).forEach(function(r){
+        const dn=new Date(r.data+'T00:00:00').getDate();
+        if(dn>=1&&dn<=totalDiasDoMes){
+          // Se houver histórico em registros duplicados, preserva um valor válido.
+          if(hd[dn-1]==='-' || (r.funcao && r.funcao!=='-')) hd[dn-1]=r.funcao||'-';
+        }
+      });
+      colaboradores.push({
+        id:principal.id,
+        nome:principal.nome,
+        escala:principal.escala||'6x1',
+        horario:principal.horario||'08:00 - 17:00',
+        dsr:principal.dsr||'Domingo',
+        historicoDias:hd,
+        idsDuplicados:lista.slice(1).map(function(x){return x.id})
+      });
+    });
+
+    colaboradores.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR')});
+    colaboradores.forEach(function(c){
+      c.historicoDias=c.historicoDias.map(function(f,idx){
+        const d=new Date(anoAtual,mesAtualIndex,idx+1);
+        if(isDiaDSR(c.dsr,d)&&!isStatusEspecial(f))return '-';
+        return f;
+      });
+    });
+
+    const qtdDuplicados=(rc.data||[]).length-colaboradores.length;
+    if(qtdDuplicados>0)console.warn('Duplicidades ocultadas da contagem:',qtdDuplicados);
+  }catch(e){console.error(e);alert('Erro: '+e.message)}
+}
 
 function popularSelectFuncoesPorSetor(def){const sel=document.getElementById('novo-funcao');sel.innerHTML="";let og=document.createElement('optgroup');og.label="Status Especiais";STATUS_ESPECIAIS.forEach(function(s){const o=document.createElement('option');o.value=s.valor;o.textContent=s.label;if(s.valor===def)o.selected=true;og.appendChild(o)});sel.appendChild(og);for(const setor of Object.keys(SETORES_E_FUNCOES)){const ogr=document.createElement('optgroup');ogr.label=setor;SETORES_E_FUNCOES[setor].forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;if(f===def)o.selected=true;ogr.appendChild(o)});sel.appendChild(ogr)}}
 
@@ -861,7 +913,7 @@ async function processarExcel(event) {
         if (!colab) {
           console.log("Verificando duplicidade e cadastrando:", nomeLimpo);
           
-          const checkRes = await supabaseClient.from('colaboradores').select('*').ilike('nome', nomeLimpo);
+          const checkRes = await supabaseClient.from('colaboradores').select('*');
           
           if (checkRes.error) {
              console.error("Erro ao verificar duplicidade:", checkRes.error);
@@ -869,8 +921,10 @@ async function processarExcel(event) {
              continue;
           }
 
-          if (checkRes.data && checkRes.data.length > 0) {
-             const existenteBanco = checkRes.data[0];
+          const existenteNormalizado = (checkRes.data || []).find(function(x){ return normalizarTexto(x.nome) === normalizarTexto(nomeLimpo); });
+
+          if (existenteNormalizado) {
+             const existenteBanco = existenteNormalizado;
              colab = {
                id: existenteBanco.id,
                nome: existenteBanco.nome,
