@@ -268,18 +268,14 @@ const SETORES_E_FUNCOES={
 };
 
 const STATUS_ESPECIAIS=[
-{valor:"-",label:"- (Folga/DSR)"},
-{valor:"DSR_EXTRA",label:"DSR Extra"},
-{valor:"FALTA",label:"FALTA"},
-{valor:"ATESTADO",label:"ATESTADO"},
-{valor:"FERIAS",label:"F\u00e9rias"},
-{valor:"AFASTAMENTO",label:"Afastamento Tempor\u00e1rio"},
-{valor:"FOLGA",label:"Folga (FO)"},
-{valor:"BANCO_HORAS",label:"Banco de Horas (BH)"},
-{valor:"AL",label:"AL"},
-{valor:"S1",label:"S1"},
-{valor:"TD",label:"TD"},
-{valor:"SU",label:"SU"}
+{valor:"-",label:"- (Sem informação no Excel)"},
+{valor:"P",label:"P: Presente"},{valor:"AF",label:"AF: Afastamento"},{valor:"AL",label:"AL: Afastamento longo"},
+{valor:"AM",label:"AM: Atestado médico"},{valor:"BH",label:"BH: Banco de Horas"},{valor:"DF",label:"DF: Desligamento forçado"},
+{valor:"DP",label:"DP: Desligamento Programado"},{valor:"DSR",label:"DSR: Descanso Semanal Remunerado"},{valor:"DV",label:"DV: Desligamento voluntário"},
+{valor:"F",label:"F: Falta Injustificada"},{valor:"FE",label:"FE: Férias"},{valor:"FJ",label:"FJ: Falta Justificada"},{valor:"FO",label:"FO: Folga"},
+{valor:"NC",label:"NC: Não Contratado"},{valor:"NS",label:"NS: No-Show"},{valor:"PR",label:"PR: Promoção"},
+{valor:"S1",label:"S1: Sinergia Enviada"},{valor:"S2",label:"S2: Sinergia Recebida"},{valor:"TR",label:"TR: Transferência"},
+{valor:"TD",label:"TD: Treinamento e desenvolvimento"},{valor:"SU",label:"SU: Suspensão"},{valor:"FC",label:"FC: Folga compensatória"},{valor:"IN",label:"IN: Internalização"}
 ];
 function isStatusEspecial(v){return STATUS_ESPECIAIS.some(function(s){return s.valor===v})}
 
@@ -313,13 +309,15 @@ function isDiaDSR(dsrTexto,dataObj){if(!dsrTexto)return false;const d=dataObj.ge
 function isColabEmDSRHoje(c){const dataHoje=new Date(anoAtual,mesAtualIndex,diaHoje);return isDiaDSR(c.dsr,dataHoje)}
 
 function obterStatusHoje(c){
-  if(isColabEmDSRHoje(c))return'dsr';
   const raw=c.historicoDias[diaHoje-1]||"-";
-  if(raw==="FALTA")return'falta';
-  if(raw==="ATESTADO")return'atestado';
-  if(raw==="FERIAS")return'ferias';
-  if(raw==="AFASTAMENTO")return'afastamento';
-  if(["-","DSR_EXTRA","FOLGA","BANCO_HORAS","AL","S1","TD","SU"].includes(raw))return'sem_escala';
+  if(raw==="DSR")return'dsr';
+  if(["F","FJ"].includes(raw))return'falta';
+  if(raw==="AM")return'atestado';
+  if(raw==="FE")return'ferias';
+  if(["AF","AL"].includes(raw))return'afastamento';
+  if(["P","S2"].includes(raw))return'operacao';
+  if(raw==="-" && isColabEmDSRHoje(c))return'dsr';
+  if(["-","FO","BH","S1","TD","SU","DF","DP","DV","NC","NS","PR","TR","FC","IN"].includes(raw))return'sem_escala';
   return'operacao';
 }
 function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
@@ -581,8 +579,13 @@ function criarListaGeral(cols) {
     } else if (st === 'sem_escala') {
       const rawExcel = c.historicoDias[diaHoje-1] || '-';
       const labelsExcel = {
-        'DSR_EXTRA':'DSR', 'FOLGA':'Folga (FO)', 'BANCO_HORAS':'Banco de Horas (BH)',
-        'AL':'AL', 'S1':'S1', 'TD':'TD', 'SU':'SU', '-':'Sem informação no Excel'
+        'P':'Presente (P)', 'AF':'Afastamento (AF)', 'AL':'Afastamento longo (AL)', 'AM':'Atestado médico (AM)',
+        'BH':'Banco de Horas (BH)', 'DF':'Desligamento forçado (DF)', 'DP':'Desligamento Programado (DP)',
+        'DSR':'Descanso Semanal Remunerado (DSR)', 'DV':'Desligamento voluntário (DV)',
+        'F':'Falta Injustificada (F)', 'FE':'Férias (FE)', 'FJ':'Falta Justificada (FJ)', 'FO':'Folga (FO)',
+        'NC':'Não Contratado (NC)', 'NS':'No-Show (NS)', 'PR':'Promoção (PR)', 'S1':'Sinergia Enviada (S1)',
+        'S2':'Sinergia Recebida (S2)', 'TR':'Transferência (TR)', 'TD':'Treinamento e desenvolvimento (TD)',
+        'SU':'Suspensão (SU)', 'FC':'Folga compensatória (FC)', 'IN':'Internalização (IN)', '-':'Sem informação no Excel'
       };
       statusLabel = labelsExcel[rawExcel] || rawExcel;
     }
@@ -730,27 +733,24 @@ function fecharModalMatriz(){document.getElementById('modal-matriz').classList.a
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
-  // Regras oficiais da planilha Shopee:
-  // Absenteismo: AM, F, FJ | Presente PHD: P, S2
-  // Quadro fixo: P, DSR, FO, FE, AF, BH, AL, AM, F, FJ, S1, TD, SU
-  // Aptos: P, AM, F, FJ, FO, BH, S1, TD, SU
-  "P":  "OPERACAO",
-  "S2": "OPERACAO",
-  "F":  "FALTA",
-  "FJ": "FALTA",
-  "AM": "ATESTADO",
-  "FE": "FERIAS",
-  "AF": "AFASTAMENTO",
-  // Estes codigos NAO contam como presente PHD.
-  "DSR": "DSR_EXTRA",
-  "FO":  "FOLGA",
-  "BH":  "BANCO_HORAS",
-  "AL":  "AL",
-  "S1":  "S1",
-  "TD":  "TD",
-  "SU":  "SU",
-  "DF":  "DESLIGADO"
+  // Critérios Shopee: Absenteísmo AM/F/FJ; Presente PHD P/S2.
+  // Quadro fixo: P, DSR, FO, FE, AF, BH, AL, AM, F, FJ, S1, TD, SU.
+  // Aptos: P, AM, F, FJ, FO, BH, S1, TD, SU.
+  // Preserva o código original do Excel.
+  "AF":"AF", "AL":"AL", "AM":"AM", "BH":"BH", "DF":"DF", "DP":"DP", "DSR":"DSR", "DV":"DV",
+  "F":"F", "FE":"FE", "FJ":"FJ", "FO":"FO", "NC":"NC", "NS":"NS", "P":"P", "PR":"PR",
+  "S1":"S1", "S2":"S2", "TR":"TR", "TD":"TD", "SU":"SU", "FC":"FC", "IN":"IN"
 };
+
+const CRITERIOS_SHOPEE = {
+  ABSENTEISMO: ["AM","F","FJ"],
+  PRESENTE_PHD: ["P","S2"],
+  QUADRO_FIXO_CONTRATADO: ["P","DSR","FO","FE","AF","BH","AL","AM","F","FJ","S1","TD","SU"],
+  APTOS_A_TRABALHAR: ["P","AM","F","FJ","FO","BH","S1","TD","SU"]
+};
+function statusAtendeCriterioShopee(codigo, criterio){
+  return (CRITERIOS_SHOPEE[criterio]||[]).includes(String(codigo||"").trim().toUpperCase());
+}
 
 function limparNomeExcel(nomeBruto){
   let s = String(nomeBruto).trim();
@@ -979,7 +979,6 @@ async function processarExcel(event) {
         }
 
         let statusFinal = statusMapeado;
-        if (statusFinal === "OPERACAO") statusFinal = FUNCAO_PRESENTE_EXCEL;
 
         const diaNum = diaHoje;
         const existente = colab.historicoDias[diaNum - 1];
