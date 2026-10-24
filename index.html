@@ -1,4 +1,4 @@
-a<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-PT">
 <head>
 <meta charset="UTF-8">
@@ -642,14 +642,14 @@ if(termo){
   const m=[].concat(
     oF.map(function(c){return{c:c,tipo:'operacao'}}),
     dF.map(function(c){return{c:c,tipo:'dsr'}}),
-    bhF.map(function(c){return{c:c,tipo:'sem_escala'}}),
+    bhF.map(function(c){return{c:c,tipo:'banco_horas'}}),
     fF.map(function(c){return{c:c,tipo:'falta'}}),
     aF.map(function(c){return{c:c,tipo:'atestado'}}),
     feF.map(function(c){return{c:c,tipo:'ferias'}}),
     afF.map(function(c){return{c:c,tipo:'afastamento'}}),
     seF.map(function(c){return{c:c,tipo:'sem_escala'}})
   );
-  const fM={'todos':null,'presentes':'operacao','operacao':'operacao','diaristas':null,'dsr':'dsr','faltas':'falta','atestados':'atestado'};
+  const fM={'todos':null,'presentes':'operacao','operacao':'operacao','diaristas':null,'dsr':'dsr','banco_horas':'banco_horas','faltas':'falta','atestados':'atestado'};
   const tp=fM[filtroAtivo];
   const filt=tp?m.filter(function(x){return x.tipo===tp}):m;
   if(filt.length===0){cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum resultado.</p>';lucide.createIcons();return}
@@ -660,7 +660,7 @@ if(termo){
 
 // MODO TODOS — LISTA GERAL
 if(filtroAtivo==='todos'){
-  const todosVisiveis = [].concat(oF, dF, fF, aF, feF, afF, seF);
+  const todosVisiveis = [].concat(oF, dF, bhF, fF, aF, feF, afF, seF);
   cont.appendChild(criarListaGeral(todosVisiveis));
   return;
 }
@@ -695,8 +695,9 @@ if(filtroAtivo==='banco_horas'){
   lucide.createIcons();return;
 }
 if(filtroAtivo==='faltas'){
-  if(bhF.length>0){const b=criarBloco('Banco de Horas Hoje','status BH do Excel',bhF,'purple','<i data-lucide="clock-3" class="w-4 h-4"></i>',bhF.length);if(b)cont.appendChild(b);}
-  if(fF.length>0){const b=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);if(b)cont.appendChild(b);}
+  // O filtro Faltas deve exibir SOMENTE F e FJ.
+  // Banco de Horas (BH) possui KPI/filtro próprio e não entra nesta tela.
+  if(fF.length>0){const b=criarBloco('Faltas Hoje','Falta Injustificada (F) e Falta Justificada (FJ)',fF,'yellow','',fF.length);if(b)cont.appendChild(b);}
   else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>';
   return;
 }
