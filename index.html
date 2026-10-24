@@ -609,17 +609,17 @@ if(filtroAtivo==='diaristas'){
 // MODO DSR / FALTAS / ATESTADOS
 if(filtroAtivo==='dsr'){
   if(dF.length>0){const b=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length);if(b)cont.appendChild(b);}
-  else cont.innerHTML='<p class="text-center text-slate-500 italic py-5 text-sm">Nenhum em DSR hoje.</p>';
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>';
   return;
 }
 if(filtroAtivo==='faltas'){
   if(fF.length>0){const b=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);if(b)cont.appendChild(b);}
-  else cont.innerHTML='<p class="text-center text-slate-500 italic py-5 text-sm">Nenhuma falta.</p>';
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>';
   return;
 }
 if(filtroAtivo==='atestados'){
   if(aF.length>0){const b=criarBloco('Atestados Hoje','ausencias justificadas',aF,'red','',aF.length);if(b)cont.appendChild(b);}
-  else cont.innerHTML='<p class="text-center text-slate-500 italic py-5 text-sm">Nenhum atestado.</p>';
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum atestado.</p>';
   return;
 }
 lucide.createIcons();
@@ -661,7 +661,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v20 (Dia Atual)
+// IMPORTAÇÃO DO EXCEL — v21 (Dia Atual + Formato BR/ISO)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -736,7 +736,6 @@ function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, d
   const cont = document.getElementById('resultado-import-conteudo');
   let h = '';
   
-  // Aviso de data
   h += '<div class="bg-cyan-950/20 border border-cyan-500/40 rounded-xl p-3 text-center">';
   h += '<div class="text-[11px] uppercase text-cyan-400 font-bold">📅 Data processada</div>';
   h += '<div class="text-lg font-extrabold text-cyan-300">' + dataAlvo + '</div>';
@@ -814,20 +813,19 @@ async function processarExcel(event) {
 
       const cabecalho = matriz[idxCabecalho];
       let colNome = -1;
-      let colHoje = -1; // Coluna do dia de hoje
+      let colHoje = -1;
 
       for (let c = 0; c < cabecalho.length; c++) {
         const cel = cabecalho[c];
         if (!cel) continue;
         const celStr = String(cel).trim();
         
-        // Acha a coluna do nome
         if (colNome === -1 && /nome|colaborador/i.test(celStr)) { 
           colNome = c; 
           continue; 
         }
         
-        // Acha a coluna do dia de HOJE
+        // 🔥 AQUI ESTÁ A MÁGICA: normaliza a data da planilha (aceita Date object, ISO, ou BR)
         const dataISO = normalizarChaveData(celStr);
         if (dataISO === isoHoje) {
           colHoje = c;
@@ -838,7 +836,10 @@ async function processarExcel(event) {
         toast('❌ Coluna de nome não encontrada.', 'erro'); return;
       }
       if (colHoje === -1) {
-        toast('❌ A coluna do dia de hoje (' + dataHojeStr + ') não foi encontrada na planilha.', 'erro'); return;
+        toast('❌ A coluna do dia de hoje (' + dataHojeStr + ') não foi encontrada na planilha.', 'erro'); 
+        console.warn("Procurando pela data ISO:", isoHoje);
+        console.warn("Cabeçalhos encontrados na planilha:", cabecalho);
+        return;
       }
 
       toast("Sincronizando dados do dia " + dataHojeStr + "... Aguarde.", 'ok');
@@ -873,11 +874,10 @@ async function processarExcel(event) {
         let statusFinal = statusMapeado;
         if (statusFinal === "OPERACAO") statusFinal = FUNCAO_PRESENTE_EXCEL;
 
-        const diaNum = diaHoje; // Só o dia de hoje
+        const diaNum = diaHoje;
         const existente = colab.historicoDias[diaNum - 1];
 
         if (statusFinal === "-") {
-          // Se for DSR/BH, deleta o registro do banco (para ficar sem escala)
           const rDel = await supabaseClient.from('historico_escala')
             .delete().eq('colaborador_id', colab.id).eq('data', isoHoje);
           if (rDel.error) console.error('Delete erro:', rDel.error);
