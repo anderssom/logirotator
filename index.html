@@ -661,7 +661,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v23 (Dia Atual + Criação Automática)
+// IMPORTAÇÃO DO EXCEL — v24 (Dia Atual + Criação Automática c/ Trava de Duplicidade)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -784,7 +784,7 @@ async function processarExcel(event) {
   if (!confirm(
     "Esta importação vai ATUALIZAR o histórico de presenças/faltas/atestados " +
     "APENAS DO DIA DE HOJE (" + dataHojeStr + ").\n\n" +
-    "Se o colaborador não existir no banco, ele será CADASTRADO automaticamente.\n\n" +
+    "Se o colaborador não existir no banco, ele será CADASTRADO automaticamente (se não houver duplicatas).\n\n" +
     "Deseja continuar?"
   )) { event.target.value = ''; return; }
 
@@ -859,29 +859,36 @@ async function processarExcel(event) {
 
         let colab = encontrarColaboradorPorNome(nomeLimpo);
         
-        // 🔥 NOVO: Se não encontrou, cadastra o colaborador na hora!
         if (!colab) {
-          console.log("Cadastrando novo colaborador:", nomeLimpo);
-          const insertRes = await supabaseClient.from('colaboradores').insert([{
-            nome: nomeLimpo,
-            escala: "6x1", 
-            dsr: "Domingo", 
-            horario: "08:00 - 17:00"
-          }]).select();
+          console.log("Verificando duplicidade e cadastrando:", nomeLimpo);
           
-          if (insertRes.error) {
-            console.error("Erro ao cadastrar:", insertRes.error);
-            naoEncontrados.push(nomeLimpo);
-            stats.erros++;
-            continue;
-          }
-          
-          if (insertRes.data && insertRes.data.length > 0) {
-            colab = { id: insertRes.data[0].id, nome: insertRes.data[0].nome, historicoDias: new Array(totalDiasDoMes).fill("-") };
-            colaboradores.push(colab); // Adiciona na memória para não duplicar
+          // Trava extra: busca no banco de dados remoto antes de inserir, para não duplicar se o app estiver com cache antigo.
+          const checkRes = await supabaseClient.from('colaboradores').select('*').ilike('nome', nomeLimpo);
+          if (checkRes.data && checkRes.data.length > 0) {
+             colab = checkRes.data[0];
+             colaboradores.push({ id: colab.id, nome: colab.nome, historicoDias: new Array(totalDiasDoMes).fill("-"), escala: colab.escala, dsr: colab.dsr, horario: colab.horario });
           } else {
-            naoEncontrados.push(nomeLimpo);
-            continue;
+             const insertRes = await supabaseClient.from('colaboradores').insert([{
+               nome: nomeLimpo,
+               escala: "6x1", 
+               dsr: "Domingo", 
+               horario: "08:00 - 17:00"
+             }]).select();
+             
+             if (insertRes.error) {
+               console.error("Erro ao cadastrar:", insertRes.error);
+               naoEncontrados.push(nomeLimpo);
+               stats.erros++;
+               continue;
+             }
+             
+             if (insertRes.data && insertRes.data.length > 0) {
+               colab = { id: insertRes.data[0].id, nome: insertRes.data[0].nome, historicoDias: new Array(totalDiasDoMes).fill("-"), escala: "6x1", dsr: "Domingo", horario: "08:00 - 17:00" };
+               colaboradores.push(colab);
+             } else {
+               naoEncontrados.push(nomeLimpo);
+               continue;
+             }
           }
         }
 
