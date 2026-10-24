@@ -565,7 +565,7 @@ function criarListaGeral(cols) {
       atestado: {tipo:'atestado', label:'ATESTADO', badge:'badge-danger'},
       ferias: {tipo:'ferias', label:'F\u00e9rias', badge:'badge-purple'},
       afastamento: {tipo:'afastamento', label:'Afastamento', badge:'badge-default'},
-      sem_escala: {tipo:'sem_escala', label:'Sem Escala', badge:'badge-default'}
+      sem_escala: {tipo:'sem_escala', label:'Sem função hoje', badge:'badge-default'}
     }[st] || {tipo:'sem_escala', label:'-', badge:'badge-default'};
     
     let statusLabel = statusInfo.label;
@@ -940,69 +940,15 @@ async function processarExcel(event) {
         }
         chavesImportadas.add(chaveImportacao);
 
-        // O codigo SPX e a referencia principal da planilha. Como a tabela atual
-        // de colaboradores nao possui coluna codigo, usamos o nome normalizado
-        // como chave persistente e o codigo como validacao durante a importacao.
+        // IMPORTANTE: o Excel NAO cadastra colaboradores. Ele apenas compara com o banco.
+        // A busca usa o nome normalizado para tolerar acentos, caixa e espacos extras.
         let colab = encontrarColaboradorPorNome(nomeLimpo);
-        
-        // 🔥 CADASTRO AUTOMÁTICO COM CORREÇÃO DO ERRO DE UNDEFINED
+
         if (!colab) {
-          console.log("Verificando duplicidade e cadastrando:", nomeLimpo);
-          
-          const checkRes = await supabaseClient.from('colaboradores').select('*');
-          
-          if (checkRes.error) {
-             console.error("Erro ao verificar duplicidade:", checkRes.error);
-             stats.erros++;
-             continue;
-          }
-
-          const existenteNormalizado = (checkRes.data || []).find(function(x){
-            const nomeBancoLimpo = limparNomeExcel(x.nome || '');
-            return normalizarTexto(nomeBancoLimpo) === normalizarTexto(nomeLimpo);
-          });
-
-          if (existenteNormalizado) {
-             const existenteBanco = existenteNormalizado;
-             colab = {
-               id: existenteBanco.id,
-               nome: existenteBanco.nome,
-               historicoDias: new Array(totalDiasDoMes).fill("-"),
-               escala: existenteBanco.escala || "6x1",
-               dsr: existenteBanco.dsr || "Domingo",
-               horario: existenteBanco.horario || "08:00 - 17:00"
-             };
-             colaboradores.push(colab);
-          } else {
-             const insertRes = await supabaseClient.from('colaboradores').insert([{
-               nome: nomeLimpo,
-               escala: "6x1", 
-               dsr: "Domingo", 
-               horario: "08:00 - 17:00"
-             }]).select();
-             
-             if (insertRes.error) {
-               console.error("Erro ao cadastrar:", insertRes.error);
-               naoEncontrados.push(nomeLimpo);
-               stats.erros++;
-               continue;
-             }
-             
-             if (insertRes.data && insertRes.data.length > 0) {
-               colab = { 
-                 id: insertRes.data[0].id, 
-                 nome: insertRes.data[0].nome, 
-                 historicoDias: new Array(totalDiasDoMes).fill("-"), 
-                 escala: "6x1", 
-                 dsr: "Domingo", 
-                 horario: "08:00 - 17:00" 
-               };
-               colaboradores.push(colab);
-             } else {
-               naoEncontrados.push(nomeLimpo);
-               continue;
-             }
-          }
+          console.warn("Colaborador do Excel não existe no banco; não será cadastrado:", nomeLimpo, codigoSPX);
+          naoEncontrados.push(nomeLimpo + (codigoSPX ? " (" + codigoSPX + ")" : ""));
+          stats.ignorados++;
+          continue;
         }
 
         // Garante uma estrutura válida mesmo para registros recém-carregados do banco.
@@ -1050,20 +996,8 @@ async function processarExcel(event) {
         }
       }
 
-      // Sincronização do quadro: o Excel é a fonte oficial dos colaboradores ativos.
-      // Remove do banco quem não está entre os ativos da planilha de hoje (inclusive DF).
-      const bancoAtual = await supabaseClient.from('colaboradores').select('id,nome');
-      if (bancoAtual.error) throw bancoAtual.error;
-      const foraDoQuadro = (bancoAtual.data || []).filter(function(c){
-        return !nomesAtivosExcel.has(normalizarTexto(limparNomeExcel(c.nome || '')));
-      });
-      for (const antigo of foraDoQuadro) {
-        const delHist = await supabaseClient.from('historico_escala').delete().eq('colaborador_id', antigo.id);
-        if (delHist.error) { console.error('Erro removendo histórico de desligado:', antigo.nome, delHist.error); stats.erros++; continue; }
-        const delCol = await supabaseClient.from('colaboradores').delete().eq('id', antigo.id);
-        if (delCol.error) { console.error('Erro removendo colaborador fora do quadro:', antigo.nome, delCol.error); stats.erros++; }
-      }
-
+      // O Excel também NÃO exclui colaboradores do banco.
+      // DF e nomes ausentes são apenas ignorados nesta importação.
       stats.ignorados += desligadosExcel;
       renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, dataHojeStr);
       await carregarDadosSupabase();
