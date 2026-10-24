@@ -661,7 +661,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v21 (Dia Atual + Formato BR/ISO)
+// IMPORTAÇÃO DO EXCEL — v22 (Dia Atual + Formato BR/ISO)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -825,7 +825,6 @@ async function processarExcel(event) {
           continue; 
         }
         
-        // 🔥 AQUI ESTÁ A MÁGICA: normaliza a data da planilha (aceita Date object, ISO, ou BR)
         const dataISO = normalizarChaveData(celStr);
         if (dataISO === isoHoje) {
           colHoje = c;
