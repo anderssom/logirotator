@@ -735,7 +735,8 @@ const MAPA_STATUS_EXCEL = {
   "AL":  "-",
   "S1":  "-",
   "TD":  "-",
-  "SU":  "-"
+  "SU":  "-",
+  "DF":  "DESLIGADO"
 };
 
 function limparNomeExcel(nomeBruto){
@@ -838,7 +839,9 @@ async function processarExcel(event) {
   if (!confirm(
     "Esta importação vai ATUALIZAR o histórico de presenças/faltas/atestados " +
     "APENAS DO DIA DE HOJE (" + dataHojeStr + ").\n\n" +
-    "Se o colaborador não existir no banco, ele será CADASTRADO automaticamente.\n\n" +
+    "O Excel será tratado como a lista oficial do quadro ATIVO.\n" +
+    "Linhas com DF (desligado) e pessoas fora da planilha serão removidas do quadro do sistema.\n\n" +
+    "Se o colaborador ativo não existir no banco, ele será CADASTRADO automaticamente.\n\n" +
     "Deseja continuar?"
   )) { event.target.value = ''; return; }
 
@@ -904,6 +907,8 @@ async function processarExcel(event) {
       const naoEncontrados = [];
       const statusDesconhecidos = {};
       const chavesImportadas = new Set();
+      const nomesAtivosExcel = new Set();
+      let desligadosExcel = 0;
 
       for (let i = idxCabecalho + 1; i < matriz.length; i++) {
         const linha = matriz[i];
@@ -915,6 +920,17 @@ async function processarExcel(event) {
         const codigoSPX = colCodigo >= 0 ? String(linha[colCodigo] || '').trim().toUpperCase() : '';
         const nomeLimpo = limparNomeExcel(nomeBruto).replace(codigoSPX, '').trim();
         if (!nomeLimpo) continue;
+
+        const valorCelula = String(linha[colHoje] || '').trim().toUpperCase();
+
+        // DF = desligado. A linha permanece na planilha para histórico, mas não
+        // pertence ao quadro ativo e não deve entrar no Total do LogiRotator.
+        if (valorCelula === "DF") {
+          desligadosExcel++;
+          continue;
+        }
+
+        nomesAtivosExcel.add(normalizarTexto(nomeLimpo));
 
         const chaveImportacao = codigoSPX || normalizarTexto(nomeLimpo);
         if (chavesImportadas.has(chaveImportacao)) {
@@ -994,7 +1010,6 @@ async function processarExcel(event) {
           colab.historicoDias = new Array(totalDiasDoMes).fill("-");
         }
 
-        const valorCelula = String(linha[colHoje] || '').trim().toUpperCase();
         if (!valorCelula) { stats.ignorados++; continue; }
 
         const statusMapeado = MAPA_STATUS_EXCEL[valorCelula];
@@ -1035,6 +1050,21 @@ async function processarExcel(event) {
         }
       }
 
+      // Sincronização do quadro: o Excel é a fonte oficial dos colaboradores ativos.
+      // Remove do banco quem não está entre os ativos da planilha de hoje (inclusive DF).
+      const bancoAtual = await supabaseClient.from('colaboradores').select('id,nome');
+      if (bancoAtual.error) throw bancoAtual.error;
+      const foraDoQuadro = (bancoAtual.data || []).filter(function(c){
+        return !nomesAtivosExcel.has(normalizarTexto(limparNomeExcel(c.nome || '')));
+      });
+      for (const antigo of foraDoQuadro) {
+        const delHist = await supabaseClient.from('historico_escala').delete().eq('colaborador_id', antigo.id);
+        if (delHist.error) { console.error('Erro removendo histórico de desligado:', antigo.nome, delHist.error); stats.erros++; continue; }
+        const delCol = await supabaseClient.from('colaboradores').delete().eq('id', antigo.id);
+        if (delCol.error) { console.error('Erro removendo colaborador fora do quadro:', antigo.nome, delCol.error); stats.erros++; }
+      }
+
+      stats.ignorados += desligadosExcel;
       renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, dataHojeStr);
       await carregarDadosSupabase();
       renderizar();
