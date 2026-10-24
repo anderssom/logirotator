@@ -713,27 +713,29 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v25 (Dia Atual + Criação Automática)
+// IMPORTAÇÃO DO EXCEL — v26 (Regras Shopee + Anti-duplicidade)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
+  // Regras oficiais da planilha Shopee:
+  // Absenteismo: AM, F, FJ | Presente PHD: P, S2
+  // Quadro fixo: P, DSR, FO, FE, AF, BH, AL, AM, F, FJ, S1, TD, SU
+  // Aptos: P, AM, F, FJ, FO, BH, S1, TD, SU
   "P":  "OPERACAO",
-  "S1": "OPERACAO",
   "S2": "OPERACAO",
-  "TD": "OPERACAO",
-  "SU": "OPERACAO",
-  "FO": "OPERACAO",
-  "LM": "OPERACAO",
-  "XPT":"OPERACAO",
-  "DSR": "-",
-  "BH":  "-",
-  "NC":  "-",
-  "DF":  "-",
   "F":  "FALTA",
   "FJ": "FALTA",
   "AM": "ATESTADO",
   "FE": "FERIAS",
-  "AF": "AFASTAMENTO"
+  "AF": "AFASTAMENTO",
+  // Estes codigos NAO contam como presente PHD.
+  "DSR": "-",
+  "FO":  "-",
+  "BH":  "-",
+  "AL":  "-",
+  "S1":  "-",
+  "TD":  "-",
+  "SU":  "-"
 };
 
 function limparNomeExcel(nomeBruto){
@@ -865,6 +867,7 @@ async function processarExcel(event) {
 
       const cabecalho = matriz[idxCabecalho];
       let colNome = -1;
+      let colCodigo = -1;
       let colHoje = -1;
 
       for (let c = 0; c < cabecalho.length; c++) {
@@ -872,9 +875,13 @@ async function processarExcel(event) {
         if (!cel) continue;
         const celStr = String(cel).trim();
         
-        if (colNome === -1 && /nome|colaborador/i.test(celStr)) { 
-          colNome = c; 
-          continue; 
+        if (colNome === -1 && /nome|colaborador/i.test(celStr)) {
+          colNome = c;
+          continue;
+        }
+        if (colCodigo === -1 && /^c[oó]digo$/i.test(celStr)) {
+          colCodigo = c;
+          continue;
         }
         
         const dataISO = normalizarChaveData(celStr);
@@ -896,6 +903,7 @@ async function processarExcel(event) {
       const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0, semData: 0 };
       const naoEncontrados = [];
       const statusDesconhecidos = {};
+      const chavesImportadas = new Set();
 
       for (let i = idxCabecalho + 1; i < matriz.length; i++) {
         const linha = matriz[i];
@@ -904,9 +912,21 @@ async function processarExcel(event) {
         const nomeBruto = linha[colNome];
         if (!nomeBruto || !String(nomeBruto).trim()) continue;
 
-        const nomeLimpo = limparNomeExcel(nomeBruto);
+        const codigoSPX = colCodigo >= 0 ? String(linha[colCodigo] || '').trim().toUpperCase() : '';
+        const nomeLimpo = limparNomeExcel(nomeBruto).replace(codigoSPX, '').trim();
         if (!nomeLimpo) continue;
 
+        const chaveImportacao = codigoSPX || normalizarTexto(nomeLimpo);
+        if (chavesImportadas.has(chaveImportacao)) {
+          console.warn('Linha duplicada ignorada:', nomeLimpo, codigoSPX);
+          stats.ignorados++;
+          continue;
+        }
+        chavesImportadas.add(chaveImportacao);
+
+        // O codigo SPX e a referencia principal da planilha. Como a tabela atual
+        // de colaboradores nao possui coluna codigo, usamos o nome normalizado
+        // como chave persistente e o codigo como validacao durante a importacao.
         let colab = encontrarColaboradorPorNome(nomeLimpo);
         
         // 🔥 CADASTRO AUTOMÁTICO COM CORREÇÃO DO ERRO DE UNDEFINED
@@ -921,7 +941,10 @@ async function processarExcel(event) {
              continue;
           }
 
-          const existenteNormalizado = (checkRes.data || []).find(function(x){ return normalizarTexto(x.nome) === normalizarTexto(nomeLimpo); });
+          const existenteNormalizado = (checkRes.data || []).find(function(x){
+            const nomeBancoLimpo = limparNomeExcel(x.nome || '');
+            return normalizarTexto(nomeBancoLimpo) === normalizarTexto(nomeLimpo);
+          });
 
           if (existenteNormalizado) {
              const existenteBanco = existenteNormalizado;
