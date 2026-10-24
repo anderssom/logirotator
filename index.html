@@ -863,16 +863,23 @@ async function processarExcel(event) {
           
           const checkRes = await supabaseClient.from('colaboradores').select('*').ilike('nome', nomeLimpo);
           
+          if (checkRes.error) {
+             console.error("Erro ao verificar duplicidade:", checkRes.error);
+             stats.erros++;
+             continue;
+          }
+
           if (checkRes.data && checkRes.data.length > 0) {
-             colab = checkRes.data[0];
-             colaboradores.push({ 
-               id: colab.id, 
-               nome: colab.nome, 
-               historicoDias: new Array(totalDiasDoMes).fill("-"), 
-               escala: colab.escala, 
-               dsr: colab.dsr, 
-               horario: colab.horario 
-             });
+             const existenteBanco = checkRes.data[0];
+             colab = {
+               id: existenteBanco.id,
+               nome: existenteBanco.nome,
+               historicoDias: new Array(totalDiasDoMes).fill("-"),
+               escala: existenteBanco.escala || "6x1",
+               dsr: existenteBanco.dsr || "Domingo",
+               horario: existenteBanco.horario || "08:00 - 17:00"
+             };
+             colaboradores.push(colab);
           } else {
              const insertRes = await supabaseClient.from('colaboradores').insert([{
                nome: nomeLimpo,
@@ -903,6 +910,11 @@ async function processarExcel(event) {
                continue;
              }
           }
+        }
+
+        // Garante uma estrutura válida mesmo para registros recém-carregados do banco.
+        if (!Array.isArray(colab.historicoDias)) {
+          colab.historicoDias = new Array(totalDiasDoMes).fill("-");
         }
 
         const valorCelula = String(linha[colHoje] || '').trim().toUpperCase();
