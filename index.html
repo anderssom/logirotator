@@ -280,8 +280,8 @@ function isStatusEspecial(v){return STATUS_ESPECIAIS.some(function(s){return s.v
 const FUNCAO_PRESENTE_EXCEL = "PRESENTE";
 function isFuncaoAlocada(v){
   if (!v || isStatusEspecial(v)) return false;
-  if (v === FUNCAO_PRESENTE_EXCEL) return false; // presente do Excel, sem setor
-  if (v === "Recebimento") return false; // compatibilidade com versões anteriores
+  if (v === FUNCAO_PRESENTE_EXCEL) return false;
+  if (v === "Recebimento") return false;
   return true;
 }
 
@@ -314,7 +314,7 @@ function obterStatusHoje(c){
   if(raw==="FERIAS")return'ferias';
   if(raw==="AFASTAMENTO")return'afastamento';
   if(raw==="-"||raw==="DSR_EXTRA")return'sem_escala';
-  return'operacao'; // PRESENTE (Excel) ou função real alocada → operação
+  return'operacao';
 }
 function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
 function formatarDataDDMM(d){if(!d)return'';return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
@@ -449,7 +449,6 @@ function criarListaPresentes(colsOperacao) {
     const status = contarDiasNaFuncaoAtual(c.historicoDias);
     const funcao = status.funcao || '-';
     
-    // 🔥 Verifica se está realmente alocado em setor ou se é só "PRESENTE" do Excel
     const alocadoSetor = isFuncaoAlocada(funcao);
     
     h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
@@ -610,17 +609,17 @@ if(filtroAtivo==='diaristas'){
 // MODO DSR / FALTAS / ATESTADOS
 if(filtroAtivo==='dsr'){
   if(dF.length>0){const b=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length);if(b)cont.appendChild(b);}
-  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>';
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-5 text-sm">Nenhum em DSR hoje.</p>';
   return;
 }
 if(filtroAtivo==='faltas'){
   if(fF.length>0){const b=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);if(b)cont.appendChild(b);}
-  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>';
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-5 text-sm">Nenhuma falta.</p>';
   return;
 }
 if(filtroAtivo==='atestados'){
   if(aF.length>0){const b=criarBloco('Atestados Hoje','ausencias justificadas',aF,'red','',aF.length);if(b)cont.appendChild(b);}
-  else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum atestado.</p>';
+  else cont.innerHTML='<p class="text-center text-slate-500 italic py-5 text-sm">Nenhum atestado.</p>';
   return;
 }
 lucide.createIcons();
@@ -630,7 +629,6 @@ function renderizarSetores(cols,cont,forcarTodos){
   const setoresComColabs={};
   for(const setor of Object.keys(SETORES_E_FUNCOES)){
     const funcs=SETORES_E_FUNCOES[setor];
-    // 🔥 v19: conta apenas funções REAIS do setor (não conta "PRESENTE" ou "Recebimento" genérico)
     const cs=cols.filter(function(c){const f=c.historicoDias[diaHoje-1]||"-";return funcs.includes(f)});
     if(cs.length>0||forcarTodos)setoresComColabs[setor]=cs;
   }
@@ -663,7 +661,7 @@ function renderizarMatriz(){const t=normalizarTexto(document.getElementById('mat
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
-// IMPORTAÇÃO DO EXCEL — v19
+// IMPORTAÇÃO DO EXCEL — v20 (Dia Atual)
 // ============================================================
 
 const MAPA_STATUS_EXCEL = {
@@ -688,7 +686,7 @@ const MAPA_STATUS_EXCEL = {
 
 function limparNomeExcel(nomeBruto){
   let s = String(nomeBruto).trim();
-  s = s.replace(/\s+(SPXBR|SPX|GN|HUB)[\s-]?\d+$/i, '');
+  s = s.replace(/\s+(SPXBR|SPX|GN|HUB|LD|GI)[\s-]?\d+$/i, '');
   s = s.replace(/\s+[A-Z]{2,}\d{4,}$/i, '');
   return s.trim();
 }
@@ -734,9 +732,17 @@ function normalizarChaveData(chave) {
 function abrirModalResultadoImport() { document.getElementById('modal-resultado-import').classList.remove('hidden'); }
 function fecharModalResultadoImport() { document.getElementById('modal-resultado-import').classList.add('hidden'); }
 
-function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos) {
+function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, dataAlvo) {
   const cont = document.getElementById('resultado-import-conteudo');
   let h = '';
+  
+  // Aviso de data
+  h += '<div class="bg-cyan-950/20 border border-cyan-500/40 rounded-xl p-3 text-center">';
+  h += '<div class="text-[11px] uppercase text-cyan-400 font-bold">📅 Data processada</div>';
+  h += '<div class="text-lg font-extrabold text-cyan-300">' + dataAlvo + '</div>';
+  h += '<div class="text-[10px] text-slate-400 mt-1">O Excel foi lido apenas nesta data (Dia Atual)</div>';
+  h += '</div>';
+
   h += '<div class="grid grid-cols-2 gap-2">';
   h += '<div class="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-3"><div class="text-[10px] uppercase text-emerald-400 font-bold">Inseridos</div><div class="text-2xl font-extrabold text-emerald-300">' + stats.inseridos + '</div></div>';
   h += '<div class="bg-cyan-950/30 border border-cyan-500/40 rounded-xl p-3"><div class="text-[10px] uppercase text-cyan-400 font-bold">Atualizados</div><div class="text-2xl font-extrabold text-cyan-300">' + stats.atualizados + '</div></div>';
@@ -773,11 +779,13 @@ async function processarExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  const dataHojeStr = String(diaHoje).padStart(2, '0') + '/' + String(mesAtualIndex + 1).padStart(2, '0') + '/' + anoAtual;
+  const isoHoje = anoAtual + '-' + String(mesAtualIndex + 1).padStart(2, '0') + '-' + String(diaHoje).padStart(2, '0');
+
   if (!confirm(
     "Esta importação vai ATUALIZAR o histórico de presenças/faltas/atestados " +
-    "dos colaboradores encontrados na planilha.\n\n" +
-    "⚠️ IMPORTANTE: Os SETORES não são importados. A alocação por setor " +
-    "é MANUAL — o usuário aloca na aba 'Em Operação'.\n\n" +
+    "APENAS DO DIA DE HOJE (" + dataHojeStr + ").\n\n" +
+    "As outras datas da planilha serão IGNORADAS.\n\n" +
     "Deseja continuar?"
   )) { event.target.value = ''; return; }
 
@@ -806,22 +814,34 @@ async function processarExcel(event) {
 
       const cabecalho = matriz[idxCabecalho];
       let colNome = -1;
-      const colunasData = {};
+      let colHoje = -1; // Coluna do dia de hoje
+
       for (let c = 0; c < cabecalho.length; c++) {
         const cel = cabecalho[c];
         if (!cel) continue;
         const celStr = String(cel).trim();
-        if (colNome === -1 && /nome|colaborador/i.test(celStr)) { colNome = c; continue; }
+        
+        // Acha a coluna do nome
+        if (colNome === -1 && /nome|colaborador/i.test(celStr)) { 
+          colNome = c; 
+          continue; 
+        }
+        
+        // Acha a coluna do dia de HOJE
         const dataISO = normalizarChaveData(celStr);
-        if (dataISO) colunasData[c] = dataISO;
+        if (dataISO === isoHoje) {
+          colHoje = c;
+        }
       }
 
-      if (colNome === -1 || Object.keys(colunasData).length === 0) {
-        toast('❌ Coluna de nome ou data não encontrada.', 'erro');
-        return;
+      if (colNome === -1) {
+        toast('❌ Coluna de nome não encontrada.', 'erro'); return;
+      }
+      if (colHoje === -1) {
+        toast('❌ A coluna do dia de hoje (' + dataHojeStr + ') não foi encontrada na planilha.', 'erro'); return;
       }
 
-      toast("Sincronizando em lote... Aguarde.", 'ok');
+      toast("Sincronizando dados do dia " + dataHojeStr + "... Aguarde.", 'ok');
 
       const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0, semData: 0 };
       const naoEncontrados = [];
@@ -840,60 +860,49 @@ async function processarExcel(event) {
         const colab = encontrarColaboradorPorNome(nomeLimpo);
         if (!colab) { naoEncontrados.push(nomeLimpo); continue; }
 
-        const registrosParaUpsert = [];
-        const datasParaDelete = [];
+        const valorCelula = String(linha[colHoje] || '').trim().toUpperCase();
+        if (!valorCelula) { stats.ignorados++; continue; }
 
-        for (const colIdxStr in colunasData) {
-          const colIdx = parseInt(colIdxStr, 10);
-          const dataISO = colunasData[colIdxStr];
-          const valorCelula = String(linha[colIdx] || '').trim().toUpperCase();
-          if (!valorCelula) { stats.ignorados++; continue; }
+        const statusMapeado = MAPA_STATUS_EXCEL[valorCelula];
+        if (statusMapeado === undefined) {
+          statusDesconhecidos[valorCelula] = (statusDesconhecidos[valorCelula] || 0) + 1;
+          stats.ignorados++;
+          continue;
+        }
 
-          const statusMapeado = MAPA_STATUS_EXCEL[valorCelula];
-          if (statusMapeado === undefined) {
-            statusDesconhecidos[valorCelula] = (statusDesconhecidos[valorCelula] || 0) + 1;
-            stats.ignorados++;
-            continue;
-          }
+        let statusFinal = statusMapeado;
+        if (statusFinal === "OPERACAO") statusFinal = FUNCAO_PRESENTE_EXCEL;
 
-          let statusFinal = statusMapeado;
-          // 🔥 v19: PRESENTE (Excel) → "PRESENTE" (não conta em operação até alocar)
-          if (statusFinal === "OPERACAO") statusFinal = FUNCAO_PRESENTE_EXCEL;
+        const diaNum = diaHoje; // Só o dia de hoje
+        const existente = colab.historicoDias[diaNum - 1];
 
-          const diaNum = parseInt(dataISO.split('-')[2], 10);
-          const existente = colab.historicoDias[diaNum - 1];
-
-          if (statusFinal === "-") {
-            datasParaDelete.push(dataISO);
+        if (statusFinal === "-") {
+          // Se for DSR/BH, deleta o registro do banco (para ficar sem escala)
+          const rDel = await supabaseClient.from('historico_escala')
+            .delete().eq('colaborador_id', colab.id).eq('data', isoHoje);
+          if (rDel.error) console.error('Delete erro:', rDel.error);
+        } else {
+          let setor = "Recebimento";
+          if (isStatusEspecial(statusFinal)) setor = "Status";
+          
+          const r = await supabaseClient.from('historico_escala').upsert({
+            colaborador_id: colab.id,
+            data: isoHoje,
+            setor: setor,
+            funcao: statusFinal
+          }, { onConflict: 'colaborador_id,data' });
+          
+          if (r.error) { 
+            console.error('Upsert erro:', r.error); 
+            stats.erros++; 
           } else {
-            let setor = "Recebimento";
-            if (isStatusEspecial(statusFinal)) setor = "Status";
-            registrosParaUpsert.push({
-              colaborador_id: colab.id,
-              data: dataISO,
-              setor: setor,
-              funcao: statusFinal
-            });
             if (existente && existente !== "-") stats.atualizados++;
             else stats.inseridos++;
           }
         }
-
-        if (registrosParaUpsert.length > 0) {
-          const r = await supabaseClient.from('historico_escala').upsert(
-            registrosParaUpsert, { onConflict: 'colaborador_id,data' }
-          );
-          if (r.error) { console.error('Upsert lote erro:', r.error); stats.erros += registrosParaUpsert.length; }
-        }
-
-        if (datasParaDelete.length > 0) {
-          const rDel = await supabaseClient.from('historico_escala')
-            .delete().eq('colaborador_id', colab.id).in('data', datasParaDelete);
-          if (rDel.error) console.error('Delete lote erro:', rDel.error);
-        }
       }
 
-      renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos);
+      renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, dataHojeStr);
       await carregarDadosSupabase();
       renderizar();
 
@@ -906,104 +915,6 @@ async function processarExcel(event) {
   };
   reader.readAsArrayBuffer(file);
 }
-
-function calcularAcumuladoColab(c){
-  const dias=diaHoje;
-  const r={funcoes:{},faltas:0,atestados:0,dsr:0,semEscala:0,dsrExtra:0,ferias:0,afastamento:0,totalOperacao:0};
-  for(let i=0;i<dias;i++){
-    const dD=new Date(anoAtual,mesAtualIndex,i+1);
-    const eD=isDiaDSR(c.dsr,dD);
-    const f=c.historicoDias[i]||"-";
-    if(eD){r.dsr++;continue}
-    if(f==="FALTA")r.faltas++;
-    else if(f==="ATESTADO")r.atestados++;
-    else if(f==="FERIAS")r.ferias++;
-    else if(f==="AFASTAMENTO")r.afastamento++;
-    else if(f==="DSR_EXTRA")r.dsrExtra++;
-    else if(f==="-"||!f)r.semEscala++;
-    else{r.funcoes[f]=(r.funcoes[f]||0)+1;r.totalOperacao++}
-  }
-  return r;
-}
-
-function abrirRelatorioAcumulado(){
-  const cont=document.getElementById('relatorio-conteudo');
-  const sub=document.getElementById('relatorio-subtitulo');
-  cont.innerHTML='';
-  sub.innerText='Periodo: 01/'+String(mesAtualIndex+1).padStart(2,'0')+' a '+String(diaHoje).padStart(2,'0')+'/'+String(mesAtualIndex+1).padStart(2,'0')+' ('+diaHoje+' dias)';
-  
-  const todos=colaboradores.map(function(c){return{colab:c,resumo:calcularAcumuladoColab(c)}});
-  const tg={operacao:0,faltas:0,atestados:0,dsr:0,semEscala:0,dsrExtra:0,ferias:0,afastamento:0};
-  const tp={};
-  
-  todos.forEach(function(x){
-    tg.operacao+=x.resumo.totalOperacao;
-    tg.faltas+=x.resumo.faltas;
-    tg.atestados+=x.resumo.atestados;
-    tg.dsr+=x.resumo.dsr;
-    tg.semEscala+=x.resumo.semEscala;
-    tg.dsrExtra+=x.resumo.dsrExtra;
-    tg.ferias+=x.resumo.ferias;
-    tg.afastamento+=x.resumo.afastamento;
-    Object.keys(x.resumo.funcoes).forEach(function(f){tp[f]=(tp[f]||0)+x.resumo.funcoes[f]});
-  });
-  
-  const totalColabs=colaboradores.length;
-  const totalRegistros=tg.operacao+tg.faltas+tg.atestados+tg.dsr+tg.semEscala+tg.dsrExtra+tg.ferias+tg.afastamento;
-  const taxaOperacao=totalRegistros>0?((tg.operacao/totalRegistros)*100).toFixed(1):'0';
-  const taxaAusencias=totalRegistros>0?(((tg.faltas+tg.atestados+tg.ferias+tg.afastamento)/totalRegistros)*100).toFixed(1):'0';
-  const mediaOpPorColab=totalColabs>0?(tg.operacao/totalColabs).toFixed(1):'0';
-  
-  let h='';
-  
-  h+='<div class="mb-4">';
-  h+='<h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4"></i> Indicadores de Performance</h3>';
-  h+='<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">';
-  h+='<div class="card"><div class="text-[10px] uppercase text-emerald-400 font-bold mb-1">Taxa de Opera\u00e7\u00e3o</div><div class="text-2xl font-extrabold text-emerald-300">'+taxaOperacao+'%</div><div class="text-[10px] text-slate-500 mt-1">'+tg.operacao+' de '+totalRegistros+' registros</div></div>';
-  h+='<div class="card"><div class="text-[10px] uppercase text-red-400 font-bold mb-1">Absente\u00edsmo Total</div><div class="text-2xl font-extrabold text-red-300">'+taxaAusencias+'%</div><div class="text-[10px] text-slate-500 mt-1">Faltas + Atest. + F\u00e9rias + Afast.</div></div>';
-  h+='<div class="card"><div class="text-[10px] uppercase text-amber-400 font-bold mb-1">M\u00e9dia Op/Colab</div><div class="text-2xl font-extrabold text-amber-300">'+mediaOpPorColab+'</div><div class="text-[10px] text-slate-500 mt-1">dias trabalhados</div></div>';
-  h+='<div class="card"><div class="text-[10px] uppercase text-slate-400 font-bold mb-1">Total de Registros</div><div class="text-2xl font-extrabold text-slate-200">'+totalRegistros+'</div><div class="text-[10px] text-slate-500 mt-1">no per\u00edodo</div></div>';
-  h+='</div></div>';
-  
-  h+='<div class="bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 mb-4"><h3 class="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2"><i data-lucide="pie-chart" class="w-4 h-4"></i> Totais Gerais</h3><div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">';
-  h+='<div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-emerald-400 font-bold">Opera\u00e7\u00e3o</div><div class="text-2xl font-extrabold text-emerald-300">'+tg.operacao+'</div></div>';
-  h+='<div class="bg-slate-900 border border-yellow-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-yellow-400 font-bold">Faltas</div><div class="text-2xl font-extrabold text-yellow-300">'+tg.faltas+'</div></div>';
-  h+='<div class="bg-slate-900 border border-red-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-red-400 font-bold">Atestados</div><div class="text-2xl font-extrabold text-red-300">'+tg.atestados+'</div></div>';
-  h+='<div class="bg-slate-900 border border-purple-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-purple-400 font-bold">F\u00e9rias</div><div class="text-2xl font-extrabold text-purple-300">'+tg.ferias+'</div></div>';
-  h+='<div class="bg-slate-900 border border-slate-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-slate-400 font-bold">Afastamento</div><div class="text-2xl font-extrabold text-slate-300">'+tg.afastamento+'</div></div>';
-  h+='<div class="bg-slate-900 border border-orange-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-orange-400 font-bold">DSR</div><div class="text-2xl font-extrabold text-orange-300">'+tg.dsr+'</div></div>';
-  h+='<div class="bg-slate-900 border border-cyan-500/30 rounded-xl p-3"><div class="text-[10px] uppercase text-cyan-400 font-bold">DSR Extra</div><div class="text-2xl font-extrabold text-cyan-300">'+tg.dsrExtra+'</div></div>';
-  h+='<div class="bg-slate-900 border border-slate-700 rounded-xl p-3"><div class="text-[10px] uppercase text-slate-400 font-bold">Sem Escala</div><div class="text-2xl font-extrabold text-slate-300">'+tg.semEscala+'</div></div>';
-  h+='</div></div>';
-  
-  const fo=Object.keys(tp).sort(function(a,b){return tp[b]-tp[a]});
-  if(fo.length>0){
-    h+='<div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 mb-4"><h3 class="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2"><i data-lucide="trophy" class="w-4 h-4"></i> Ranking de Fun\u00e7\u00f5es</h3>';
-    h+='<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">';
-    fo.forEach(function(f,i){
-      const pos=i+1;
-      const cor=pos===1?'text-amber-400':pos===2?'text-slate-300':pos===3?'text-orange-400':'text-slate-500';
-      h+='<div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-3 py-2"><div class="flex items-center gap-2 min-w-0"><span class="text-xs font-bold '+cor+' w-5">'+pos+'</span><span class="text-[11px] text-slate-300 truncate">'+f+'</span></div><span class="text-sm font-extrabold text-amber-400">'+tp[f]+'</span></div>';
-    });
-    h+='</div></div>';
-  }
-  
-  h+='<div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4"><h3 class="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i> Detalhamento por Colaborador</h3><div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="bg-slate-950 border-b border-slate-800"><th class="text-left p-2 font-bold text-slate-300">Colaborador</th><th class="text-center p-2 font-bold text-emerald-400">Op.</th><th class="text-center p-2 font-bold text-yellow-400">Faltas</th><th class="text-center p-2 font-bold text-red-400">Atest.</th><th class="text-center p-2 font-bold text-purple-400">F\u00e9rias</th><th class="text-center p-2 font-bold text-slate-400">Afast.</th><th class="text-center p-2 font-bold text-orange-400">DSR</th><th class="text-center p-2 font-bold text-cyan-400">DSR+</th><th class="text-center p-2 font-bold text-slate-400">S/E</th><th class="text-left p-2 font-bold text-amber-400">Fun\u00e7\u00f5es</th></tr></thead><tbody>';
-  todos.forEach(function(x){
-    const ft=Object.keys(x.resumo.funcoes).sort(function(a,b){return x.resumo.funcoes[b]-x.resumo.funcoes[a]}).map(function(f){return f+' ('+x.resumo.funcoes[f]+')'}).join(' \u00b7 ')||'-';
-    h+='<tr class="border-b border-slate-800/60"><td class="p-2 bg-slate-900 font-semibold text-slate-200 whitespace-nowrap"><div>'+x.colab.nome+'</div><div class="text-[10px] text-slate-500">'+x.colab.escala+' \u00b7 DSR: '+x.colab.dsr+'</div></td><td class="text-center p-2 text-emerald-300 font-bold">'+x.resumo.totalOperacao+'</td><td class="text-center p-2 text-yellow-300 font-bold">'+x.resumo.faltas+'</td><td class="text-center p-2 text-red-300 font-bold">'+x.resumo.atestados+'</td><td class="text-center p-2 text-purple-300 font-bold">'+x.resumo.ferias+'</td><td class="text-center p-2 text-slate-300 font-bold">'+x.resumo.afastamento+'</td><td class="text-center p-2 text-orange-300 font-bold">'+x.resumo.dsr+'</td><td class="text-center p-2 text-cyan-300 font-bold">'+x.resumo.dsrExtra+'</td><td class="text-center p-2 text-slate-400 font-bold">'+x.resumo.semEscala+'</td><td class="p-2 text-slate-400 text-[10px] max-w-md">'+ft+'</td></tr>';
-  });
-  h+='</tbody></table></div></div>';
-  
-  cont.innerHTML=h;
-  document.getElementById('modal-relatorio-acumulado').classList.remove('hidden');
-  lucide.createIcons();
-}
-
-function fecharRelatorioAcumulado(){document.getElementById('modal-relatorio-acumulado').classList.add('hidden')}
-function imprimirRelatorio(){const cont=document.getElementById('relatorio-conteudo').innerHTML;const sub=document.getElementById('relatorio-subtitulo').innerText;const p=[];p.push('<html><head><title>Relatorio LogiRotator</title><style>body{font-family:system-ui;padding:20px;background:#fff;color:#000}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:6px 8px;text-align:center}th{background:#f3f4f6}td:first-child,th:first-child{text-align:left}h1{font-size:18px}h3{font-size:14px;margin-top:14px}.card{border:1px solid #ddd;padding:10px;border-radius:6px;margin-bottom:8px}</style></head><body>');p.push('<h1>Relatorio Acumulado - HUB-LCE-04</h1><p>'+sub+'</p>');p.push(cont);p.push('</bo'+'dy></ht'+'ml>');const w=window.open('','_blank');w.document.write(p.join(''));w.document.close();setTimeout(function(){w.print()},400)}
-
-window.onload=init;
 </script>
 </body>
 </html>
