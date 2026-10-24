@@ -105,6 +105,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <button onclick="setFiltro('operacao')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em Opera&#231;&#227;o</span><h2 id="kpi-operacao" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-operacao-detalhe" class="text-[9px] text-slate-500">&mdash;</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="activity" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('diaristas')" class="text-left card hover:border-cyan-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-cyan-400">Diaristas</span><h2 id="kpi-diaristas" class="text-2xl font-extrabold text-cyan-400 mt-0.5">0</h2></div><div class="bg-cyan-500/10 p-2.5 rounded-lg border border-cyan-500/20 text-cyan-400"><i data-lucide="hard-hat" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('dsr')" class="text-left card hover:border-orange-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Em DSR</span><h2 id="kpi-dsr" class="text-2xl font-extrabold text-orange-400 mt-0.5">0</h2></div><div class="bg-orange-500/10 p-2.5 rounded-lg border border-orange-500/20 text-orange-400"><i data-lucide="palmtree" class="w-5 h-5"></i></div></button>
+<button onclick="setFiltro('banco_horas')" class="text-left card hover:border-violet-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Banco de Horas</span><h2 id="kpi-banco-horas" class="text-2xl font-extrabold text-violet-400 mt-0.5">0</h2><span class="text-[9px] text-slate-500">Status BH hoje</span></div><div class="bg-violet-500/10 p-2.5 rounded-lg border border-violet-500/20 text-violet-400"><i data-lucide="clock-3" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('faltas')" class="text-left card hover:border-yellow-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Faltas</span><h2 id="kpi-faltas" class="text-2xl font-extrabold text-yellow-400 mt-0.5">0</h2></div><div class="bg-yellow-500/10 p-2.5 rounded-lg border border-yellow-500/20 text-yellow-400"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('atestados')" class="text-left card hover:border-red-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Atestados</span><h2 id="kpi-atestados" class="text-2xl font-extrabold text-red-400 mt-0.5">0</h2></div><div class="bg-red-500/10 p-2.5 rounded-lg border border-red-500/20 text-red-400"><i data-lucide="stethoscope" class="w-5 h-5"></i></div></button>
 </div>
@@ -314,10 +315,11 @@ function obterStatusHoje(c){
   if(["F","FJ"].includes(raw))return'falta';
   if(raw==="AM")return'atestado';
   if(raw==="FE")return'ferias';
+  if(raw==="BH")return'banco_horas';
   if(["AF","AL"].includes(raw))return'afastamento';
   if(["P","S2"].includes(raw))return'operacao';
   if(raw==="-" && isColabEmDSRHoje(c))return'dsr';
-  if(["-","FO","BH","S1","TD","SU","DF","DP","DV","NC","NS","PR","TR","FC","IN"].includes(raw))return'sem_escala';
+  if(["-","FO","S1","TD","SU","DF","DP","DV","NC","NS","PR","TR","FC","IN"].includes(raw))return'sem_escala';
   return'operacao';
 }
 function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
@@ -383,7 +385,7 @@ function salvarDiaristasQtd(){
 
 function toggleSidebarMobile(){const s=document.getElementById('sidebar-mobile');const o=document.getElementById('sidebar-mobile-overlay');const ab=!s.classList.contains('-translate-x-full');if(ab){s.classList.add('-translate-x-full');o.classList.add('hidden')}else{s.classList.remove('-translate-x-full');o.classList.remove('hidden')}}
 
-function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','presentes':'Presentes','operacao':'Em Opera\u00e7\u00e3o','diaristas':'Diaristas','dsr':'Em DSR Hoje','faltas':'Faltas Hoje','atestados':'Atestados Hoje'};const icons={'todos':'layout-grid','presentes':'check-circle-2','operacao':'users','diaristas':'hard-hat','dsr':'palmtree','faltas':'alert-triangle','atestados':'stethoscope'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+icons[f]+'" class="w-3.5 h-3.5"></i> '+labels[f];renderizar();lucide.createIcons()}
+function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','presentes':'Presentes','operacao':'Em Opera\u00e7\u00e3o','diaristas':'Diaristas','dsr':'Em DSR Hoje','banco_horas':'Banco de Horas Hoje','faltas':'Faltas Hoje','atestados':'Atestados Hoje'};const icons={'todos':'layout-grid','presentes':'check-circle-2','operacao':'users','diaristas':'hard-hat','dsr':'palmtree','banco_horas':'clock-3','faltas':'alert-triangle','atestados':'stethoscope'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+icons[f]+'" class="w-3.5 h-3.5"></i> '+labels[f];renderizar();lucide.createIcons()}
 
 async function init(){const txt='HUB-LCE-04 \u2022 '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';document.getElementById('label-mes-ano').innerText=txt;document.getElementById('label-mes-ano-sidebar').innerText=txt;try{const r=await supabaseClient.from('colaboradores').select('id').limit(1);if(r.error)alert("Erro Supabase: "+r.error.message)}catch(e){console.error(e)}popularSelectFuncoesPorSetor();await carregarDadosSupabase();setFiltro('todos');lucide.createIcons()}
 
@@ -608,10 +610,10 @@ function renderizar(){
 const termo=normalizarTexto(document.getElementById('input-busca').value);
 const cont=document.getElementById('container-setores');
 cont.innerHTML="";
-const g={operacao:[],dsr:[],falta:[],atestado:[],ferias:[],afastamento:[],sem_escala:[]};
+const g={operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],sem_escala:[]};
 colaboradores.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c)});
 const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
-const oF=fl(g.operacao);const dF=fl(g.dsr);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const seF=fl(g.sem_escala);
+const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(g.banco_horas);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const seF=fl(g.sem_escala);
 const dd=getDiaristasDia();
 const td=dd.presentes;
 const totalPresentes=g.operacao.length+dd.presentes;
@@ -619,6 +621,7 @@ document.getElementById('kpi-total').innerText=colaboradores.length;
 document.getElementById('kpi-presentes').innerText=totalPresentes;
 document.getElementById('kpi-operacao').innerText=g.operacao.length;
 document.getElementById('kpi-dsr').innerText=g.dsr.length;
+document.getElementById('kpi-banco-horas').innerText=g.banco_horas.length;
 document.getElementById('kpi-faltas').innerText=g.falta.length+dd.faltantes;
 document.getElementById('kpi-atestados').innerText=g.atestado.length;
 document.getElementById('kpi-diaristas').innerText=td;
@@ -634,6 +637,7 @@ if(termo){
   const m=[].concat(
     oF.map(function(c){return{c:c,tipo:'operacao'}}),
     dF.map(function(c){return{c:c,tipo:'dsr'}}),
+    bhF.map(function(c){return{c:c,tipo:'sem_escala'}}),
     fF.map(function(c){return{c:c,tipo:'falta'}}),
     aF.map(function(c){return{c:c,tipo:'atestado'}}),
     feF.map(function(c){return{c:c,tipo:'ferias'}}),
@@ -680,7 +684,13 @@ if(filtroAtivo==='dsr'){
   else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>';
   return;
 }
+if(filtroAtivo==='banco_horas'){
+  if(bhF.length>0){const b=criarBloco('Banco de Horas Hoje','status BH do Excel',bhF,'purple','<i data-lucide="clock-3" class="w-4 h-4"></i>',bhF.length);if(b)cont.appendChild(b);}
+  else cont.innerHTML='<div class="text-center text-slate-500 py-10">Nenhum colaborador em Banco de Horas (BH) hoje.</div>';
+  lucide.createIcons();return;
+}
 if(filtroAtivo==='faltas'){
+  if(bhF.length>0){const b=criarBloco('Banco de Horas Hoje','status BH do Excel',bhF,'purple','<i data-lucide="clock-3" class="w-4 h-4"></i>',bhF.length);if(b)cont.appendChild(b);}
   if(fF.length>0){const b=criarBloco('Faltas Hoje','ausencias nao justificadas',fF,'yellow','',fF.length);if(b)cont.appendChild(b);}
   else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>';
   return;
