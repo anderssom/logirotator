@@ -424,6 +424,8 @@ async function carregarDadosSupabase(){
         escala:principal.escala||'6x1',
         horario:principal.horario||'08:00 - 17:00',
         dsr:principal.dsr||'Domingo',
+        // Mantém o identificador SPX quando existir no banco ou estiver anexado ao nome.
+        codigoSPX:String(principal.codigo_spx||principal.codigo||principal.spx||principal.matricula||extrairCodigoSPX(principal.nome)||'').trim().toUpperCase(),
         historicoDias:hd,
         idsDuplicados:lista.slice(1).map(function(x){return x.id})
       });
@@ -762,36 +764,51 @@ function statusAtendeCriterioShopee(codigo, criterio){
   return (CRITERIOS_SHOPEE[criterio]||[]).includes(String(codigo||"").trim().toUpperCase());
 }
 
-function limparNomeExcel(nomeBruto){
-  let s = String(nomeBruto).trim();
-  s = s.replace(/\s+(SPXBR|SPX|GN|HUB|LD|GI)[\s-]?\d+$/i, '');
-  s = s.replace(/\s+[A-Z]{2,}\d{4,}$/i, '');
-  return s.trim();
+function extrairCodigoSPX(valor){
+  const m=String(valor||'').toUpperCase().match(/\bSPXBR\s*-?\s*\d+\b/);
+  return m ? m[0].replace(/[\s-]+/g,'') : '';
 }
 
-function encontrarColaboradorPorNome(nomeLimpo){
-  const alvoNorm = normalizarTexto(nomeLimpo);
-  const alvoSemEspaco = alvoNorm.replace(/\s+/g, '');
-  const palavrasAlvo = alvoNorm.split(' ').filter(p => p.length > 2);
+function limparNomeExcel(nomeBruto){
+  let s = String(nomeBruto||'').trim();
+  s = s.replace(/\bSPXBR\s*-?\s*\d+\b/ig, ' ');
+  s = s.replace(/\s+(SPX|GN|HUB|LD|GI)[\s-]?\d+$/i, '');
+  s = s.replace(/\s+[A-Z]{2,}\d{4,}$/i, '');
+  return s.replace(/\s+/g,' ').trim();
+}
 
-  let c = colaboradores.find(x => normalizarTexto(x.nome) === alvoNorm);
-  if (c) return c;
+// Busca segura: 1) Código SPXBR; 2) nome exato normalizado; 3) variação de nome
+// somente quando houver UM único candidato de alta confiança.
+function encontrarColaboradorExcel(nomeLimpo, codigoSPX){
+  const codigo = String(codigoSPX||'').trim().toUpperCase().replace(/[\s-]+/g,'');
+  if(codigo){
+    const porCodigo = colaboradores.filter(function(c){
+      const codBanco = String(c.codigoSPX||extrairCodigoSPX(c.nome)||'').toUpperCase().replace(/[\s-]+/g,'');
+      return codBanco && codBanco === codigo;
+    });
+    if(porCodigo.length === 1) return porCodigo[0];
+  }
 
-  c = colaboradores.find(x => normalizarTexto(x.nome).replace(/\s+/g, '') === alvoSemEspaco);
-  if (c) return c;
+  const alvo = normalizarTexto(limparNomeExcel(nomeLimpo)).replace(/\s+/g,' ').trim();
+  if(!alvo) return null;
 
-  c = colaboradores.find(x => {
-    const palavrasBanco = normalizarTexto(x.nome).split(' ').filter(p => p.length > 2);
-    const comuns = palavrasAlvo.filter(p => palavrasBanco.includes(p));
-    return comuns.length >= 2;
+  const exatos = colaboradores.filter(function(c){
+    return normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim() === alvo;
   });
-  if (c) return c;
+  if(exatos.length === 1) return exatos[0];
 
-  c = colaboradores.find(x => {
-    const n = normalizarTexto(x.nome);
-    return n.includes(alvoNorm) || alvoNorm.includes(n);
+  const pa = alvo.split(' ').filter(function(p){return p.length>1});
+  if(pa.length < 2) return null;
+  const candidatos = colaboradores.filter(function(c){
+    const nb = normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim();
+    const pb = nb.split(' ').filter(function(p){return p.length>1});
+    if(pb.length < 2 || pa[0] !== pb[0] || pa[pa.length-1] !== pb[pb.length-1]) return false;
+    const menor = pa.length <= pb.length ? pa : pb;
+    const maior = pa.length <= pb.length ? pb : pa;
+    const comuns = menor.filter(function(p){return maior.includes(p)}).length;
+    return comuns === menor.length && comuns / Math.max(pa.length,pb.length) >= 0.75;
   });
-  return c || null;
+  return candidatos.length === 1 ? candidatos[0] : null;
 }
 
 function normalizarChaveData(chave) {
@@ -830,7 +847,7 @@ function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, d
   if (naoEncontrados.length > 0) {
     h += '<div class="bg-yellow-950/20 border border-yellow-500/40 rounded-xl p-3">';
     h += '<div class="text-[11px] uppercase text-yellow-400 font-bold mb-1">⚠️ ' + naoEncontrados.length + ' nome(s) não encontrado(s) no banco</div>';
-    h += '<div class="text-[10px] text-slate-400 mb-2">Provavelmente demitidos ou cadastrados com nome diferente.</div>';
+    h += '<div class="text-[10px] text-slate-400 mb-2">Não houve correspondência segura por Código SPXBR ou nome. Nenhum cadastro foi criado automaticamente.</div>';
     h += '<div class="max-h-32 overflow-y-auto bg-slate-950 rounded p-2 text-[10px] text-slate-300 font-mono space-y-0.5">';
     naoEncontrados.forEach(n => { h += '<div>' + n + '</div>'; });
     h += '</div></div>';
@@ -862,9 +879,9 @@ async function processarExcel(event) {
   if (!confirm(
     "Esta importação vai ATUALIZAR o histórico de presenças/faltas/atestados " +
     "APENAS DO DIA DE HOJE (" + dataHojeStr + ").\n\n" +
-    "O Excel será tratado como a lista oficial do quadro ATIVO.\n" +
-    "Linhas com DF (desligado) e pessoas fora da planilha serão removidas do quadro do sistema.\n\n" +
-    "Se o colaborador ativo não existir no banco, ele será CADASTRADO automaticamente.\n\n" +
+    "O Excel será usado somente para sincronizar o status do dia.\n" +
+    "Nenhum colaborador será cadastrado ou excluído automaticamente.\n\n" +
+    "A comparação prioriza o Código SPXBR e usa o nome normalizado como alternativa segura.\n\n" +
     "Deseja continuar?"
   )) { event.target.value = ''; return; }
 
@@ -940,8 +957,8 @@ async function processarExcel(event) {
         const nomeBruto = linha[colNome];
         if (!nomeBruto || !String(nomeBruto).trim()) continue;
 
-        const codigoSPX = colCodigo >= 0 ? String(linha[colCodigo] || '').trim().toUpperCase() : '';
-        const nomeLimpo = limparNomeExcel(nomeBruto).replace(codigoSPX, '').trim();
+        const codigoSPX = (colCodigo >= 0 ? String(linha[colCodigo] || '').trim().toUpperCase() : '') || extrairCodigoSPX(nomeBruto);
+        const nomeLimpo = limparNomeExcel(nomeBruto);
         if (!nomeLimpo) continue;
 
         const valorCelula = String(linha[colHoje] || '').trim().toUpperCase();
@@ -964,8 +981,8 @@ async function processarExcel(event) {
         chavesImportadas.add(chaveImportacao);
 
         // IMPORTANTE: o Excel NAO cadastra colaboradores. Ele apenas compara com o banco.
-        // A busca usa o nome normalizado para tolerar acentos, caixa e espacos extras.
-        let colab = encontrarColaboradorPorNome(nomeLimpo);
+        // A busca prioriza Código SPXBR e só usa nome quando a correspondência é segura.
+        let colab = encontrarColaboradorExcel(nomeLimpo, codigoSPX);
 
         if (!colab) {
           console.warn("Colaborador do Excel não existe no banco; não será cadastrado:", nomeLimpo, codigoSPX);
@@ -1012,6 +1029,7 @@ async function processarExcel(event) {
             console.error('Upsert erro:', r.error); 
             stats.erros++; 
           } else {
+            colab.historicoDias[diaNum - 1] = statusFinal;
             if (existente && existente !== "-") stats.atualizados++;
             else stats.inseridos++;
           }
