@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+a<!DOCTYPE html>
 <html lang="pt-PT">
 <head>
 <meta charset="UTF-8">
@@ -442,6 +442,9 @@ async function carregarDadosSupabase(){
 
     const qtdDuplicados=(rc.data||[]).length-colaboradores.length;
     if(qtdDuplicados>0)console.warn('Duplicidades ocultadas da contagem:',qtdDuplicados);
+
+    // Se já houve importação do Excel hoje, ele é a fonte do quadro diário.
+    aplicarSnapshotExcelHoje();
   }catch(e){console.error(e);alert('Erro: '+e.message)}
 }
 
@@ -765,15 +768,18 @@ function statusAtendeCriterioShopee(codigo, criterio){
 }
 
 function extrairCodigoSPX(valor){
-  const m=String(valor||'').toUpperCase().match(/\bSPXBR\s*-?\s*\d+\b/);
-  return m ? m[0].replace(/[\s-]+/g,'') : '';
+  // A planilha usa vários prefixos de matrícula: SPXBR, GN, GI, LD etc.
+  // Captura o código no final do nome ou em uma coluna própria.
+  const s = String(valor||'').toUpperCase().trim();
+  const m = s.match(/\b([A-Z]{2,8})\s*-?\s*(\d{3,})\b(?=\s*$|\b)/);
+  return m ? (m[1] + m[2]).replace(/[\s-]+/g,'') : '';
 }
 
 function limparNomeExcel(nomeBruto){
   let s = String(nomeBruto||'').trim();
-  s = s.replace(/\bSPXBR\s*-?\s*\d+\b/ig, ' ');
-  s = s.replace(/\s+(SPX|GN|HUB|LD|GI)[\s-]?\d+$/i, '');
-  s = s.replace(/\s+[A-Z]{2,}\d{4,}$/i, '');
+  // Remove matrícula/código anexado ao final do nome: SPXBR44266, GN44833,
+  // GI794242, LD114697 e outros prefixos alfanuméricos equivalentes.
+  s = s.replace(/\s+[A-Z]{2,8}[\s-]?\d{3,}\s*$/i, '');
   return s.replace(/\s+/g,' ').trim();
 }
 
@@ -824,6 +830,106 @@ function normalizarChaveData(chave) {
   return null;
 }
 
+
+function chaveSnapshotExcelHoje(){
+  return 'logirotator_excel_snapshot_' + anoAtual + '-' +
+    String(mesAtualIndex+1).padStart(2,'0') + '-' + String(diaHoje).padStart(2,'0');
+}
+
+function salvarSnapshotExcelHoje(lista){
+  localStorage.setItem(chaveSnapshotExcelHoje(), JSON.stringify({
+    data: anoAtual + '-' + String(mesAtualIndex+1).padStart(2,'0') + '-' + String(diaHoje).padStart(2,'0'),
+    registros: lista
+  }));
+}
+
+function carregarSnapshotExcelHoje(){
+  try{
+    const raw = localStorage.getItem(chaveSnapshotExcelHoje());
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    return obj && Array.isArray(obj.registros) ? obj.registros : null;
+  }catch(e){
+    console.error('Erro ao ler snapshot Excel:', e);
+    return null;
+  }
+}
+
+function aplicarSnapshotExcelHoje(){
+  const snapshot = carregarSnapshotExcelHoje();
+  if(!snapshot || !snapshot.length) return;
+
+  const usados = new Set();
+  const listaDia = [];
+
+  snapshot.forEach(function(reg){
+    const nomeLimpo = limparNomeExcel(reg.nome);
+    const codigo = String(reg.codigo||'').toUpperCase().replace(/[\s-]+/g,'');
+    let encontrado = null;
+
+    // 1. código
+    if(codigo){
+      encontrado = colaboradores.find(function(c){
+        if(usados.has(c.id)) return false;
+        const cc = String(c.codigoSPX||extrairCodigoSPX(c.nome)||'').toUpperCase().replace(/[\s-]+/g,'');
+        return cc && cc === codigo;
+      }) || null;
+    }
+
+    // 2. nome exato normalizado
+    if(!encontrado){
+      const alvo = normalizarTexto(nomeLimpo);
+      encontrado = colaboradores.find(function(c){
+        return !usados.has(c.id) && normalizarTexto(limparNomeExcel(c.nome)) === alvo;
+      }) || null;
+    }
+
+    // 3. correspondência segura por palavras do nome
+    if(!encontrado){
+      const alvo = normalizarTexto(nomeLimpo).split(' ').filter(Boolean);
+      const candidatos = colaboradores.filter(function(c){
+        if(usados.has(c.id)) return false;
+        const b = normalizarTexto(limparNomeExcel(c.nome)).split(' ').filter(Boolean);
+        if(!alvo.length || !b.length || alvo[0] !== b[0]) return false;
+        const comuns = alvo.filter(function(p){ return b.includes(p); }).length;
+        return comuns >= Math.min(3, alvo.length) &&
+               comuns / Math.max(alvo.length,b.length) >= 0.70;
+      });
+      if(candidatos.length === 1) encontrado = candidatos[0];
+    }
+
+    if(encontrado){
+      usados.add(encontrado.id);
+      if(!Array.isArray(encontrado.historicoDias))
+        encontrado.historicoDias = new Array(totalDiasDoMes).fill('-');
+      encontrado.historicoDias[diaHoje-1] = reg.status;
+      encontrado.codigoSPX = encontrado.codigoSPX || reg.codigo || '';
+      encontrado.origemExcelHoje = true;
+      listaDia.push(encontrado);
+    }else{
+      // Não cadastra no Supabase. Mantém somente na visão diária para que
+      // os KPIs e a lista reflitam exatamente a planilha importada.
+      const hd = new Array(totalDiasDoMes).fill('-');
+      hd[diaHoje-1] = reg.status;
+      listaDia.push({
+        id: 'excel-' + (reg.codigo || normalizarTexto(nomeLimpo).replace(/\s+/g,'-')),
+        nome: nomeLimpo,
+        codigoSPX: reg.codigo || '',
+        escala: 'Excel',
+        horario: '',
+        dsr: '',
+        historicoDias: hd,
+        origemExcelHoje: true,
+        somenteExcel: true
+      });
+    }
+  });
+
+  // O quadro diário passa a seguir o Excel: DF fica fora e colaboradores
+  // antigos que não aparecem na planilha do dia não viram "Sem informação".
+  colaboradores = listaDia.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR')});
+}
+
 function abrirModalResultadoImport() { document.getElementById('modal-resultado-import').classList.remove('hidden'); }
 function fecharModalResultadoImport() { document.getElementById('modal-resultado-import').classList.add('hidden'); }
 
@@ -863,6 +969,22 @@ function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, d
 
   if (naoEncontrados.length === 0 && Object.keys(statusDesconhecidos).length === 0 && stats.erros === 0) {
     h += '<div class="bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 text-center text-emerald-300 text-sm font-bold">✅ Tudo certo! Nenhum erro.</div>';
+  }
+
+
+  const snap = carregarSnapshotExcelHoje() || [];
+  if(snap.length){
+    const contagem = {};
+    snap.forEach(function(x){ contagem[x.status] = (contagem[x.status]||0)+1; });
+    h += '<div class="bg-slate-950 border border-slate-700 rounded-xl p-3">';
+    h += '<div class="text-[11px] uppercase text-amber-400 font-bold mb-2">Resumo do Excel — quadro ativo</div>';
+    h += '<div class="grid grid-cols-3 gap-2 text-center">';
+    ['P','F','AM','BH','AF','FE','FJ','S2'].forEach(function(k){
+      if(contagem[k]){
+        h += '<div class="bg-slate-900 rounded-lg p-2"><div class="text-[10px] text-slate-400">'+k+'</div><div class="text-xl font-extrabold text-slate-100">'+contagem[k]+'</div></div>';
+      }
+    });
+    h += '</div><div class="mt-2 text-xs text-slate-300">Total ativo no Excel: <strong>'+snap.length+'</strong></div></div>';
   }
 
   cont.innerHTML = h;
@@ -948,6 +1070,7 @@ async function processarExcel(event) {
       const statusDesconhecidos = {};
       const chavesImportadas = new Set();
       const nomesAtivosExcel = new Set();
+      const snapshotExcelHoje = [];
       let desligadosExcel = 0;
 
       for (let i = idxCabecalho + 1; i < matriz.length; i++) {
@@ -971,6 +1094,15 @@ async function processarExcel(event) {
         }
 
         nomesAtivosExcel.add(normalizarTexto(nomeLimpo));
+
+        const statusMapeadoSnapshot = MAPA_STATUS_EXCEL[valorCelula];
+        if (statusMapeadoSnapshot !== undefined) {
+          snapshotExcelHoje.push({
+            nome: nomeLimpo,
+            codigo: codigoSPX,
+            status: statusMapeadoSnapshot
+          });
+        }
 
         const chaveImportacao = codigoSPX || normalizarTexto(nomeLimpo);
         if (chavesImportadas.has(chaveImportacao)) {
@@ -1039,6 +1171,11 @@ async function processarExcel(event) {
       // O Excel também NÃO exclui colaboradores do banco.
       // DF e nomes ausentes são apenas ignorados nesta importação.
       stats.ignorados += desligadosExcel;
+
+      // Salva os  colaboradores ativos/status do Excel do dia para alimentar
+      // diretamente KPIs e listas, mesmo quando um nome ainda não existe no banco.
+      salvarSnapshotExcelHoje(snapshotExcelHoje);
+
       renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, dataHojeStr);
       await carregarDadosSupabase();
       renderizar();
