@@ -273,7 +273,13 @@ const STATUS_ESPECIAIS=[
 {valor:"FALTA",label:"FALTA"},
 {valor:"ATESTADO",label:"ATESTADO"},
 {valor:"FERIAS",label:"F\u00e9rias"},
-{valor:"AFASTAMENTO",label:"Afastamento Tempor\u00e1rio"}
+{valor:"AFASTAMENTO",label:"Afastamento Tempor\u00e1rio"},
+{valor:"FOLGA",label:"Folga (FO)"},
+{valor:"BANCO_HORAS",label:"Banco de Horas (BH)"},
+{valor:"AL",label:"AL"},
+{valor:"S1",label:"S1"},
+{valor:"TD",label:"TD"},
+{valor:"SU",label:"SU"}
 ];
 function isStatusEspecial(v){return STATUS_ESPECIAIS.some(function(s){return s.valor===v})}
 
@@ -313,7 +319,7 @@ function obterStatusHoje(c){
   if(raw==="ATESTADO")return'atestado';
   if(raw==="FERIAS")return'ferias';
   if(raw==="AFASTAMENTO")return'afastamento';
-  if(raw==="-"||raw==="DSR_EXTRA")return'sem_escala';
+  if(["-","DSR_EXTRA","FOLGA","BANCO_HORAS","AL","S1","TD","SU"].includes(raw))return'sem_escala';
   return'operacao';
 }
 function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
@@ -455,7 +461,7 @@ function cardColaborador(c,tipo){
   else if(tipo==='atestado'){borda='border-red-500/40';titulo='text-red-200';badge='<div class="mt-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] px-2 py-0.5 rounded font-extrabold">ATESTADO registrado</div>'}
   else if(tipo==='ferias'){borda='border-purple-500/40';titulo='text-purple-200';badge='<div class="mt-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[10px] px-2 py-0.5 rounded font-extrabold">F\u00e9rias</div>'}
   else if(tipo==='afastamento'){borda='border-slate-500/40';titulo='text-slate-300';badge='<div class="mt-1.5 bg-slate-500/10 border border-slate-500/30 text-slate-300 text-[10px] px-2 py-0.5 rounded font-extrabold">Afastamento Tempor\u00e1rio</div>'}
-  else if(tipo==='sem_escala'){borda='border-slate-700';titulo='text-slate-300';badge='<div class="mt-1.5 bg-slate-800/50 border border-slate-700 text-slate-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Sem fun\u00e7\u00e3o hoje (folga/DSR extra)</div>'}
+  else if(tipo==='sem_escala'){borda='border-slate-700';titulo='text-slate-300';badge='<div class="mt-1.5 bg-slate-800/50 border border-slate-700 text-slate-400 text-[10px] px-2 py-0.5 rounded font-extrabold">Sem informa\u00e7\u00e3o no Excel</div>'}
   else if(tipo==='operacao'){if(emBloqueio)borda='border-orange-500/60';else if(emAlerta)borda='border-red-500/60'}
   
   let alerta='';
@@ -552,7 +558,7 @@ function criarListaGeral(cols) {
   h += '<div class="bg-slate-900 border border-red-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-red-400 font-bold">Atestados</div><div class="text-lg font-extrabold text-red-300">' + contagem.atestado + '</div></div>';
   h += '<div class="bg-slate-900 border border-purple-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-purple-400 font-bold">F\u00e9rias</div><div class="text-lg font-extrabold text-purple-300">' + contagem.ferias + '</div></div>';
   h += '<div class="bg-slate-900 border border-slate-500/30 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-slate-400 font-bold">Afast.</div><div class="text-lg font-extrabold text-slate-300">' + contagem.afastamento + '</div></div>';
-  h += '<div class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-slate-400 font-bold">Sem Escala</div><div class="text-lg font-extrabold text-slate-300">' + contagem.sem_escala + '</div></div>';
+  h += '<div class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-center"><div class="text-[10px] uppercase text-slate-400 font-bold">Outros status</div><div class="text-lg font-extrabold text-slate-300">' + contagem.sem_escala + '</div></div>';
   h += '</div>';
   
   h += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
@@ -565,13 +571,20 @@ function criarListaGeral(cols) {
       atestado: {tipo:'atestado', label:'ATESTADO', badge:'badge-danger'},
       ferias: {tipo:'ferias', label:'F\u00e9rias', badge:'badge-purple'},
       afastamento: {tipo:'afastamento', label:'Afastamento', badge:'badge-default'},
-      sem_escala: {tipo:'sem_escala', label:'Sem função hoje', badge:'badge-default'}
+      sem_escala: {tipo:'sem_escala', label:'Sem informação no Excel', badge:'badge-default'}
     }[st] || {tipo:'sem_escala', label:'-', badge:'badge-default'};
     
     let statusLabel = statusInfo.label;
     if (st === 'operacao') {
       const s = contarDiasNaFuncaoAtual(c.historicoDias);
-      statusLabel = isFuncaoAlocada(s.funcao) ? s.funcao : 'Presente (Sem Setor)';
+      statusLabel = isFuncaoAlocada(s.funcao) ? s.funcao : 'Presente PHD';
+    } else if (st === 'sem_escala') {
+      const rawExcel = c.historicoDias[diaHoje-1] || '-';
+      const labelsExcel = {
+        'DSR_EXTRA':'DSR', 'FOLGA':'Folga (FO)', 'BANCO_HORAS':'Banco de Horas (BH)',
+        'AL':'AL', 'S1':'S1', 'TD':'TD', 'SU':'SU', '-':'Sem informação no Excel'
+      };
+      statusLabel = labelsExcel[rawExcel] || rawExcel;
     }
     
     h += '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2">';
@@ -729,13 +742,13 @@ const MAPA_STATUS_EXCEL = {
   "FE": "FERIAS",
   "AF": "AFASTAMENTO",
   // Estes codigos NAO contam como presente PHD.
-  "DSR": "-",
-  "FO":  "-",
-  "BH":  "-",
-  "AL":  "-",
-  "S1":  "-",
-  "TD":  "-",
-  "SU":  "-",
+  "DSR": "DSR_EXTRA",
+  "FO":  "FOLGA",
+  "BH":  "BANCO_HORAS",
+  "AL":  "AL",
+  "S1":  "S1",
+  "TD":  "TD",
+  "SU":  "SU",
   "DF":  "DESLIGADO"
 };
 
