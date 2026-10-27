@@ -100,7 +100,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 </header>
 
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
-<button onclick="setFiltro('todos')" class="text-left card hover:border-blue-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</span><h2 id="kpi-total" class="text-2xl font-extrabold text-slate-100 mt-0.5">0</h2></div><div class="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400"><i data-lucide="users" class="w-5 h-5"></i></div></button>
+<button onclick="setFiltro('todos')" class="text-left card hover:border-blue-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total no Banco</span><h2 id="kpi-total" class="text-2xl font-extrabold text-slate-100 mt-0.5">0</h2></div><div class="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400"><i data-lucide="users" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('presentes')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Presentes</span><h2 id="kpi-presentes" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-presentes-detalhe" class="text-[9px] text-slate-500">&mdash;</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="check-circle-2" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('operacao')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em Opera&#231;&#227;o</span><h2 id="kpi-operacao" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-operacao-detalhe" class="text-[9px] text-slate-500">0 alocados nos setores</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="activity" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('diaristas')" class="text-left card hover:border-cyan-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-cyan-400">Diaristas</span><h2 id="kpi-diaristas" class="text-2xl font-extrabold text-cyan-400 mt-0.5">0</h2></div><div class="bg-cyan-500/10 p-2.5 rounded-lg border border-cyan-500/20 text-cyan-400"><i data-lucide="hard-hat" class="w-5 h-5"></i></div></button>
@@ -310,19 +310,22 @@ function isDiaDSR(dsrTexto,dataObj){if(!dsrTexto)return false;const d=dataObj.ge
 function isColabEmDSRHoje(c){const dataHoje=new Date(anoAtual,mesAtualIndex,diaHoje);return isDiaDSR(c.dsr,dataHoje)}
 
 function obterStatusHoje(c){
-  const raw=c.historicoDias[diaHoje-1]||"-";
-  if(raw==="DSR")return'dsr';
-  if(["F","FJ"].includes(raw))return'falta';
-  if(raw==="AM")return'atestado';
-  if(raw==="FE")return'ferias';
-  if(raw==="BH")return'banco_horas';
-  if(["AF","AL"].includes(raw))return'afastamento';
-  if(["P","S2"].includes(raw))return'presente';
-  if(raw==="-" && isColabEmDSRHoje(c))return'dsr';
-  if(["-","FO","S1","TD","SU","DF","DP","DV","NC","NS","PR","TR","FC","IN"].includes(raw))return'sem_escala';
-  // Qualquer valor que seja uma função/setor alocado pelo usuário conta como operação.
-  return'operacao';
+  const pres=(c.presencaDias&&c.presencaDias[diaHoje-1])||"-";
+  if(pres==="DSR"||pres==="FO")return'dsr';
+  if(["F","FJ"].includes(pres))return'falta';
+  if(pres==="AM")return'atestado';
+  if(pres==="FE")return'ferias';
+  if(pres==="BH")return'banco_horas';
+  if(["AF","AL"].includes(pres))return'afastamento';
+  if(["P","S2"].includes(pres))return'presente';
+  return'sem_escala';
 }
+function estaEmOperacaoHoje(c){
+  const f=(c.historicoDias&&c.historicoDias[diaHoje-1])||'-';
+  const p=(c.presencaDias&&c.presencaDias[diaHoje-1])||'-';
+  return ["P","S2"].includes(p) && isFuncaoAlocada(f);
+}
+
 function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
 function formatarDataDDMM(d){if(!d)return'';return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
 
@@ -396,6 +399,8 @@ async function carregarDadosSupabase(){
     if(rc.error)throw rc.error;
     const rh=await supabaseClient.from('historico_escala').select('*');
     if(rh.error)throw rh.error;
+    const rp=await supabaseClient.from('presenca_diaria').select('*');
+    if(rp.error)throw new Error('Tabela presenca_diaria não encontrada. Execute primeiro o SQL de atualização do banco. Detalhe: '+rp.error.message);
 
     // Agrupa colaboradores com o mesmo nome normalizado para impedir contagem duplicada.
     // Ex.: "JOAO DA SILVA", "João da Silva" e nomes com espaços extras viram uma única pessoa na tela.
@@ -412,11 +417,18 @@ async function carregarDadosSupabase(){
       const principal=lista[0];
       const ids=new Set(lista.map(function(x){return x.id}));
       const hd=new Array(totalDiasDoMes).fill('-');
+      const pd=new Array(totalDiasDoMes).fill('-');
       (rh.data||[]).filter(function(h){return ids.has(h.colaborador_id)}).forEach(function(r){
         const dn=new Date(r.data+'T00:00:00').getDate();
         if(dn>=1&&dn<=totalDiasDoMes){
           // Se houver histórico em registros duplicados, preserva um valor válido.
           if(hd[dn-1]==='-' || (r.funcao && r.funcao!=='-')) hd[dn-1]=r.funcao||'-';
+        }
+      });
+      (rp.data||[]).filter(function(h){return ids.has(h.colaborador_id)}).forEach(function(r){
+        const dt=new Date(r.data+'T00:00:00');
+        if(dt.getFullYear()===anoAtual && dt.getMonth()===mesAtualIndex){
+          const dn=dt.getDate(); if(dn>=1&&dn<=totalDiasDoMes) pd[dn-1]=r.status||'-';
         }
       });
       colaboradores.push({
@@ -428,6 +440,7 @@ async function carregarDadosSupabase(){
         // Mantém o identificador SPX quando existir no banco ou estiver anexado ao nome.
         codigoSPX:String(principal.codigo_spx||principal.codigo||principal.spx||principal.matricula||extrairCodigoSPX(principal.nome)||'').trim().toUpperCase(),
         historicoDias:hd,
+        presencaDias:pd,
         idsDuplicados:lista.slice(1).map(function(x){return x.id})
       });
     });
@@ -444,8 +457,7 @@ async function carregarDadosSupabase(){
     const qtdDuplicados=(rc.data||[]).length-colaboradores.length;
     if(qtdDuplicados>0)console.warn('Duplicidades ocultadas da contagem:',qtdDuplicados);
 
-    // Se já houve importação do Excel hoje, ele é a fonte do quadro diário.
-    aplicarSnapshotExcelHoje();
+    // Total, presença e histórico são sempre reconstruídos a partir do banco Supabase.
   }catch(e){console.error(e);alert('Erro: '+e.message)}
 }
 
@@ -610,12 +622,12 @@ const termo=normalizarTexto(document.getElementById('input-busca').value);
 const cont=document.getElementById('container-setores');
 cont.innerHTML="";
 const g={presente:[],operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],sem_escala:[]};
-colaboradores.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c)});
+colaboradores.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c);if(estaEmOperacaoHoje(c))g.operacao.push(c)});
 const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
 const pF=fl(g.presente);const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(g.banco_horas);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const seF=fl(g.sem_escala);
 const dd=getDiaristasDia();
 const td=dd.presentes;
-const totalPresentes=g.presente.length+g.operacao.length+dd.presentes;
+const totalPresentes=g.presente.length+dd.presentes;
 document.getElementById('kpi-total').innerText=colaboradores.length;
 document.getElementById('kpi-presentes').innerText=totalPresentes;
 document.getElementById('kpi-operacao').innerText=g.operacao.length;
@@ -625,7 +637,7 @@ document.getElementById('kpi-faltas').innerText=g.falta.length+dd.faltantes;
 document.getElementById('kpi-atestados').innerText=g.atestado.length;
 document.getElementById('kpi-diaristas').innerText=td;
 const detP=document.getElementById('kpi-presentes-detalhe');
-if(detP)detP.innerText=(g.presente.length+g.operacao.length)+' PHD + '+dd.presentes+' diar.';
+if(detP)detP.innerText=g.presente.length+' PHD + '+dd.presentes+' diar.';
 const det=document.getElementById('kpi-operacao-detalhe');
 if(det)det.innerText=g.operacao.length+' alocado(s) nos setores';
 const bg={'badge-todos':colaboradores.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
@@ -732,11 +744,11 @@ function abrirModalAlocar(setor){document.getElementById('alocar-setor').value=s
 function fecharModalAlocar(){document.getElementById('modal-alocar').classList.add('hidden');alocarColabSelecionadoId=null}
 function filtrarColabsAlocar(){const t=normalizarTexto(document.getElementById('alocar-busca').value);const cont=document.getElementById('alocar-lista');const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){const st=obterStatusHoje(c);let ind=false;let mot='';if(st==='dsr'){ind=true;mot='DSR'}else if(st==='falta'){ind=true;mot='Falta'}else if(st==='atestado'){ind=true;mot='Atestado'}else if(st==='ferias'){ind=true;mot='Ferias'}else if(st==='afastamento'){ind=true;mot='Afast.'}else if(st==='banco_horas'){ind=true;mot='BH'}return{colab:c,ind:ind,mot:mot}}).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});if(lista.length===0){cont.innerHTML='<p class="text-xs text-slate-500 italic p-3">Nenhum.</p>';return}cont.innerHTML=lista.map(function(x){const sel=x.colab.id===alocarColabSelecionadoId;const f=x.colab.historicoDias[diaHoje-1]||"-";const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(\''+x.colab.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+(x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60')+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' \u00b7 DSR: '+x.colab.dsr+(ft?' \u00b7 Hoje: '+ft:'')+'</div></div>'+(x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>')+'</button>'}).join('');lucide.createIcons()}
 function selecionarColabAlocar(id){alocarColabSelecionadoId=id;filtrarColabsAlocar()}
-async function confirmarAlocacao(){const funcao=document.getElementById('alocar-funcao').value;if(!alocarColabSelecionadoId){toast("Selecione um.",'warn');return}const colab=colaboradores.find(function(c){return c.id===alocarColabSelecionadoId});if(!colab)return;const btn=document.querySelector('#modal-alocar button[onclick="confirmarAlocacao()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const st=obterStatusHoje(colab);if(st==='dsr'||st==='falta'||st==='atestado'||st==='ferias'||st==='afastamento'||st==='banco_horas'){toast(colab.nome+' nao pode ser alocado neste status.','warn');return}await atualizarDiaSupabase(colab.id,diaHoje,funcao);colab.historicoDias[diaHoje-1]=funcao;toast(colab.nome+' alocado em '+funcao+'.','ok');fecharModalAlocar();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
+async function confirmarAlocacao(){const funcao=document.getElementById('alocar-funcao').value;if(!alocarColabSelecionadoId){toast("Selecione um.",'warn');return}const colab=colaboradores.find(function(c){return c.id===alocarColabSelecionadoId});if(!colab)return;const btn=document.querySelector('#modal-alocar button[onclick="confirmarAlocacao()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const st=obterStatusHoje(colab);if(st!=='presente'){toast(colab.nome+' nao pode ser alocado neste status.','warn');return}await atualizarDiaSupabase(colab.id,diaHoje,funcao);colab.historicoDias[diaHoje-1]=funcao;toast(colab.nome+' alocado em '+funcao+'.','ok');fecharModalAlocar();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
 
 async function salvarColaborador(){const btn=document.querySelector('#modal-add button[onclick="salvarColaborador()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const idEdit=document.getElementById('edit-id').value;const nome=document.getElementById('input-nome-colab').value.trim();const func=document.getElementById('novo-funcao').value;if(!nome){toast("Insira o nome.",'warn');return}if(nome.length<3){toast("Nome curto.",'warn');return}const nn=normalizarTexto(nome);const dup=colaboradores.some(function(c){return normalizarTexto(c.nome)===nn&&c.id!==idEdit});if(dup){toast('Ja existe: '+nome,'warn');return}if(idEdit){const ru=await supabaseClient.from('colaboradores').update({nome:nome}).eq('id',idEdit);if(ru.error){toast("Erro: "+ru.error.message,'erro');return}const c=colaboradores.find(function(x){return x.id===idEdit});if(c&&!isColabEmDSRHoje(c))await atualizarDiaSupabase(idEdit,diaHoje,func);else if(c&&isColabEmDSRHoje(c)&&isStatusEspecial(func))await atualizarDiaSupabase(idEdit,diaHoje,func);toast(nome+' atualizado.','ok')}else{const esc=document.getElementById('select-escala').value;const dsr=document.getElementById('select-dsr').value;const hor=document.getElementById('input-horario').value;const ri=await supabaseClient.from('colaboradores').insert([{nome:nome,escala:esc,dsr:dsr,horario:hor}]).select();if(ri.error){toast("Erro: "+ri.error.message,'erro');return}if(ri.data&&ri.data.length>0){const dh=new Date(anoAtual,mesAtualIndex,diaHoje);const hd=isDiaDSR(dsr,dh);if(!hd||isStatusEspecial(func))await atualizarDiaSupabase(ri.data[0].id,diaHoje,func);toast(nome+' adicionado.','ok')}}fecharModalAdd();await carregarDadosSupabase();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
 
-function abrirHistorico(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select '+(bl?'disabled':'')+' onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')}
+function abrirHistorico(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select disabled onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')}
 function fecharModalHistorico(){document.getElementById('modal-historico').classList.add('hidden')}
 
 
@@ -746,13 +758,13 @@ function fecharRelatorioAcumulado(){
 
 function resumoMensalColaborador(c){
   const r={operacao:0,P:0,S2:0,F:0,FJ:0,AM:0,BH:0,DSR:0,FO:0,FE:0,AF:0,AL:0,TD:0,SU:0,outros:0};
-  (c.historicoDias||[]).forEach(function(v){
+  (c.presencaDias||[]).forEach(function(v){
     const x=String(v||'-').trim();
     if(!x || x==='-') return;
-    if(!isStatusEspecial(x)){r.operacao++;return;}
     if(Object.prototype.hasOwnProperty.call(r,x)) r[x]++;
     else r.outros++;
   });
+  (c.historicoDias||[]).forEach(function(v){if(isFuncaoAlocada(v))r.operacao++});
   return r;
 }
 
@@ -821,7 +833,7 @@ function imprimirRelatorio(){
 }
 
 function abrirModalMatriz(){document.getElementById('titulo-matriz-mes').innerHTML='Matriz: '+nomeMesAtual+' / '+anoAtual;document.getElementById('matriz-busca').value='';renderizarMatriz();document.getElementById('modal-matriz').classList.remove('hidden');lucide.createIcons();setTimeout(function(){const th=document.querySelector('#tabela-matriz-unica thead th.bg-amber-500\\/30');if(th)th.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})},150)}
-function renderizarMatriz(){const t=normalizarTexto(document.getElementById('matriz-busca').value||'');const tab=document.getElementById('tabela-matriz-unica');const cont=document.getElementById('matriz-busca-contador');tab.innerHTML='';const cf=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome,c.escala,c.dsr)});if(cont)cont.innerText=t?cf.length+' de '+colaboradores.length:colaboradores.length+' cols';const dP=[];const dF=[];for(let d=1;d<=totalDiasDoMes;d++){if(d<diaHoje)dP.push(d);else if(d>diaHoje)dF.push(d)}const dO=[].concat(dP,[diaHoje],dF);let th='<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador</th>';dO.forEach(function(d){const eH=d===diaHoje;const eP=d<diaHoje;let c='p-2 text-center font-semibold min-w-[120px] text-[10px] ';if(eH)c+='text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500';else if(eP)c+='text-slate-400 border-l border-slate-800/50 bg-slate-950/40';else c+='text-slate-200 border-l border-slate-800/50';th+='<th class="'+c+'">'+(eH?'HOJE - ':'')+'Dia '+d+'</th>'});th+='</tr></thead>';if(cf.length===0){tab.innerHTML=th+'<tbody><tr><td colspan="'+(dO.length+1)+'" class="text-center text-slate-500 italic py-8">Nenhum.</td></tr></tbody>';return}let tb='<tbody>';cf.forEach(function(c){tb+='<tr class="border-b border-slate-800/60"><td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]"><div class="text-xs font-bold text-slate-200">'+c.nome+'</div><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div></td>';dO.forEach(function(d){const iD=d-1;const fD=c.historicoDias[iD]||"-";const eH=d===diaHoje;const eP=d<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,d);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===fD?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===fD?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}let tc='p-1 text-center ';if(eH)tc+='bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40';else if(eD)tc+='bg-orange-950/20';else if(eP)tc+='bg-slate-950/60';tb+='<td class="'+tc+'"><select '+(bl?'disabled':'')+' onchange="tentarAlterarDia(\''+c.id+'\', '+iD+', this)" class="w-full text-[10px] rounded p-1 '+(bl?'opacity-40 bg-slate-950 border-slate-800 text-slate-500':'bg-slate-950 border-slate-700 text-slate-200')+' border">'+op+'</select></td>'});tb+='</tr>'});tb+='</tbody>';tab.innerHTML=th+tb}
+function renderizarMatriz(){const t=normalizarTexto(document.getElementById('matriz-busca').value||'');const tab=document.getElementById('tabela-matriz-unica');const cont=document.getElementById('matriz-busca-contador');tab.innerHTML='';const cf=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome,c.escala,c.dsr)});if(cont)cont.innerText=t?cf.length+' de '+colaboradores.length:colaboradores.length+' cols';const dP=[];const dF=[];for(let d=1;d<=totalDiasDoMes;d++){if(d<diaHoje)dP.push(d);else if(d>diaHoje)dF.push(d)}const dO=[].concat(dP,[diaHoje],dF);let th='<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador</th>';dO.forEach(function(d){const eH=d===diaHoje;const eP=d<diaHoje;let c='p-2 text-center font-semibold min-w-[120px] text-[10px] ';if(eH)c+='text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500';else if(eP)c+='text-slate-400 border-l border-slate-800/50 bg-slate-950/40';else c+='text-slate-200 border-l border-slate-800/50';th+='<th class="'+c+'">'+(eH?'HOJE - ':'')+'Dia '+d+'</th>'});th+='</tr></thead>';if(cf.length===0){tab.innerHTML=th+'<tbody><tr><td colspan="'+(dO.length+1)+'" class="text-center text-slate-500 italic py-8">Nenhum.</td></tr></tbody>';return}let tb='<tbody>';cf.forEach(function(c){tb+='<tr class="border-b border-slate-800/60"><td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]"><div class="text-xs font-bold text-slate-200">'+c.nome+'</div><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div></td>';dO.forEach(function(d){const iD=d-1;const fD=(c.presencaDias&&c.presencaDias[iD])||"-";const eH=d===diaHoje;const eP=d<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,d);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===fD?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===fD?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}let tc='p-1 text-center ';if(eH)tc+='bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40';else if(eD)tc+='bg-orange-950/20';else if(eP)tc+='bg-slate-950/60';tb+='<td class="'+tc+'"><select disabled onchange="tentarAlterarDia(\''+c.id+'\', '+iD+', this)" class="w-full text-[10px] rounded p-1 '+(bl?'opacity-40 bg-slate-950 border-slate-800 text-slate-500':'bg-slate-950 border-slate-700 text-slate-200')+' border">'+op+'</select></td>'});tb+='</tr>'});tb+='</tbody>';tab.innerHTML=th+tb}
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
@@ -1227,37 +1239,29 @@ async function processarExcel(event) {
         let statusFinal = statusMapeado;
 
         const diaNum = diaHoje;
-        const existente = colab.historicoDias[diaNum - 1];
+        const existente = (colab.presencaDias&&colab.presencaDias[diaNum - 1])||'-';
 
-        // Se o operador já foi alocado manualmente em um setor/função hoje,
-        // P ou S2 do Excel não apaga essa alocação. A Grade Mensal preserva
-        // a função efetivamente executada.
-        if ((statusFinal === "P" || statusFinal === "S2") &&
-            existente && existente !== "-" && !isStatusEspecial(existente)) {
-          stats.atualizados++;
-          continue;
-        }
 
         if (statusFinal === "-") {
-          const rDel = await supabaseClient.from('historico_escala')
+          const rDel = await supabaseClient.from('presenca_diaria')
             .delete().eq('colaborador_id', colab.id).eq('data', isoHoje);
           if (rDel.error) console.error('Delete erro:', rDel.error);
         } else {
           let setor = "Recebimento";
           if (isStatusEspecial(statusFinal)) setor = "Status";
           
-          const r = await supabaseClient.from('historico_escala').upsert({
+          const r = await supabaseClient.from('presenca_diaria').upsert({
             colaborador_id: colab.id,
             data: isoHoje,
-            setor: setor,
-            funcao: statusFinal
+            status: statusFinal
           }, { onConflict: 'colaborador_id,data' });
           
           if (r.error) { 
             console.error('Upsert erro:', r.error); 
             stats.erros++; 
           } else {
-            colab.historicoDias[diaNum - 1] = statusFinal;
+            if(!Array.isArray(colab.presencaDias)) colab.presencaDias=new Array(totalDiasDoMes).fill('-');
+            colab.presencaDias[diaNum - 1] = statusFinal;
             if (existente && existente !== "-") stats.atualizados++;
             else stats.inseridos++;
           }
@@ -1270,7 +1274,7 @@ async function processarExcel(event) {
 
       // Salva os  colaboradores ativos/status do Excel do dia para alimentar
       // diretamente KPIs e listas, mesmo quando um nome ainda não existe no banco.
-      salvarSnapshotExcelHoje(snapshotExcelHoje);
+      // Não usa snapshot local: após importar, a tela recarrega a presença do Supabase.
 
       renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, dataHojeStr);
       await carregarDadosSupabase();
