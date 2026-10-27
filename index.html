@@ -145,6 +145,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <button onclick="abrirRelatorioAcumulado();toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-400"></i> Relat&#243;rio</span></button>
 </nav>
 </aside>
+
 <!-- MODAIS -->
 <div id="modal-add" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
 <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl">
@@ -241,6 +242,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <div class="flex justify-end pt-3 border-t border-slate-800 mt-4"><button onclick="fecharModalResultadoImport()" class="btn btn-primary">OK</button></div>
 </div>
 </div>
+
 <script>
 const SUPABASE_URL='https://ycjsqsrhttbclchyeuzz.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_-avZEKSM1j7QOddKCxIb3g_F5emv6np';
@@ -437,59 +439,74 @@ async function carregarDadosSupabase(){
       }
     }
 
-    const grupos=new Map();
-    (rc.data||[]).forEach(function(c){
-      const chave=normalizarTexto(c.nome).replace(/\s+/g,' ').trim();
-      if(!chave)return;
-      if(!grupos.has(chave))grupos.set(chave,[]);
+    // Agrupa por nome normalizado. Se houver 2 IDs com o mesmo nome,
+    // escolhe o que tem registro de histórico mais recente.
+    const grupos = new Map();
+    (rc.data || []).forEach(function(c){
+      const chave = normalizarTexto(c.nome).replace(/\s+/g, ' ').trim();
+      if(!chave) return;
+      if(!grupos.has(chave)) grupos.set(chave, []);
       grupos.get(chave).push(c);
     });
 
-    colaboradores=[];
+    colaboradores = [];
     grupos.forEach(function(lista){
-      const principal=lista[0];
-      const ids=new Set(lista.map(function(x){return x.id}));
-      const hd=new Array(totalDiasDoMes).fill('-');
-      const pd=new Array(totalDiasDoMes).fill('-');
+      let principal = lista[0];
+      if(lista.length > 1){
+        const ids = lista.map(function(x){return x.id});
+        const hist = (rh.data || []).filter(function(h){ return ids.includes(h.colaborador_id); });
+        const ultimo = hist.sort(function(a,b){ return new Date(b.data) - new Date(a.data); })[0];
+        if(ultimo){
+          const encontrado = lista.find(function(x){ return x.id === ultimo.colaborador_id; });
+          if(encontrado) principal = encontrado;
+        }
+      }
 
-      (rh.data||[]).filter(function(h){return ids.has(h.colaborador_id)}).forEach(function(r){
-        const dt=new Date(r.data+'T00:00:00');
-        if(dt.getFullYear()===anoAtual && dt.getMonth()===mesAtualIndex){
-          const dn=dt.getDate();
-          if(dn>=1 && dn<=totalDiasDoMes){
-            if(hd[dn-1]==='-' || (r.funcao && r.funcao!=='-')) hd[dn-1]=r.funcao||'-';
+      const hd = new Array(totalDiasDoMes).fill('-');
+      const pd = new Array(totalDiasDoMes).fill('-');
+
+      (rh.data || []).filter(function(h){ return h.colaborador_id === principal.id; }).forEach(function(r){
+        const dt = new Date(r.data + 'T00:00:00');
+        if(dt.getFullYear() === anoAtual && dt.getMonth() === mesAtualIndex){
+          const dn = dt.getDate();
+          if(dn >= 1 && dn <= totalDiasDoMes){
+            if(hd[dn-1] === '-' || (r.funcao && r.funcao !== '-')) hd[dn-1] = r.funcao || '-';
           }
         }
       });
 
-      (rp.data||[]).filter(function(h){return ids.has(h.colaborador_id)}).forEach(function(r){
-        const dt=new Date(r.data+'T00:00:00');
-        if(dt.getFullYear()===anoAtual && dt.getMonth()===mesAtualIndex){
-          const dn=dt.getDate();
-          if(dn>=1 && dn<=totalDiasDoMes) pd[dn-1]=r.status||'-';
+      (rp.data || []).filter(function(h){ return h.colaborador_id === principal.id; }).forEach(function(r){
+        const dt = new Date(r.data + 'T00:00:00');
+        if(dt.getFullYear() === anoAtual && dt.getMonth() === mesAtualIndex){
+          const dn = dt.getDate();
+          if(dn >= 1 && dn <= totalDiasDoMes) pd[dn-1] = r.status || '-';
         }
       });
 
+      const codigoSPX = String(principal.codigo_spx || extrairCodigoSPX(principal.nome) || '').trim().toUpperCase();
+
       colaboradores.push({
-        id:principal.id,
-        nome:principal.nome,
-        escala:principal.escala||'6x1',
-        horario:principal.horario||'08:00 - 17:00',
-        dsr:principal.dsr||'Domingo',
-        codigoSPX:String(principal.codigo_spx||extrairCodigoSPX(principal.nome)||'').trim().toUpperCase(),
-        historicoDias:hd,
-        presencaDias:pd
+        id: principal.id,
+        nome: principal.nome,
+        escala: principal.escala || '6x1',
+        horario: principal.horario || '08:00 - 17:00',
+        dsr: principal.dsr || 'Domingo',
+        codigoSPX: codigoSPX,
+        historicoDias: hd,
+        presencaDias: pd
       });
     });
 
-    colaboradores.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR')});
+    colaboradores.sort(function(a,b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+
     colaboradores.forEach(function(c){
-      c.historicoDias=c.historicoDias.map(function(f,idx){
-        const d=new Date(anoAtual,mesAtualIndex,idx+1);
-        if(isDiaDSR(c.dsr,d) && !isStatusEspecial(f)) return '-';
+      c.historicoDias = c.historicoDias.map(function(f, idx){
+        const d = new Date(anoAtual, mesAtualIndex, idx + 1);
+        if(isDiaDSR(c.dsr, d) && !isStatusEspecial(f)) return '-';
         return f;
       });
     });
+
   }catch(e){console.error(e);alert('Erro ao carregar dados: '+e.message)}
 }
 
@@ -606,7 +623,7 @@ function criarListaPresentes(colsPresentes) {
   const bloco = document.createElement('div');
   bloco.className = 'bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 shadow-xl';
   const totalPres = colsPresentes.length + d.presentes;
-  let h = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Presentes Hoje <span class="text-[10px] font-normal opacity-70">- lista \u00fanica</span></h2><span class="badge badge-success">' + totalPres + ' presente(s)</span></div>';
+  let h = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Presentes Hoje <span class="text-[10px] font-normal opacity-70">- lista única</span></h2><span class="badge badge-success">' + totalPres + ' presente(s)</span></div>';
   h += '<div class="grid grid-cols-2 gap-2 mb-3">';
   h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-emerald-400 font-bold">Escalados (P/S2)</div><div class="text-xl font-extrabold text-emerald-300">' + colsPresentes.length + '</div></div>';
   h += '<div class="bg-slate-900 border border-cyan-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-cyan-400 font-bold">Diaristas</div><div class="text-xl font-extrabold text-cyan-300">' + d.presentes + '</div></div>';
