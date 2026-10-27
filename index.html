@@ -1231,6 +1231,15 @@ async function processarExcel(event) {
   reader.readAsArrayBuffer(file);
 }
 
+
+// Inicialização obrigatória: carrega colaboradores, presença e histórico do Supabase.
+// A versão anterior definia init(), mas não a executava; por isso o HTML permanecia com os KPIs em 0.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
 </script>
 </body>
 </html>
