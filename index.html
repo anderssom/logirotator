@@ -315,6 +315,7 @@ function obterStatusHoje(c){
   if(["F","FJ"].includes(pres))return'falta';
   if(pres==="AM")return'atestado';
   if(pres==="FE")return'ferias';
+  if(["DF","DP","DV"].includes(pres))return'desligado';
   if(pres==="BH")return'banco_horas';
   if(["AF","AL"].includes(pres))return'afastamento';
   if(["P","S2"].includes(pres))return'presente';
@@ -463,111 +464,79 @@ async function carregarDadosSupabase(){
 
 function popularSelectFuncoesPorSetor(def){const sel=document.getElementById('novo-funcao');sel.innerHTML="";let og=document.createElement('optgroup');og.label="Status Especiais";STATUS_ESPECIAIS.forEach(function(s){const o=document.createElement('option');o.value=s.valor;o.textContent=s.label;if(s.valor===def)o.selected=true;og.appendChild(o)});sel.appendChild(og);for(const setor of Object.keys(SETORES_E_FUNCOES)){const ogr=document.createElement('optgroup');ogr.label=setor;SETORES_E_FUNCOES[setor].forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;if(f===def)o.selected=true;ogr.appendChild(o)});sel.appendChild(ogr)}}
 
-async function tentarAlterarDia(idColab,indexDia,el){const numDia=indexDia+1;const colab=colaboradores.find(function(c){return c.id===idColab});if(!colab)return;if(el.disabled)return;el.disabled=true;el.style.opacity='0.5';try{const dataDoDia=new Date(anoAtual,mesAtualIndex,numDia);const nf=el.value;const eDSR=isDiaDSR(colab.dsr,dataDoDia);if(eDSR&&!isStatusEspecial(nf)){toast(colab.nome+' esta de DSR.','warn');renderizar();return}if(numDia<diaHoje){const s=prompt('Dia '+numDia+' TRANCADO. Senha:');if(s!==SENHA_ADM){toast('Senha errada.','erro');renderizar();return}}if(!isStatusEspecial(nf)){const st=contarDiasNaFuncaoAtual(colab.historicoDias);if(st.dias>=LIMITE_DIAS_FUNCAO&&nf===st.funcao){toast('Limite de '+LIMITE_DIAS_FUNCAO+' dias.','warn');renderizar();return}}await atualizarDiaSupabase(idColab,numDia,nf);if(isStatusEspecial(nf)){colab.presencaDias[indexDia]=nf;colab.historicoDias[indexDia]='-';}else{colab.historicoDias[indexDia]=nf;colab.presencaDias[indexDia]='-';}renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro');renderizar()}}
+async function tentarAlterarDia(idColab,indexDia,el){
+  const numDia=indexDia+1;
+  const colab=colaboradores.find(function(c){return c.id===idColab});
+  if(!colab || el.disabled)return;
+  const nf=el.value;
+  el.disabled=true;
+  el.style.opacity='0.5';
+  try{
+    const dataDoDia=new Date(anoAtual,mesAtualIndex,numDia);
+    const eDSR=isDiaDSR(colab.dsr,dataDoDia);
+    if(eDSR&&!isStatusEspecial(nf)){
+      toast(colab.nome+' esta de DSR.','warn');
+      await carregarDadosSupabase();
+      renderizar();
+      if(document.getElementById('modal-matriz')&&!document.getElementById('modal-matriz').classList.contains('hidden'))renderizarMatriz();
+      return;
+    }
+    if(numDia<diaHoje){
+      const s=prompt('Dia '+numDia+' TRANCADO. Senha:');
+      if(s!==SENHA_ADM){
+        toast('Senha errada.','erro');
+        await carregarDadosSupabase();
+        renderizar();
+        if(document.getElementById('modal-matriz')&&!document.getElementById('modal-matriz').classList.contains('hidden'))renderizarMatriz();
+        return;
+      }
+    }
+    if(!isStatusEspecial(nf)&&nf!=='-'){
+      const st=contarDiasNaFuncaoAtual(colab.historicoDias);
+      if(st.dias>=LIMITE_DIAS_FUNCAO&&nf===st.funcao){
+        toast('Limite de '+LIMITE_DIAS_FUNCAO+' dias.','warn');
+        await carregarDadosSupabase();
+        renderizar();
+        if(document.getElementById('modal-matriz')&&!document.getElementById('modal-matriz').classList.contains('hidden'))renderizarMatriz();
+        return;
+      }
+    }
+    await atualizarDiaSupabase(idColab,numDia,nf);
+    await carregarDadosSupabase();
+    renderizar();
+    if(document.getElementById('modal-matriz')&&!document.getElementById('modal-matriz').classList.contains('hidden'))renderizarMatriz();
+    toast(colab.nome+' — dia '+numDia+' atualizado para '+nf+'.','ok');
+  }catch(e){
+    console.error(e);
+    toast('Erro ao salvar no banco: '+(e.message||e),'erro');
+    await carregarDadosSupabase();
+    renderizar();
+    if(document.getElementById('modal-matriz')&&!document.getElementById('modal-matriz').classList.contains('hidden'))renderizarMatriz();
+  }
+}
 
 async function atualizarDiaSupabase(colabId,dia,funcao){
   if(String(colabId||'').startsWith('excel-')){
     throw new Error('Este colaborador existe somente no Excel e ainda não possui vínculo com o cadastro do banco.');
   }
-
   const dataStr=anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
-
-  // "-" significa limpar o dia nas duas tabelas.
-  if(funcao==='-'){
-    const dp=await supabaseClient.from('presenca_diaria').delete().eq('colaborador_id',colabId).eq('data',dataStr);
-    if(dp.error) throw dp.error;
-    const dh=await supabaseClient.from('historico_escala').delete().eq('colaborador_id',colabId).eq('data',dataStr);
-    if(dh.error) throw dh.error;
-    return;
-  }
-
-  // STATUS DE PRESENÇA: grava somente em presenca_diaria.
-  // Não usamos upsert/onConflict aqui porque o banco pode ainda não ter
-  // o índice UNIQUE (colaborador_id,data). Assim a edição funciona mesmo
-  // antes desse índice ser criado.
-  if(isStatusEspecial(funcao)){
-    // Um status de presença não pode continuar alocado em operação no mesmo dia.
-    const dh=await supabaseClient.from('historico_escala').delete()
+  if(funcao==="-"){
+    const del=await supabaseClient.from('historico_escala').delete()
       .eq('colaborador_id',colabId).eq('data',dataStr);
-    if(dh.error) throw dh.error;
-
-    const existente=await supabaseClient.from('presenca_diaria').select('id')
-      .eq('colaborador_id',colabId).eq('data',dataStr).limit(1);
-    if(existente.error) throw existente.error;
-
-    let r;
-    if(existente.data && existente.data.length){
-      r=await supabaseClient.from('presenca_diaria').update({
-        status:funcao,
-        updated_at:new Date().toISOString()
-      }).eq('id',existente.data[0].id);
-    }else{
-      r=await supabaseClient.from('presenca_diaria').insert({
-        colaborador_id:colabId,
-        data:dataStr,
-        status:funcao,
-        updated_at:new Date().toISOString()
-      });
-    }
-    if(r.error) throw r.error;
+    if(del.error) throw del.error;
     return;
   }
-
-  // FUNÇÃO OPERACIONAL: grava somente em historico_escala.
-  // Ao trocar de status para operação, removemos a presença do dia.
-  const dp=await supabaseClient.from('presenca_diaria').delete()
-    .eq('colaborador_id',colabId).eq('data',dataStr);
-  if(dp.error) throw dp.error;
-
-  let setor='Recebimento';
-  for(const s of Object.keys(SETORES_E_FUNCOES)){
-    if(SETORES_E_FUNCOES[s].includes(funcao)){setor=s;break}
+  let setor="Status";
+  if(!isStatusEspecial(funcao)){
+    setor="Recebimento";
+    for(const s of Object.keys(SETORES_E_FUNCOES)){
+      if(SETORES_E_FUNCOES[s].includes(funcao)){setor=s;break}
+    }
   }
-
-  const existente=await supabaseClient.from('historico_escala').select('id')
-    .eq('colaborador_id',colabId).eq('data',dataStr).limit(1);
-  if(existente.error) throw existente.error;
-
-  let r;
-  if(existente.data && existente.data.length){
-    r=await supabaseClient.from('historico_escala').update({
-      setor:setor,
-      funcao:funcao
-    }).eq('id',existente.data[0].id);
-  }else{
-    r=await supabaseClient.from('historico_escala').insert({
-      colaborador_id:colabId,
-      data:dataStr,
-      setor:setor,
-      funcao:funcao
-    });
-  }
+  const r=await supabaseClient.from('historico_escala').upsert({
+    colaborador_id:colabId,data:dataStr,setor:setor,funcao:funcao
+  },{onConflict:'colaborador_id,data'});
   if(r.error) throw r.error;
-}
-function cardColaborador(c,cor){
-  const mapa={
-    orange:{label:'DSR',badge:'badge-orange'},
-    yellow:{label:'FALTA',badge:'badge-warning'},
-    red:{label:'ATESTADO',badge:'badge-danger'},
-    purple:{label:'BANCO DE HORAS',badge:'badge-purple'},
-    operacao:{label:'EM OPERAÇÃO',badge:'badge-success'},
-    presente:{label:'PRESENTE',badge:'badge-success'}
-  };
-  const info=mapa[cor]||{label:cor||'STATUS',badge:'badge-default'};
-  const pres=(c.presencaDias&&c.presencaDias[diaHoje-1])||'-';
-  let detalhe=info.label;
-  if(pres && pres!=='-') detalhe=pres+' · '+info.label;
-  const nome=String(c.nome||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const escala=String(c.escala||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const dsr=String(c.dsr||'-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const horario=String(c.horario||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-3">'
-    +'<div class="min-w-0 flex-1">'
-    +'<div class="text-xs font-bold text-slate-100 break-words">'+nome+'</div>'
-    +'<div class="text-[10px] text-slate-400 mt-1">Escala: '+escala+' · DSR: '+dsr+'</div>'
-    +(horario?'<div class="text-[10px] text-slate-500 mt-0.5">'+horario+'</div>':'')
-    +'<div class="text-[10px] text-amber-400 font-semibold mt-1">'+detalhe+'</div>'
-    +'</div><span class="badge '+info.badge+' shrink-0">'+info.label+'</span></div>';
 }
 
 function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)return null;const bloco=document.createElement('div');const cls={orange:'bg-orange-950/20 border-orange-500/40',yellow:'bg-yellow-950/20 border-yellow-500/40',red:'bg-red-950/20 border-red-500/40',purple:'bg-purple-950/20 border-purple-500/40',slate:'bg-slate-900/60 border-slate-700'}[cor]||'bg-slate-900/60 border-slate-800';bloco.className=cls+' border rounded-2xl p-4 shadow-xl';const iconMap={orange:'text-orange-400',yellow:'text-yellow-400',red:'text-red-400',purple:'text-purple-400',slate:'text-slate-400'};const badgeMap={orange:'badge-orange',yellow:'badge-warning',red:'badge-danger',purple:'badge-purple',slate:'badge-default'};bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 '+(cor==='orange'?'border-orange-500/30':cor==='yellow'?'border-yellow-500/30':cor==='red'?'border-red-500/30':cor==='purple'?'border-purple-500/30':'border-slate-700/30')+'"><h2 class="text-sm font-bold flex items-center gap-2 '+(iconMap[cor]||'text-slate-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(badgeMap[cor]||'badge-default')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor)}).join('')+'</div>';return bloco}
@@ -702,14 +671,15 @@ function renderizar(){
 const termo=normalizarTexto(document.getElementById('input-busca').value);
 const cont=document.getElementById('container-setores');
 cont.innerHTML="";
-const g={presente:[],operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],sem_escala:[]};
+const g={presente:[],operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],desligado:[],sem_escala:[]};
 colaboradores.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c);if(estaEmOperacaoHoje(c))g.operacao.push(c)});
 const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
 const pF=fl(g.presente);const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(g.banco_horas);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const seF=fl(g.sem_escala);
 const dd=getDiaristasDia();
 const td=dd.presentes;
 const totalPresentes=g.presente.length+dd.presentes;
-document.getElementById('kpi-total').innerText=colaboradores.length;
+const desligadosHoje=g.desligado.length;
+document.getElementById('kpi-total').innerText=Math.max(0,colaboradores.length-desligadosHoje);
 document.getElementById('kpi-presentes').innerText=totalPresentes;
 document.getElementById('kpi-operacao').innerText=g.operacao.length;
 document.getElementById('kpi-dsr').innerText=g.dsr.length;
@@ -829,7 +799,7 @@ async function confirmarAlocacao(){const funcao=document.getElementById('alocar-
 
 async function salvarColaborador(){const btn=document.querySelector('#modal-add button[onclick="salvarColaborador()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const idEdit=document.getElementById('edit-id').value;const nome=document.getElementById('input-nome-colab').value.trim();const func=document.getElementById('novo-funcao').value;if(!nome){toast("Insira o nome.",'warn');return}if(nome.length<3){toast("Nome curto.",'warn');return}const nn=normalizarTexto(nome);const dup=colaboradores.some(function(c){return normalizarTexto(c.nome)===nn&&c.id!==idEdit});if(dup){toast('Ja existe: '+nome,'warn');return}if(idEdit){const ru=await supabaseClient.from('colaboradores').update({nome:nome}).eq('id',idEdit);if(ru.error){toast("Erro: "+ru.error.message,'erro');return}const c=colaboradores.find(function(x){return x.id===idEdit});if(c&&!isColabEmDSRHoje(c))await atualizarDiaSupabase(idEdit,diaHoje,func);else if(c&&isColabEmDSRHoje(c)&&isStatusEspecial(func))await atualizarDiaSupabase(idEdit,diaHoje,func);toast(nome+' atualizado.','ok')}else{const esc=document.getElementById('select-escala').value;const dsr=document.getElementById('select-dsr').value;const hor=document.getElementById('input-horario').value;const ri=await supabaseClient.from('colaboradores').insert([{nome:nome,escala:esc,dsr:dsr,horario:hor}]).select();if(ri.error){toast("Erro: "+ri.error.message,'erro');return}if(ri.data&&ri.data.length>0){const dh=new Date(anoAtual,mesAtualIndex,diaHoje);const hd=isDiaDSR(dsr,dh);if(!hd||isStatusEspecial(func))await atualizarDiaSupabase(ri.data[0].id,diaHoje,func);toast(nome+' adicionado.','ok')}}fecharModalAdd();await carregarDadosSupabase();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
 
-function abrirHistorico(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select disabled onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')}
+function abrirHistorico(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')}
 function fecharModalHistorico(){document.getElementById('modal-historico').classList.add('hidden')}
 
 
@@ -914,7 +884,7 @@ function imprimirRelatorio(){
 }
 
 function abrirModalMatriz(){document.getElementById('titulo-matriz-mes').innerHTML='Matriz: '+nomeMesAtual+' / '+anoAtual;document.getElementById('matriz-busca').value='';renderizarMatriz();document.getElementById('modal-matriz').classList.remove('hidden');lucide.createIcons();setTimeout(function(){const th=document.querySelector('#tabela-matriz-unica thead th.bg-amber-500\\/30');if(th)th.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})},150)}
-function renderizarMatriz(){const t=normalizarTexto(document.getElementById('matriz-busca').value||'');const tab=document.getElementById('tabela-matriz-unica');const cont=document.getElementById('matriz-busca-contador');tab.innerHTML='';const cf=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome,c.escala,c.dsr)});if(cont)cont.innerText=t?cf.length+' de '+colaboradores.length:colaboradores.length+' cols';const dP=[];const dF=[];for(let d=1;d<=totalDiasDoMes;d++){if(d<diaHoje)dP.push(d);else if(d>diaHoje)dF.push(d)}const dO=[].concat(dP,[diaHoje],dF);let th='<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador</th>';dO.forEach(function(d){const eH=d===diaHoje;const eP=d<diaHoje;let c='p-2 text-center font-semibold min-w-[120px] text-[10px] ';if(eH)c+='text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500';else if(eP)c+='text-slate-400 border-l border-slate-800/50 bg-slate-950/40';else c+='text-slate-200 border-l border-slate-800/50';th+='<th class="'+c+'">'+(eH?'HOJE - ':'')+'Dia '+d+'</th>'});th+='</tr></thead>';if(cf.length===0){tab.innerHTML=th+'<tbody><tr><td colspan="'+(dO.length+1)+'" class="text-center text-slate-500 italic py-8">Nenhum.</td></tr></tbody>';return}let tb='<tbody>';cf.forEach(function(c){tb+='<tr class="border-b border-slate-800/60"><td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]"><div class="text-xs font-bold text-slate-200">'+c.nome+'</div><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div></td>';dO.forEach(function(d){const iD=d-1;const fD=((c.presencaDias&&c.presencaDias[iD])&&c.presencaDias[iD]!=='-')?c.presencaDias[iD]:((c.historicoDias&&c.historicoDias[iD])||"-");const eH=d===diaHoje;const eP=d<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,d);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===fD?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===fD?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}let tc='p-1 text-center ';if(eH)tc+='bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40';else if(eD)tc+='bg-orange-950/20';else if(eP)tc+='bg-slate-950/60';tb+='<td class="'+tc+'"><select onchange="tentarAlterarDia(\''+c.id+'\', '+iD+', this)" title="Clique para alterar o status. Dias anteriores pedem senha de administrador." class="w-full text-[10px] rounded p-1 '+(bl?'bg-slate-950 border-slate-800 text-slate-300':'bg-slate-950 border-slate-700 text-slate-200')+' border">'+op+'</select></td>'});tb+='</tr>'});tb+='</tbody>';tab.innerHTML=th+tb}
+function renderizarMatriz(){const t=normalizarTexto(document.getElementById('matriz-busca').value||'');const tab=document.getElementById('tabela-matriz-unica');const cont=document.getElementById('matriz-busca-contador');tab.innerHTML='';const cf=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome,c.escala,c.dsr)});if(cont)cont.innerText=t?cf.length+' de '+colaboradores.length:colaboradores.length+' cols';const dP=[];const dF=[];for(let d=1;d<=totalDiasDoMes;d++){if(d<diaHoje)dP.push(d);else if(d>diaHoje)dF.push(d)}const dO=[].concat(dP,[diaHoje],dF);let th='<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador</th>';dO.forEach(function(d){const eH=d===diaHoje;const eP=d<diaHoje;let c='p-2 text-center font-semibold min-w-[120px] text-[10px] ';if(eH)c+='text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500';else if(eP)c+='text-slate-400 border-l border-slate-800/50 bg-slate-950/40';else c+='text-slate-200 border-l border-slate-800/50';th+='<th class="'+c+'">'+(eH?'HOJE - ':'')+'Dia '+d+'</th>'});th+='</tr></thead>';if(cf.length===0){tab.innerHTML=th+'<tbody><tr><td colspan="'+(dO.length+1)+'" class="text-center text-slate-500 italic py-8">Nenhum.</td></tr></tbody>';return}let tb='<tbody>';cf.forEach(function(c){tb+='<tr class="border-b border-slate-800/60"><td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]"><div class="text-xs font-bold text-slate-200">'+c.nome+'</div><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div></td>';dO.forEach(function(d){const iD=d-1;const fD=(c.presencaDias&&c.presencaDias[iD])||"-";const eH=d===diaHoje;const eP=d<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,d);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===fD?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===fD?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}let tc='p-1 text-center ';if(eH)tc+='bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40';else if(eD)tc+='bg-orange-950/20';else if(eP)tc+='bg-slate-950/60';tb+='<td class="'+tc+'"><select onchange="tentarAlterarDia(\''+c.id+'\', '+iD+', this)" class="w-full text-[10px] rounded p-1 '+(bl?'opacity-40 bg-slate-950 border-slate-800 text-slate-500':'bg-slate-950 border-slate-700 text-slate-200')+' border">'+op+'</select></td>'});tb+='</tr>'});tb+='</tbody>';tab.innerHTML=th+tb}
 function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
@@ -1175,152 +1145,199 @@ async function processarExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const dataHojeStr = String(diaHoje).padStart(2,'0') + '/' + String(mesAtualIndex+1).padStart(2,'0') + '/' + anoAtual;
-  const isoHoje = anoAtual + '-' + String(mesAtualIndex+1).padStart(2,'0') + '-' + String(diaHoje).padStart(2,'0');
+  const dataHojeStr = String(diaHoje).padStart(2, '0') + '/' + String(mesAtualIndex + 1).padStart(2, '0') + '/' + anoAtual;
+  const isoHoje = anoAtual + '-' + String(mesAtualIndex + 1).padStart(2, '0') + '-' + String(diaHoje).padStart(2, '0');
 
   if (!confirm(
-    'Importar a presença de ' + dataHojeStr + '?\n\n' +
-    'Somente o DIA ATUAL será gravado em presenca_diaria.\n' +
-    'Os dias anteriores permanecerão intactos no Supabase.'
-  )) { event.target.value=''; return; }
+    "Esta importação vai ATUALIZAR o histórico de presenças/faltas/atestados " +
+    "APENAS DO DIA DE HOJE (" + dataHojeStr + ").\n\n" +
+    "O Excel será usado somente para sincronizar o status do dia.\n" +
+    "Nenhum colaborador será cadastrado ou excluído automaticamente.\n\n" +
+    "A comparação prioriza o Código SPXBR e usa o nome normalizado como alternativa segura.\n\n" +
+    "Deseja continuar?"
+  )) { event.target.value = ''; return; }
 
-  function dataCabecalhoISO(valor){
-    if (valor instanceof Date && !isNaN(valor)) {
-      return valor.getFullYear()+'-'+String(valor.getMonth()+1).padStart(2,'0')+'-'+String(valor.getDate()).padStart(2,'0');
-    }
-    if (typeof valor === 'number' && isFinite(valor)) {
-      const d=XLSX.SSF.parse_date_code(valor);
-      if(d && d.y && d.m && d.d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
-    }
-    const s=String(valor??'').trim();
-    let m=s.match(/^(\d{4})[-\/]([01]?\d)[-\/](\d{1,2})/);
-    if(m) return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
-    m=s.match(/^(\d{1,2})[\/\-]([01]?\d)(?:[\/\-](\d{2,4}))?$/);
-    if(m){
-      let y=m[3] ? +m[3] : anoAtual; if(y<100)y+=2000;
-      return y+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0');
-    }
-    // Cabeçalhos que trazem somente o número do dia (ex.: 27)
-    if(/^\d{1,2}$/.test(s) && +s===diaHoje) return isoHoje;
-    return null;
-  }
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const matriz = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1, defval: "", raw: false, dateNF: 'yyyy-mm-dd'
+      });
 
-  const reader=new FileReader();
-  reader.onload=async function(e){
-    try{
-      const workbook=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
-      let escolhido=null;
+      if (matriz.length === 0) { toast("A planilha está vazia.", 'warn'); return; }
 
-      // Procura em TODAS as abas. Isso evita depender da primeira aba do arquivo.
-      for(const sheetName of workbook.SheetNames){
-        const ws=workbook.Sheets[sheetName];
-        const matriz=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
-        for(let r=0;r<Math.min(matriz.length,80);r++){
-          const linha=matriz[r]||[];
-          let cNome=-1,cCodigo=-1,cHoje=-1;
-          for(let c=0;c<linha.length;c++){
-            const txt=String(linha[c]??'').trim();
-            if(cNome<0 && /(^|\b)(nome|colaborador|employee)(\b|$)/i.test(txt)) cNome=c;
-            if(cCodigo<0 && /(c[oó]digo|matr[ií]cula|id\s*operator|operator\s*id|spx)/i.test(txt)) cCodigo=c;
-            if(dataCabecalhoISO(linha[c])===isoHoje) cHoje=c;
+      let idxCabecalho = -1;
+      for (let i = 0; i < matriz.length; i++) {
+        const linha = matriz[i];
+        if (!Array.isArray(linha)) continue;
+        if (linha.some(c => /nome|colaborador/i.test(String(c || '')))) {
+          idxCabecalho = i; break;
+        }
+      }
+      if (idxCabecalho === -1) { toast('❌ Cabeçalho não encontrado na planilha.', 'erro'); return; }
+
+      const cabecalho = matriz[idxCabecalho];
+      let colNome = -1;
+      let colCodigo = -1;
+      let colHoje = -1;
+
+      for (let c = 0; c < cabecalho.length; c++) {
+        const cel = cabecalho[c];
+        if (!cel) continue;
+        const celStr = String(cel).trim();
+        
+        if (colNome === -1 && /nome|colaborador/i.test(celStr)) {
+          colNome = c;
+          continue;
+        }
+        if (colCodigo === -1 && /^c[oó]digo$/i.test(celStr)) {
+          colCodigo = c;
+          continue;
+        }
+        
+        const dataISO = normalizarChaveData(celStr);
+        if (dataISO === isoHoje) {
+          colHoje = c;
+        }
+      }
+
+      if (colNome === -1) {
+        toast('❌ Coluna de nome não encontrada.', 'erro'); return;
+      }
+      if (colHoje === -1) {
+        toast('❌ A coluna do dia de hoje (' + dataHojeStr + ') não foi encontrada na planilha.', 'erro'); 
+        return;
+      }
+
+      toast("Sincronizando dados do dia " + dataHojeStr + "... Aguarde.", 'ok');
+
+      const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0, semData: 0 };
+      const naoEncontrados = [];
+      const statusDesconhecidos = {};
+      const chavesImportadas = new Set();
+      const nomesAtivosExcel = new Set();
+      const snapshotExcelHoje = [];
+      let desligadosExcel = 0;
+
+      for (let i = idxCabecalho + 1; i < matriz.length; i++) {
+        const linha = matriz[i];
+        if (!Array.isArray(linha)) continue;
+
+        const nomeBruto = linha[colNome];
+        if (!nomeBruto || !String(nomeBruto).trim()) continue;
+
+        const codigoSPX = (colCodigo >= 0 ? String(linha[colCodigo] || '').trim().toUpperCase() : '') || extrairCodigoSPX(nomeBruto);
+        const nomeLimpo = limparNomeExcel(nomeBruto);
+        if (!nomeLimpo) continue;
+
+        const valorCelula = String(linha[colHoje] || '').trim().toUpperCase();
+
+        // DF = desligado. Mantemos o status no banco para que o Total no Banco
+        // consiga retirar o colaborador do quadro ativo sem apagar o cadastro.
+        if (valorCelula === "DF") desligadosExcel++;
+
+        nomesAtivosExcel.add(normalizarTexto(nomeLimpo));
+
+        const statusMapeadoSnapshot = MAPA_STATUS_EXCEL[valorCelula];
+        if (statusMapeadoSnapshot !== undefined) {
+          snapshotExcelHoje.push({
+            nome: nomeLimpo,
+            codigo: codigoSPX,
+            status: statusMapeadoSnapshot
+          });
+        }
+
+        const chaveImportacao = codigoSPX || normalizarTexto(nomeLimpo);
+        if (chavesImportadas.has(chaveImportacao)) {
+          console.warn('Linha duplicada ignorada:', nomeLimpo, codigoSPX);
+          stats.ignorados++;
+          continue;
+        }
+        chavesImportadas.add(chaveImportacao);
+
+        // IMPORTANTE: o Excel NAO cadastra colaboradores. Ele apenas compara com o banco.
+        // A busca prioriza Código SPXBR e só usa nome quando a correspondência é segura.
+        let colab = encontrarColaboradorExcel(nomeLimpo, codigoSPX);
+
+        if (!colab) {
+          console.warn("Colaborador do Excel não existe no banco; não será cadastrado:", nomeLimpo, codigoSPX);
+          naoEncontrados.push(nomeLimpo + (codigoSPX ? " (" + codigoSPX + ")" : ""));
+          stats.ignorados++;
+          continue;
+        }
+
+        // Garante uma estrutura válida mesmo para registros recém-carregados do banco.
+        if (!Array.isArray(colab.historicoDias)) {
+          colab.historicoDias = new Array(totalDiasDoMes).fill("-");
+        }
+
+        if (!valorCelula) { stats.ignorados++; continue; }
+
+        const statusMapeado = MAPA_STATUS_EXCEL[valorCelula];
+        if (statusMapeado === undefined) {
+          statusDesconhecidos[valorCelula] = (statusDesconhecidos[valorCelula] || 0) + 1;
+          stats.ignorados++;
+          continue;
+        }
+
+        let statusFinal = statusMapeado;
+
+        const diaNum = diaHoje;
+        const existente = (colab.presencaDias&&colab.presencaDias[diaNum - 1])||'-';
+
+
+        if (statusFinal === "-") {
+          const rDel = await supabaseClient.from('presenca_diaria')
+            .delete().eq('colaborador_id', colab.id).eq('data', isoHoje);
+          if (rDel.error) console.error('Delete erro:', rDel.error);
+        } else {
+          let setor = "Recebimento";
+          if (isStatusEspecial(statusFinal)) setor = "Status";
+          
+          const r = await supabaseClient.from('presenca_diaria').upsert({
+            colaborador_id: colab.id,
+            data: isoHoje,
+            status: statusFinal
+          }, { onConflict: 'colaborador_id,data' });
+          
+          if (r.error) { 
+            console.error('Upsert erro:', r.error); 
+            stats.erros++; 
+          } else {
+            if(!Array.isArray(colab.presencaDias)) colab.presencaDias=new Array(totalDiasDoMes).fill('-');
+            colab.presencaDias[diaNum - 1] = statusFinal;
+            if (existente && existente !== "-") stats.atualizados++;
+            else stats.inseridos++;
           }
-          if(cNome>=0 && cHoje>=0){ escolhido={sheetName,matriz,idxCabecalho:r,colNome:cNome,colCodigo:cCodigo,colHoje:cHoje}; break; }
         }
-        if(escolhido)break;
       }
 
-      if(!escolhido){
-        throw new Error('Não encontrei uma aba com NOME e a coluna de hoje ('+dataHojeStr+'). Verifique se a planilha de presença contém a data atual.');
-      }
+      // O Excel também NÃO exclui colaboradores do banco.
+      // DF é gravado em presenca_diaria e usado para retirar o colaborador do Total no Banco.
+      // Nomes ausentes continuam sendo apenas ignorados.
+      stats.ignorados += desligadosExcel;
 
-      const {sheetName,matriz,idxCabecalho,colNome,colCodigo,colHoje}=escolhido;
-      toast('Lendo '+sheetName+' e gravando '+dataHojeStr+'...', 'ok');
+      // Salva os  colaboradores ativos/status do Excel do dia para alimentar
+      // diretamente KPIs e listas, mesmo quando um nome ainda não existe no banco.
+      // Não usa snapshot local: após importar, a tela recarrega a presença do Supabase.
 
-      // Recarrega cadastro diretamente do banco antes de comparar.
-      const rc=await supabaseClient.from('colaboradores').select('*');
-      if(rc.error) throw new Error('Erro ao consultar colaboradores: '+rc.error.message);
-      const banco=rc.data||[];
-
-      function acharNoBanco(nomeLimpo,codigo){
-        const cod=String(codigo||'').toUpperCase().replace(/[\s-]+/g,'');
-        if(cod){
-          const x=banco.filter(c=>String(c.codigo_spx||c.codigo||c.matricula||extrairCodigoSPX(c.nome)||'').toUpperCase().replace(/[\s-]+/g,'')===cod);
-          if(x.length===1)return x[0];
-        }
-        const alvo=normalizarTexto(limparNomeExcel(nomeLimpo)).replace(/\s+/g,' ').trim();
-        const x=banco.filter(c=>normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim()===alvo);
-        return x.length===1?x[0]:null;
-      }
-
-      const registros=[];
-      const naoEncontrados=[];
-      const statusDesconhecidos={};
-      const vistos=new Set();
-      let desligados=0, vazios=0;
-
-      for(let i=idxCabecalho+1;i<matriz.length;i++){
-        const linha=matriz[i]||[];
-        const nomeBruto=linha[colNome];
-        if(!String(nomeBruto||'').trim())continue;
-        const nomeLimpo=limparNomeExcel(nomeBruto);
-        const codigo=((colCodigo>=0?String(linha[colCodigo]||''):'')||extrairCodigoSPX(nomeBruto)).trim().toUpperCase();
-        const bruto=String(linha[colHoje]??'').trim().toUpperCase();
-        if(!bruto){vazios++;continue;}
-        if(bruto==='DF'){desligados++;continue;}
-        const status=MAPA_STATUS_EXCEL[bruto];
-        if(status===undefined){statusDesconhecidos[bruto]=(statusDesconhecidos[bruto]||0)+1;continue;}
-        const colab=acharNoBanco(nomeLimpo,codigo);
-        if(!colab){naoEncontrados.push(nomeLimpo+(codigo?' ('+codigo+')':''));continue;}
-        const chave=colab.id+'|'+isoHoje;
-        if(vistos.has(chave))continue;
-        vistos.add(chave);
-        registros.push({colaborador_id:colab.id,data:isoHoje,status:status,updated_at:new Date().toISOString()});
-      }
-
-      if(registros.length===0){
-        throw new Error('Nenhuma presença válida foi encontrada para '+dataHojeStr+'. Aba detectada: '+sheetName+'.');
-      }
-
-      // Um único UPSERT em lote: grava/atualiza somente colaborador + data atual.
-      const gravacao=await supabaseClient.from('presenca_diaria')
-        .upsert(registros,{onConflict:'colaborador_id,data'});
-      if(gravacao.error) throw new Error('Supabase recusou a gravação: '+gravacao.error.message);
-
-      // Confirma no próprio banco antes de informar sucesso.
-      const conf=await supabaseClient.from('presenca_diaria')
-        .select('colaborador_id,status')
-        .eq('data',isoHoje);
-      if(conf.error) throw new Error('Gravou, mas não consegui conferir: '+conf.error.message);
-      const confirmados=conf.data||[];
-      if(confirmados.length===0) throw new Error('O Supabase respondeu sem erro, mas a conferência retornou 0 registros para '+isoHoje+'.');
-
-      const contagem={}; confirmados.forEach(x=>contagem[x.status]=(contagem[x.status]||0)+1);
-      const stats={inseridos:confirmados.length,atualizados:0,ignorados:vazios+desligados,erros:0,semData:0};
-      renderizarResultadoImport(stats,naoEncontrados,statusDesconhecidos,dataHojeStr);
+      renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, dataHojeStr);
       await carregarDadosSupabase();
       renderizar();
 
-      const resumo=Object.entries(contagem).sort().map(([k,v])=>k+': '+v).join(' | ');
-      toast('✅ Banco atualizado: '+confirmados.length+' registros em '+dataHojeStr+'. '+resumo,'ok');
-      console.log('IMPORTAÇÃO CONFIRMADA',{aba:sheetName,data:isoHoje,total:confirmados.length,status:contagem,naoEncontrados});
-    }catch(err){
-      console.error('ERRO IMPORTAÇÃO:',err);
-      toast('❌ '+(err.message||err),'erro');
-      alert('Falha ao alimentar presenca_diaria:\n\n'+(err.message||err));
-    }finally{event.target.value='';}
+    } catch (err) {
+      console.error('ERRO em processarExcel:', err);
+      toast("Erro ao processar planilha: " + err.message, 'erro');
+    } finally {
+      event.target.value = '';
+    }
   };
   reader.readAsArrayBuffer(file);
 }
-
-
-// Inicialização obrigatória: carrega colaboradores, presença e histórico do Supabase.
-// A versão anterior definia init(), mas não a executava; por isso o HTML permanecia com os KPIs em 0.
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
-
 </script>
 </body>
 </html>
