@@ -1094,201 +1094,143 @@ async function processarExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const dataHojeStr = String(diaHoje).padStart(2, '0') + '/' + String(mesAtualIndex + 1).padStart(2, '0') + '/' + anoAtual;
-  const isoHoje = anoAtual + '-' + String(mesAtualIndex + 1).padStart(2, '0') + '-' + String(diaHoje).padStart(2, '0');
+  const dataHojeStr = String(diaHoje).padStart(2,'0') + '/' + String(mesAtualIndex+1).padStart(2,'0') + '/' + anoAtual;
+  const isoHoje = anoAtual + '-' + String(mesAtualIndex+1).padStart(2,'0') + '-' + String(diaHoje).padStart(2,'0');
 
   if (!confirm(
-    "Esta importação vai ATUALIZAR o histórico de presenças/faltas/atestados " +
-    "APENAS DO DIA DE HOJE (" + dataHojeStr + ").\n\n" +
-    "O Excel será usado somente para sincronizar o status do dia.\n" +
-    "Nenhum colaborador será cadastrado ou excluído automaticamente.\n\n" +
-    "A comparação prioriza o Código SPXBR e usa o nome normalizado como alternativa segura.\n\n" +
-    "Deseja continuar?"
-  )) { event.target.value = ''; return; }
+    'Importar a presença de ' + dataHojeStr + '?\n\n' +
+    'Somente o DIA ATUAL será gravado em presenca_diaria.\n' +
+    'Os dias anteriores permanecerão intactos no Supabase.'
+  )) { event.target.value=''; return; }
 
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      const matriz = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1, defval: "", raw: false, dateNF: 'yyyy-mm-dd'
-      });
+  function dataCabecalhoISO(valor){
+    if (valor instanceof Date && !isNaN(valor)) {
+      return valor.getFullYear()+'-'+String(valor.getMonth()+1).padStart(2,'0')+'-'+String(valor.getDate()).padStart(2,'0');
+    }
+    if (typeof valor === 'number' && isFinite(valor)) {
+      const d=XLSX.SSF.parse_date_code(valor);
+      if(d && d.y && d.m && d.d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
+    }
+    const s=String(valor??'').trim();
+    let m=s.match(/^(\d{4})[-\/]([01]?\d)[-\/](\d{1,2})/);
+    if(m) return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
+    m=s.match(/^(\d{1,2})[\/\-]([01]?\d)(?:[\/\-](\d{2,4}))?$/);
+    if(m){
+      let y=m[3] ? +m[3] : anoAtual; if(y<100)y+=2000;
+      return y+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0');
+    }
+    // Cabeçalhos que trazem somente o número do dia (ex.: 27)
+    if(/^\d{1,2}$/.test(s) && +s===diaHoje) return isoHoje;
+    return null;
+  }
 
-      if (matriz.length === 0) { toast("A planilha está vazia.", 'warn'); return; }
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      const workbook=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+      let escolhido=null;
 
-      let idxCabecalho = -1;
-      for (let i = 0; i < matriz.length; i++) {
-        const linha = matriz[i];
-        if (!Array.isArray(linha)) continue;
-        if (linha.some(c => /nome|colaborador/i.test(String(c || '')))) {
-          idxCabecalho = i; break;
-        }
-      }
-      if (idxCabecalho === -1) { toast('❌ Cabeçalho não encontrado na planilha.', 'erro'); return; }
-
-      const cabecalho = matriz[idxCabecalho];
-      let colNome = -1;
-      let colCodigo = -1;
-      let colHoje = -1;
-
-      for (let c = 0; c < cabecalho.length; c++) {
-        const cel = cabecalho[c];
-        if (!cel) continue;
-        const celStr = String(cel).trim();
-        
-        if (colNome === -1 && /nome|colaborador/i.test(celStr)) {
-          colNome = c;
-          continue;
-        }
-        if (colCodigo === -1 && /^c[oó]digo$/i.test(celStr)) {
-          colCodigo = c;
-          continue;
-        }
-        
-        const dataISO = normalizarChaveData(celStr);
-        if (dataISO === isoHoje) {
-          colHoje = c;
-        }
-      }
-
-      if (colNome === -1) {
-        toast('❌ Coluna de nome não encontrada.', 'erro'); return;
-      }
-      if (colHoje === -1) {
-        toast('❌ A coluna do dia de hoje (' + dataHojeStr + ') não foi encontrada na planilha.', 'erro'); 
-        return;
-      }
-
-      toast("Sincronizando dados do dia " + dataHojeStr + "... Aguarde.", 'ok');
-
-      const stats = { inseridos: 0, atualizados: 0, ignorados: 0, erros: 0, semData: 0 };
-      const naoEncontrados = [];
-      const statusDesconhecidos = {};
-      const chavesImportadas = new Set();
-      const nomesAtivosExcel = new Set();
-      const snapshotExcelHoje = [];
-      let desligadosExcel = 0;
-
-      for (let i = idxCabecalho + 1; i < matriz.length; i++) {
-        const linha = matriz[i];
-        if (!Array.isArray(linha)) continue;
-
-        const nomeBruto = linha[colNome];
-        if (!nomeBruto || !String(nomeBruto).trim()) continue;
-
-        const codigoSPX = (colCodigo >= 0 ? String(linha[colCodigo] || '').trim().toUpperCase() : '') || extrairCodigoSPX(nomeBruto);
-        const nomeLimpo = limparNomeExcel(nomeBruto);
-        if (!nomeLimpo) continue;
-
-        const valorCelula = String(linha[colHoje] || '').trim().toUpperCase();
-
-        // DF = desligado. A linha permanece na planilha para histórico, mas não
-        // pertence ao quadro ativo e não deve entrar no Total do LogiRotator.
-        if (valorCelula === "DF") {
-          desligadosExcel++;
-          continue;
-        }
-
-        nomesAtivosExcel.add(normalizarTexto(nomeLimpo));
-
-        const statusMapeadoSnapshot = MAPA_STATUS_EXCEL[valorCelula];
-        if (statusMapeadoSnapshot !== undefined) {
-          snapshotExcelHoje.push({
-            nome: nomeLimpo,
-            codigo: codigoSPX,
-            status: statusMapeadoSnapshot
-          });
-        }
-
-        const chaveImportacao = codigoSPX || normalizarTexto(nomeLimpo);
-        if (chavesImportadas.has(chaveImportacao)) {
-          console.warn('Linha duplicada ignorada:', nomeLimpo, codigoSPX);
-          stats.ignorados++;
-          continue;
-        }
-        chavesImportadas.add(chaveImportacao);
-
-        // IMPORTANTE: o Excel NAO cadastra colaboradores. Ele apenas compara com o banco.
-        // A busca prioriza Código SPXBR e só usa nome quando a correspondência é segura.
-        let colab = encontrarColaboradorExcel(nomeLimpo, codigoSPX);
-
-        if (!colab) {
-          console.warn("Colaborador do Excel não existe no banco; não será cadastrado:", nomeLimpo, codigoSPX);
-          naoEncontrados.push(nomeLimpo + (codigoSPX ? " (" + codigoSPX + ")" : ""));
-          stats.ignorados++;
-          continue;
-        }
-
-        // Garante uma estrutura válida mesmo para registros recém-carregados do banco.
-        if (!Array.isArray(colab.historicoDias)) {
-          colab.historicoDias = new Array(totalDiasDoMes).fill("-");
-        }
-
-        if (!valorCelula) { stats.ignorados++; continue; }
-
-        const statusMapeado = MAPA_STATUS_EXCEL[valorCelula];
-        if (statusMapeado === undefined) {
-          statusDesconhecidos[valorCelula] = (statusDesconhecidos[valorCelula] || 0) + 1;
-          stats.ignorados++;
-          continue;
-        }
-
-        let statusFinal = statusMapeado;
-
-        const diaNum = diaHoje;
-        const existente = (colab.presencaDias&&colab.presencaDias[diaNum - 1])||'-';
-
-
-        if (statusFinal === "-") {
-          const rDel = await supabaseClient.from('presenca_diaria')
-            .delete().eq('colaborador_id', colab.id).eq('data', isoHoje);
-          if (rDel.error) console.error('Delete erro:', rDel.error);
-        } else {
-          let setor = "Recebimento";
-          if (isStatusEspecial(statusFinal)) setor = "Status";
-          
-          const r = await supabaseClient.from('presenca_diaria').upsert({
-            colaborador_id: colab.id,
-            data: isoHoje,
-            status: statusFinal
-          }, { onConflict: 'colaborador_id,data' });
-          
-          if (r.error) { 
-            console.error('Upsert erro:', r.error); 
-            stats.erros++; 
-          } else {
-            if(!Array.isArray(colab.presencaDias)) colab.presencaDias=new Array(totalDiasDoMes).fill('-');
-            colab.presencaDias[diaNum - 1] = statusFinal;
-            if (existente && existente !== "-") stats.atualizados++;
-            else stats.inseridos++;
+      // Procura em TODAS as abas. Isso evita depender da primeira aba do arquivo.
+      for(const sheetName of workbook.SheetNames){
+        const ws=workbook.Sheets[sheetName];
+        const matriz=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+        for(let r=0;r<Math.min(matriz.length,80);r++){
+          const linha=matriz[r]||[];
+          let cNome=-1,cCodigo=-1,cHoje=-1;
+          for(let c=0;c<linha.length;c++){
+            const txt=String(linha[c]??'').trim();
+            if(cNome<0 && /(^|\b)(nome|colaborador|employee)(\b|$)/i.test(txt)) cNome=c;
+            if(cCodigo<0 && /(c[oó]digo|matr[ií]cula|id\s*operator|operator\s*id|spx)/i.test(txt)) cCodigo=c;
+            if(dataCabecalhoISO(linha[c])===isoHoje) cHoje=c;
           }
+          if(cNome>=0 && cHoje>=0){ escolhido={sheetName,matriz,idxCabecalho:r,colNome:cNome,colCodigo:cCodigo,colHoje:cHoje}; break; }
         }
+        if(escolhido)break;
       }
 
-      // O Excel também NÃO exclui colaboradores do banco.
-      // DF e nomes ausentes são apenas ignorados nesta importação.
-      stats.ignorados += desligadosExcel;
+      if(!escolhido){
+        throw new Error('Não encontrei uma aba com NOME e a coluna de hoje ('+dataHojeStr+'). Verifique se a planilha de presença contém a data atual.');
+      }
 
-      // Salva os  colaboradores ativos/status do Excel do dia para alimentar
-      // diretamente KPIs e listas, mesmo quando um nome ainda não existe no banco.
-      // Não usa snapshot local: após importar, a tela recarrega a presença do Supabase.
+      const {sheetName,matriz,idxCabecalho,colNome,colCodigo,colHoje}=escolhido;
+      toast('Lendo '+sheetName+' e gravando '+dataHojeStr+'...', 'ok');
 
-      renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, dataHojeStr);
+      // Recarrega cadastro diretamente do banco antes de comparar.
+      const rc=await supabaseClient.from('colaboradores').select('*');
+      if(rc.error) throw new Error('Erro ao consultar colaboradores: '+rc.error.message);
+      const banco=rc.data||[];
+
+      function acharNoBanco(nomeLimpo,codigo){
+        const cod=String(codigo||'').toUpperCase().replace(/[\s-]+/g,'');
+        if(cod){
+          const x=banco.filter(c=>String(c.codigo_spx||c.codigo||c.matricula||extrairCodigoSPX(c.nome)||'').toUpperCase().replace(/[\s-]+/g,'')===cod);
+          if(x.length===1)return x[0];
+        }
+        const alvo=normalizarTexto(limparNomeExcel(nomeLimpo)).replace(/\s+/g,' ').trim();
+        const x=banco.filter(c=>normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim()===alvo);
+        return x.length===1?x[0]:null;
+      }
+
+      const registros=[];
+      const naoEncontrados=[];
+      const statusDesconhecidos={};
+      const vistos=new Set();
+      let desligados=0, vazios=0;
+
+      for(let i=idxCabecalho+1;i<matriz.length;i++){
+        const linha=matriz[i]||[];
+        const nomeBruto=linha[colNome];
+        if(!String(nomeBruto||'').trim())continue;
+        const nomeLimpo=limparNomeExcel(nomeBruto);
+        const codigo=((colCodigo>=0?String(linha[colCodigo]||''):'')||extrairCodigoSPX(nomeBruto)).trim().toUpperCase();
+        const bruto=String(linha[colHoje]??'').trim().toUpperCase();
+        if(!bruto){vazios++;continue;}
+        if(bruto==='DF'){desligados++;continue;}
+        const status=MAPA_STATUS_EXCEL[bruto];
+        if(status===undefined){statusDesconhecidos[bruto]=(statusDesconhecidos[bruto]||0)+1;continue;}
+        const colab=acharNoBanco(nomeLimpo,codigo);
+        if(!colab){naoEncontrados.push(nomeLimpo+(codigo?' ('+codigo+')':''));continue;}
+        const chave=colab.id+'|'+isoHoje;
+        if(vistos.has(chave))continue;
+        vistos.add(chave);
+        registros.push({colaborador_id:colab.id,data:isoHoje,status:status,updated_at:new Date().toISOString()});
+      }
+
+      if(registros.length===0){
+        throw new Error('Nenhuma presença válida foi encontrada para '+dataHojeStr+'. Aba detectada: '+sheetName+'.');
+      }
+
+      // Um único UPSERT em lote: grava/atualiza somente colaborador + data atual.
+      const gravacao=await supabaseClient.from('presenca_diaria')
+        .upsert(registros,{onConflict:'colaborador_id,data'});
+      if(gravacao.error) throw new Error('Supabase recusou a gravação: '+gravacao.error.message);
+
+      // Confirma no próprio banco antes de informar sucesso.
+      const conf=await supabaseClient.from('presenca_diaria')
+        .select('colaborador_id,status')
+        .eq('data',isoHoje);
+      if(conf.error) throw new Error('Gravou, mas não consegui conferir: '+conf.error.message);
+      const confirmados=conf.data||[];
+      if(confirmados.length===0) throw new Error('O Supabase respondeu sem erro, mas a conferência retornou 0 registros para '+isoHoje+'.');
+
+      const contagem={}; confirmados.forEach(x=>contagem[x.status]=(contagem[x.status]||0)+1);
+      const stats={inseridos:confirmados.length,atualizados:0,ignorados:vazios+desligados,erros:0,semData:0};
+      renderizarResultadoImport(stats,naoEncontrados,statusDesconhecidos,dataHojeStr);
       await carregarDadosSupabase();
       renderizar();
 
-    } catch (err) {
-      console.error('ERRO em processarExcel:', err);
-      toast("Erro ao processar planilha: " + err.message, 'erro');
-    } finally {
-      event.target.value = '';
-    }
+      const resumo=Object.entries(contagem).sort().map(([k,v])=>k+': '+v).join(' | ');
+      toast('✅ Banco atualizado: '+confirmados.length+' registros em '+dataHojeStr+'. '+resumo,'ok');
+      console.log('IMPORTAÇÃO CONFIRMADA',{aba:sheetName,data:isoHoje,total:confirmados.length,status:contagem,naoEncontrados});
+    }catch(err){
+      console.error('ERRO IMPORTAÇÃO:',err);
+      toast('❌ '+(err.message||err),'erro');
+      alert('Falha ao alimentar presenca_diaria:\n\n'+(err.message||err));
+    }finally{event.target.value='';}
   };
   reader.readAsArrayBuffer(file);
 }
+
 </script>
 </body>
 </html>
