@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
+<!-- LOGIROTATOR: persistencia integral Supabase vFINAL 2026-10-27 -->
 <title>LogiRotator - HUB-LCE-04 Juazeiro do Norte</title>
 <meta name="theme-color" content="#09090b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -331,12 +332,23 @@ function estaEmOperacaoHoje(c){
 function contarDiasNaFuncaoAtual(h){const f=h[diaHoje-1];if(!f||isStatusEspecial(f))return{funcao:"Nenhuma",dias:0,dataInicio:null,dataFim:null};let c=0;let idx=diaHoje-1;for(let i=diaHoje-1;i>=0;i--){if(h[i]===f&&!isStatusEspecial(h[i])){c++;idx=i}else{break}}return{funcao:f,dias:c,dataInicio:new Date(anoAtual,mesAtualIndex,idx+1),dataFim:new Date(anoAtual,mesAtualIndex,diaHoje)}}
 function formatarDataDDMM(d){if(!d)return'';return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
 
-function obterChaveDiaristasDia(){return'diaristas_'+anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(diaHoje).padStart(2,'0')}
-function getDiaristasDia(){const raw=localStorage.getItem(obterChaveDiaristasDia());if(!raw)return{pedidos:0,presentes:0,faltantes:0};try{const o=JSON.parse(raw);return{pedidos:parseInt(o.pedidos,10)||0,presentes:parseInt(o.presentes,10)||0,faltantes:parseInt(o.faltantes,10)||0}}catch(e){return{pedidos:0,presentes:0,faltantes:0}}}
-function setDiaristasDia(o){localStorage.setItem(obterChaveDiaristasDia(),JSON.stringify({pedidos:parseInt(o.pedidos,10)||0,presentes:parseInt(o.presentes,10)||0,faltantes:parseInt(o.faltantes,10)||0}))}
+let diaristasDiaCache={pedidos:0,presentes:0,faltantes:0};
+function dataHojeISO(){return anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(diaHoje).padStart(2,'0')}
+function getDiaristasDia(){return {pedidos:diaristasDiaCache.pedidos||0,presentes:diaristasDiaCache.presentes||0,faltantes:diaristasDiaCache.faltantes||0}}
+async function carregarDiaristasDia(){
+  const r=await supabaseClient.from('diaristas_diario').select('pedidos,presentes,faltantes').eq('data',dataHojeISO()).maybeSingle();
+  if(r.error){console.error('Erro diaristas:',r.error);diaristasDiaCache={pedidos:0,presentes:0,faltantes:0};return}
+  diaristasDiaCache=r.data?{pedidos:Number(r.data.pedidos)||0,presentes:Number(r.data.presentes)||0,faltantes:Number(r.data.faltantes)||0}:{pedidos:0,presentes:0,faltantes:0};
+}
+async function setDiaristasDia(o){
+  const novo={pedidos:parseInt(o.pedidos,10)||0,presentes:parseInt(o.presentes,10)||0,faltantes:parseInt(o.faltantes,10)||0};
+  const r=await supabaseClient.from('diaristas_diario').upsert({data:dataHojeISO(),pedidos:novo.pedidos,presentes:novo.presentes,faltantes:novo.faltantes,updated_at:new Date().toISOString()},{onConflict:'data'});
+  if(r.error)throw r.error;
+  diaristasDiaCache=novo;
+}
 function abrirModalDiaristasPedidos(){document.getElementById('input-diaristas-pedidos').value=getDiaristasDia().pedidos;document.getElementById('modal-diaristas-pedidos').classList.remove('hidden');lucide.createIcons();setTimeout(function(){document.getElementById('input-diaristas-pedidos').select()},100)}
 function fecharModalDiaristasPedidos(){document.getElementById('modal-diaristas-pedidos').classList.add('hidden')}
-function salvarDiaristasPedidos(){const v=parseInt(document.getElementById('input-diaristas-pedidos').value,10)||0;const a=getDiaristasDia();let np=a.presentes;let nf=a.faltantes;if(v>0){if(np>v)np=v;if((np+nf)>v)nf=Math.max(0,v-np);}setDiaristasDia({pedidos:v,presentes:np,faltantes:nf});toast('Pedido: '+v,'ok');fecharModalDiaristasPedidos();renderizar()}
+async function salvarDiaristasPedidos(){const v=parseInt(document.getElementById('input-diaristas-pedidos').value,10)||0;const a=getDiaristasDia();let np=a.presentes;let nf=a.faltantes;if(v>0){if(np>v)np=v;if((np+nf)>v)nf=Math.max(0,v-np);}await setDiaristasDia({pedidos:v,presentes:np,faltantes:nf});toast('Pedido: '+v,'ok');fecharModalDiaristasPedidos();renderizar()}
 
 function abrirModalAddDiarista(statusPre){
   const d=getDiaristasDia();
@@ -376,14 +388,14 @@ function abrirModalAddDiarista(statusPre){
 }
 function fecharModalAddDiarista(){document.getElementById('modal-add-diarista-qtd').classList.add('hidden')}
 
-function salvarDiaristasQtd(){
+async function salvarDiaristasQtd(){
   const p=parseInt(document.getElementById('input-diaristas-presentes').value,10)||0;
   const f=parseInt(document.getElementById('input-diaristas-faltantes').value,10)||0;
   if(p<0||f<0){toast("Negativo nao permitido.",'warn');return}
   const a=getDiaristasDia();
   if(a.pedidos>0&&p>a.pedidos){toast('Presentes ('+p+') maior que pedidos ('+a.pedidos+').','warn');return}
   if(a.pedidos>0&&(p+f)>a.pedidos){const maxF=a.pedidos-p;toast('Presentes ('+p+') + Faltas ('+f+') ultrapassa o pedido ('+a.pedidos+'). Max faltas: '+maxF+'.','warn');return}
-  setDiaristasDia({pedidos:a.pedidos,presentes:p,faltantes:f});
+  await setDiaristasDia({pedidos:a.pedidos,presentes:p,faltantes:f});
   toast('Diaristas: '+p+' presentes + '+f+' faltas.','ok');
   fecharModalAddDiarista();
   renderizar();
@@ -393,7 +405,7 @@ function toggleSidebarMobile(){const s=document.getElementById('sidebar-mobile')
 
 function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','presentes':'Presentes','operacao':'Em Opera\u00e7\u00e3o','diaristas':'Diaristas','dsr':'Em DSR Hoje','banco_horas':'Banco de Horas Hoje','faltas':'Faltas Hoje','atestados':'Atestados Hoje'};const icons={'todos':'layout-grid','presentes':'check-circle-2','operacao':'users','diaristas':'hard-hat','dsr':'palmtree','banco_horas':'clock-3','faltas':'alert-triangle','atestados':'stethoscope'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+icons[f]+'" class="w-3.5 h-3.5"></i> '+labels[f];renderizar();lucide.createIcons()}
 
-async function init(){const txt='HUB-LCE-04 \u2022 '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';document.getElementById('label-mes-ano').innerText=txt;document.getElementById('label-mes-ano-sidebar').innerText=txt;try{const r=await supabaseClient.from('colaboradores').select('id').limit(1);if(r.error)alert("Erro Supabase: "+r.error.message)}catch(e){console.error(e)}popularSelectFuncoesPorSetor();await carregarDadosSupabase();setFiltro('todos');lucide.createIcons()}
+async function init(){const txt='HUB-LCE-04 \u2022 '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';document.getElementById('label-mes-ano').innerText=txt;document.getElementById('label-mes-ano-sidebar').innerText=txt;try{const r=await supabaseClient.from('colaboradores').select('id').limit(1);if(r.error)alert("Erro Supabase: "+r.error.message)}catch(e){console.error(e)}popularSelectFuncoesPorSetor();await carregarDadosSupabase();await carregarDiaristasDia();setFiltro('todos');lucide.createIcons()}
 
 async function carregarDadosSupabase(){
   try{
@@ -553,8 +565,9 @@ async function atualizarDiaSupabase(colabId,dia,funcao){
 
   // Status de presença pertencem SOMENTE à presenca_diaria.
   if(isStatusEspecial(funcao)){
+    // Presença/ocorrência e função operacional são históricos independentes.
+    // Nunca apaga a função já registrada ao atualizar apenas o status diário.
     await salvarPresenca(funcao);
-    await apagarHistorico();
     return;
   }
 
