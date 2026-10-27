@@ -640,7 +640,7 @@ function criarListaGeral(cols) {
       const s = contarDiasNaFuncaoAtual(c.historicoDias);
       statusLabel = isFuncaoAlocada(s.funcao) ? s.funcao : 'Presente PHD';
     } else if (st === 'sem_escala') {
-      const rawExcel = c.historicoDias[diaHoje-1] || '-';
+      const rawExcel = ((c.presencaDias&&c.presencaDias[diaHoje-1]&&c.presencaDias[diaHoje-1]!=='-') ? c.presencaDias[diaHoje-1] : (c.historicoDias[diaHoje-1] || '-'));
       const labelsExcel = {
         'P':'Presente (P)', 'AF':'Afastamento (AF)', 'AL':'Afastamento longo (AL)', 'AM':'Atestado médico (AM)',
         'BH':'Banco de Horas (BH)', 'DF':'Desligamento forçado (DF)', 'DP':'Desligamento Programado (DP)',
