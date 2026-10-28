@@ -1121,49 +1121,143 @@ function extrairCodigoSPX(nome){
 
 window.fecharModalResultadoImport = function(){document.getElementById('modal-resultado-import').classList.add('hidden')};
 
+// ============================================================
+// IMPORTAÇÃO ROBUSTA DE EXCEL
+// Detecta cabeçalho em qualquer das 10 primeiras linhas,
+// aceita vários sinônimos, escolhe a aba com mais dados,
+// e se não achar pergunta via prompt qual coluna é o nome.
+// ============================================================
 async function processarExcel(e){
-  const file=e.target.files[0];
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=async function(evt){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+
+  reader.onload = async function(evt){
     try{
-      const data=new Uint8Array(evt.target.result);
-      const wb=XLSX.read(data,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      if(rows.length<2){toast('Planilha vazia.','warn');return}
-      const header=rows[0].map(function(h){return normalizarTexto(h)});
-      const colNome=header.findIndex(function(h){return h.includes('nome')});
-      const colEscala=header.findIndex(function(h){return h.includes('escala')});
-      const colDsr=header.findIndex(function(h){return h.includes('dsr')||h.includes('folga')});
-      const colHor=header.findIndex(function(h){return h.includes('horario')});
-      if(colNome<0){toast('Coluna NOME nao encontrada.','erro');return}
-      let ok=0,err=0;
-      for(let i=1;i<rows.length;i++){
-        const row=rows[i];
-        const nome=String(row[colNome]||'').trim();
-        if(!nome||nome.length<3)continue;
+      const data = new Uint8Array(evt.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+
+      // --- Escolhe a aba que tem mais linhas com dados (ignora capas) ---
+      let melhorAba = wb.SheetNames[0];
+      let melhorQtd = 0;
+      for(const nomeAba of wb.SheetNames){
+        const ws = wb.Sheets[nomeAba];
+        const rowsAba = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        const validas = rowsAba.filter(function(r){return r.some(function(c){return String(c||'').trim().length>2})}).length;
+        if(validas > melhorQtd){ melhorQtd = validas; melhorAba = nomeAba; }
+      }
+      console.log('[Excel] Abas:', wb.SheetNames, '→ usando:', melhorAba);
+
+      const ws   = wb.Sheets[melhorAba];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      if(rows.length < 2){ toast('Planilha vazia.','warn'); e.target.value=''; return; }
+
+      console.log('[Excel] Total de linhas:', rows.length);
+      console.log('[Excel] Cabeçalho bruto (linha 1):', rows[0]);
+      console.log('[Excel] Linha 2 (amostra de dados):', rows[1]);
+
+      // --- Normalização para comparar ---
+      const norm = function(v){
+        return String(v||'').toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+      };
+
+      // --- Sinônimos (sem acento, minúsculo) ---
+      const sinNome   = ['nome','colaborador','funcionario','funcionaria','auxiliar','operador','matricula','colab','nome completo','nome do colaborador','nome do funcionario','nome do auxiliar'];
+      const sinEscala = ['escala','turno','jornada'];
+      const sinDsr    = ['dsr','folga','descanso'];
+      const sinHor    = ['horario','hora','entrada'];
+
+      const temPalavra = function(celula, lista){
+        const n = norm(celula);
+        return lista.some(function(k){return n.includes(k)});
+      };
+
+      let headerIdx=-1, colNome=-1, colEscala=-1, colDsr=-1, colHor=-1;
+
+      for(let i=0; i<Math.min(10, rows.length); i++){
+        const linha = rows[i];
+        const idxN = linha.findIndex(function(c){return temPalavra(c, sinNome)});
+        if(idxN >= 0){
+          headerIdx = i;
+          colNome   = idxN;
+          colEscala = linha.findIndex(function(c){return temPalavra(c, sinEscala)});
+          colDsr    = linha.findIndex(function(c){return temPalavra(c, sinDsr)});
+          colHor    = linha.findIndex(function(c){return temPalavra(c, sinHor)});
+          console.log('[Excel] Cabeçalho detectado na linha', i+1, ':', linha);
+          console.log('[Excel] colNome='+colNome, 'colEscala='+colEscala, 'colDsr='+colDsr, 'colHor='+colHor);
+          break;
+        }
+      }
+
+      // --- FALLBACK: pergunta ao usuário qual coluna é o nome ---
+      if(headerIdx < 0){
+        const primeiraLinha = rows[0] || [];
+        let opcoes = '';
+        primeiraLinha.forEach(function(v,i){ opcoes += i + ' - ' + String(v||'(vazio)') + '\n'; });
+        const resp = prompt(
+          'Não encontrei a coluna NOME automaticamente.\n\n' +
+          'Cabeçalho lido na linha 1:\n' + opcoes +
+          '\nDigite o ÍNDICE da coluna que contém os NOMES (ex: 0, 1, 2...):',
+          '0'
+        );
+        if(resp === null){ toast('Importação cancelada.','warn'); e.target.value=''; return; }
+        colNome   = parseInt(resp,10) || 0;
+        headerIdx = 0;
+        colEscala = -1; colDsr = -1; colHor = -1;
+        console.warn('[Excel] Usuário indicou coluna', colNome, 'como nome.');
+      }
+
+      const linhasDados = rows.slice(headerIdx + 1);
+
+      let ok=0, err=0;
+      const erros = [];
+
+      for(let i=0; i<linhasDados.length; i++){
+        const row = linhasDados[i];
+        const nome = String(row[colNome]||'').trim();
+        if(!nome || nome.length < 3) continue;
+
         try{
-          const escala=colEscala>=0?String(row[colEscala]||'6x1').trim():'6x1';
-          const dsr=colDsr>=0?String(row[colDsr]||'Domingo').trim():'Domingo';
-          const horario=colHor>=0?String(row[colHor]||'08:00 - 17:00').trim():'08:00 - 17:00';
-          const existente=await supabaseClient.from('colaboradores').select('id').eq('nome',nome).maybeSingle();
-          if(existente.data&&existente.data.id){
-            const r=await supabaseClient.from('colaboradores').update({escala:escala,dsr:dsr,horario:horario}).eq('id',existente.data.id);
-            if(r.error)throw r.error;
+          const escala  = colEscala >= 0 ? (String(row[colEscala]||'').trim() || '6x1')         : '6x1';
+          const dsr     = colDsr    >= 0 ? (String(row[colDsr]   ||'').trim() || 'Domingo')     : 'Domingo';
+          const horario = colHor    >= 0 ? (String(row[colHor]   ||'').trim() || '08:00 - 17:00') : '08:00 - 17:00';
+
+          const existente = await supabaseClient.from('colaboradores').select('id').eq('nome', nome).maybeSingle();
+          if(existente.error && existente.error.code !== 'PGRST116') throw existente.error;
+
+          if(existente.data && existente.data.id){
+            const r = await supabaseClient.from('colaboradores')
+              .update({escala:escala, dsr:dsr, horario:horario})
+              .eq('id', existente.data.id);
+            if(r.error) throw r.error;
           }else{
-            const r=await supabaseClient.from('colaboradores').insert([{nome:nome,escala:escala,dsr:dsr,horario:horario}]);
-            if(r.error)throw r.error;
+            const r = await supabaseClient.from('colaboradores')
+              .insert([{nome:nome, escala:escala, dsr:dsr, horario:horario}]);
+            if(r.error) throw r.error;
           }
           ok++;
-        }catch(er){console.warn('Linha '+i+':',er.message);err++}
+        }catch(er){
+          console.warn('[Excel] Linha', headerIdx+i+2, 'erro:', er.message);
+          erros.push('Linha ' + (headerIdx+i+2) + ': ' + er.message);
+          err++;
+        }
       }
-      toast('Importados: '+ok+' · Erros: '+err,'ok');
-      await carregarDadosSupabase();renderizar();
-    }catch(err){console.error(err);toast('Erro ao ler Excel: '+err.message,'erro')}
+
+      console.log('[Excel] Importados:', ok, '| Erros:', err);
+      if(erros.length) console.table(erros);
+      toast('Importados: ' + ok + ' · Erros: ' + err, ok > 0 ? 'ok' : 'warn');
+
+      await carregarDadosSupabase();
+      renderizar();
+    }catch(err){
+      console.error('[Excel] Falha geral:', err);
+      toast('Erro ao ler Excel: ' + err.message, 'erro');
+    }
   };
   reader.readAsArrayBuffer(file);
-  e.target.value='';
+  e.target.value = '';
 }
 
 window.onload=init;
