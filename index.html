@@ -254,9 +254,9 @@ const SUPABASE_URL='https://ycjsqsrhttbclchyeuzz.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_-avZEKSM1j7QOddKCxIb3g_F5emv6np';
 const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-window.addEventListener('error',function(e){console.error('GLOBAL:',e.message);try{toast('Erro: '+e.message,'erro')}catch(_){}});
-
 function toast(msg,tipo){tipo=tipo||'ok';const el=document.createElement('div');el.className='fixed top-4 right-4 z-[999] px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold border '+(tipo==='ok'?'bg-emerald-500/20 border-emerald-500/40 text-emerald-200':tipo==='warn'?'bg-yellow-500/20 border-yellow-500/40 text-yellow-200':'bg-red-500/20 border-red-500/40 text-red-200');el.textContent=msg;document.body.appendChild(el);setTimeout(function(){el.remove()},3500)}
+
+window.addEventListener('error',function(e){console.error('GLOBAL:',e.message);try{toast('Erro: '+e.message,'erro')}catch(_){}});
 
 const SETORES_E_FUNCOES={
 "Recebimento":["Bipador Recebimento","Patoleiro"],
@@ -269,11 +269,11 @@ const SETORES_E_FUNCOES={
 "Expedição XPT":["Bipador Expedição XPT","Gaioleiro Expedição"],
 "Inventário":["Aux Inventário"],
 "Flip":["Aux Flip"],
-"FM":["Aux FM", "S1"],
+"FM":["Aux FM","S1"],
 "Avarias":["Aux Avarias"],
 "Expedição LM":["Bipador Expedição LM","Abastecedor Expedição LM"],
 "Bancada de Inversão":["Aux Bancada de Inversão","Bipador Bancada de Inversão"],
-"5S":["Aux 5S", "Facilitador 5S"]
+"5S":["Aux 5S","Facilitador 5S"]
 };
 window.SETORES_E_FUNCOES = SETORES_E_FUNCOES;
 
@@ -516,7 +516,20 @@ async function carregarDadosSupabase(){
   }catch(e){console.error(e);alert('Erro ao carregar dados: '+e.message)}
 }
 
-function popularSelectFuncoesPorSetor(def){const sel=document.getElementById('novo-funcao');sel.innerHTML="";let og=document.createElement('optgroup');og.label="Status Especiais";STATUS_ESPECIAIS.forEach(function(s){const o=document.createElement('option');o.value=s.valor;o.textContent=s.label;if(s.valor===def)o.selected=true;og.appendChild(o)});sel.appendChild(og);for(const setor of Object.keys(SETORES_E_FUNCOES)){const ogr=document.createElement('optgroup');ogr.label=setor;SETORES_E_FUNCOES[setor].forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;if(f===def)o.selected=true;ogr.appendChild(o)});sel.appendChild(ogr)}}
+function popularSelectFuncoesPorSetor(def){
+  const sel=document.getElementById('novo-funcao');
+  sel.innerHTML="";
+  let og=document.createElement('optgroup');
+  og.label="Status Especiais";
+  STATUS_ESPECIAIS.forEach(function(s){const o=document.createElement('option');o.value=s.valor;o.textContent=s.label;if(s.valor===def)o.selected=true;og.appendChild(o)});
+  sel.appendChild(og);
+  for(const setor of Object.keys(SETORES_E_FUNCOES)){
+    const ogr=document.createElement('optgroup');
+    ogr.label=setor;
+    SETORES_E_FUNCOES[setor].forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;if(f===def)o.selected=true;ogr.appendChild(o)});
+    sel.appendChild(ogr);
+  }
+}
 
 async function tentarAlterarDia(idColab,indexDia,el){
   const numDia=indexDia+1;
@@ -615,75 +628,99 @@ function cardColaborador(c,cor){
     +'<span class="badge '+info.badge+' shrink-0">'+info.label+'</span></div>';
 }
 
-function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)return null;const bloco=document.createElement('div');const cls={orange:'bg-orange-950/20 border-orange-500/40',yellow:'bg-yellow-950/20 border-yellow-500/40',red:'bg-red-950/20 border-red-500/40',purple:'bg-purple-950/20 border-purple-500/40',slate:'bg-slate-900/60 border-slate-700'}[cor]||'bg-slate-900/60 border-slate-800';bloco.className=cls+' border rounded-2xl p-4 shadow-xl';const iconMap={orange:'text-orange-400',yellow:'text-yellow-400',red:'text-red-400',purple:'text-purple-400',slate:'text-slate-400'};const badgeMap={orange:'badge-orange',yellow:'badge-warning',red:'badge-danger',purple:'badge-purple',slate:'badge-default'};bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 '+(cor==='orange'?'border-orange-500/30':cor==='yellow'?'border-yellow-500/30':cor==='red'?'border-red-500/30':cor==='purple'?'border-purple-500/30':'border-slate-700/30')+'"><h2 class="text-sm font-bold flex items-center gap-2 '+(iconMap[cor]||'text-slate-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(badgeMap[cor]||'badge-default')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor)}).join('')+'</div>';return bloco}
-
-function criarBlocoDiaristas(){const d=getDiaristasDia();const total=d.presentes+d.faltantes;const pd=d.pedidos>0;const dif=d.presentes-d.pedidos;let status='';let cs='';if(d.pedidos===0){status='Defina o pedido';cs='text-slate-400'}else if(dif===0){status='Meta atendida';cs='text-emerald-400'}else if(dif>0){status=dif+' alem';cs='text-cyan-400'}else{status='Faltam '+Math.abs(dif)+' do pedido';cs='text-yellow-400'}const bloco=document.createElement('div');bloco.className='bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl';const clP=pd?'bg-slate-900 border border-emerald-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';const clF=pd?'bg-slate-900 border border-red-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-cyan-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-cyan-400">Diaristas Hoje <span class="text-[10px] font-normal opacity-70">- quantidades por dia</span></h2><span class="badge badge-info">'+total+' registrado(s)</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl"><button onclick="abrirModalDiaristasPedidos()" class="text-left bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5 cursor-pointer active:scale-[0.98]"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-cyan-400 font-bold">Pedidos</span><i data-lucide="edit-3" class="w-4 h-4 text-cyan-400"></i></div><div class="text-3xl font-extrabold text-cyan-300">'+d.pedidos+'</div><div class="text-[10px] '+cs+' font-semibold mt-1">'+status+'</div></button><button onclick="'+(pd?"abrirModalAddDiarista('presente')":'')+'" '+(pd?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clP+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-emerald-400 font-bold">Presentes</span><i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i></div><div class="text-3xl font-extrabold text-emerald-300">'+d.presentes+'</div><div class="text-[10px] text-slate-500 mt-1">'+(pd?'de '+d.pedidos+' pedido(s)':'sem pedido')+' · somam em <span class="text-emerald-400 font-bold">Operação</span></div></button><button onclick="'+(pd?"abrirModalAddDiarista('faltou')":'')+'" '+(pd?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clF+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-red-400 font-bold">Faltaram</span><i data-lucide="edit-3" class="w-4 h-4 text-red-400"></i></div><div class="text-3xl font-extrabold text-red-300">'+d.faltantes+'</div><div class="text-[10px] text-slate-500 mt-1">Total: '+total+' · somam em <span class="text-yellow-400 font-bold">Faltas</span></div></button></div>'+(pd?'':'<div class="mt-3 pt-3 border-t border-cyan-500/20 text-[11px] text-yellow-400">Defina primeiro a quantidade de diaristas pedidos.</div>');return bloco}
-
-function criarListaPresentes(colsPresentes) {
-  const d = getDiaristasDia();
-  const bloco = document.createElement('div');
-  bloco.className = 'bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 shadow-xl';
-  const totalPres = colsPresentes.length + d.presentes;
-  let h = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Presentes Hoje <span class="text-[10px] font-normal opacity-70">- lista única</span></h2><span class="badge badge-success">' + totalPres + ' presente(s)</span></div>';
-  h += '<div class="grid grid-cols-2 gap-2 mb-3">';
-  h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-emerald-400 font-bold">Escalados (P/S2/S1)</div><div class="text-xl font-extrabold text-emerald-300">' + colsPresentes.length + '</div></div>';
-  h += '<div class="bg-slate-900 border border-cyan-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-cyan-400 font-bold">Diaristas</div><div class="text-xl font-extrabold text-cyan-300">' + d.presentes + '</div></div>';
-  h += '</div>';
-  if (totalPres === 0) {
-    h += '<p class="text-xs text-slate-500 italic py-4 text-center">Nenhum presente hoje.</p>';
-    bloco.innerHTML = h; return bloco;
-  }
-  h += '<div class="space-y-2">';
-  colsPresentes.forEach(function(c) {
-    const status = contarDiasNaFuncaoAtual(c.historicoDias);
-    const funcao = status.funcao || '-';
-    const alocadoSetor = isFuncaoAlocada(funcao);
-    h += '<div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
-    h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">' + c.nome + '</div>';
-    h += '<div class="text-[10px] text-slate-400 truncate">' + c.escala + ' · DSR: ' + c.dsr + '</div>';
-    h += '<div class="text-[10px] ' + (alocadoSetor ? 'text-amber-400' : 'text-slate-500') + ' font-semibold mt-0.5">Função: <strong>' + (alocadoSetor ? funcao : 'Sem setor (Excel)') + '</strong></div></div>';
-    if (alocadoSetor) h += '<span class="badge badge-success shrink-0">Escalado</span>';
-    else h += '<span class="badge badge-default shrink-0">Presente</span>';
-    h += '</div>';
-  });
-  for (let i = 1; i <= d.presentes; i++) {
-    h += '<div class="bg-slate-900 border border-cyan-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
-    h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100">Diarista ' + i + '</div>';
-    h += '<div class="text-[10px] text-slate-400">Sem cadastro · alocado por quantidade</div>';
-    h += '<div class="text-[10px] text-amber-400 font-semibold mt-0.5">Função: <strong>Diarista</strong></div></div>';
-    h += '<span class="badge badge-info shrink-0">Diarista</span></div>';
-  }
-  h += '</div>';
-  bloco.innerHTML = h; return bloco;
+function criarBloco(titulo,subtitulo,itens,cor,icon,bt){
+  if(itens.length===0)return null;
+  const bloco=document.createElement('div');
+  const cls={orange:'bg-orange-950/20 border-orange-500/40',yellow:'bg-yellow-950/20 border-yellow-500/40',red:'bg-red-950/20 border-red-500/40',purple:'bg-purple-950/20 border-purple-500/40',slate:'bg-slate-900/60 border-slate-700'}[cor]||'bg-slate-900/60 border-slate-800';
+  bloco.className=cls+' border rounded-2xl p-4 shadow-xl';
+  const iconMap={orange:'text-orange-400',yellow:'text-yellow-400',red:'text-red-400',purple:'text-purple-400',slate:'text-slate-400'};
+  const badgeMap={orange:'badge-orange',yellow:'badge-warning',red:'badge-danger',purple:'badge-purple',slate:'badge-default'};
+  bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 '+(cor==='orange'?'border-orange-500/30':cor==='yellow'?'border-yellow-500/30':cor==='red'?'border-red-500/30':cor==='purple'?'border-purple-500/30':'border-slate-700/30')+'"><h2 class="text-sm font-bold flex items-center gap-2 '+(iconMap[cor]||'text-slate-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(badgeMap[cor]||'badge-default')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor)}).join('')+'</div>';
+  return bloco;
 }
 
-function criarListaGeral(cols) {
-  const bloco = document.createElement('div');
-  bloco.className = 'bg-amber-950/10 border-2 border-amber-500/40 rounded-2xl p-4 shadow-2xl';
-  let h = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400 flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4"></i> Lista Geral</h2><span class="badge badge-warning">' + cols.length + ' colaborador(es)</span></div>';
-  if (cols.length === 0) { h += '<p class="text-xs text-slate-500 italic py-4 text-center">Nenhum colaborador cadastrado.</p>'; bloco.innerHTML = h; return bloco; }
-  h += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
-  cols.forEach(function(c){
-    const st = obterStatusHoje(c);
-    const statusInfo = {
-      operacao:{label:'Em Operação',badge:'badge-success'}, presente:{label:'Presente',badge:'badge-success'},
-      dsr:{label:'DSR',badge:'badge-orange'}, falta:{label:'FALTA',badge:'badge-warning'},
-      atestado:{label:'ATESTADO',badge:'badge-danger'}, ferias:{label:'Férias',badge:'badge-purple'},
-      afastamento:{label:'Afastamento',badge:'badge-default'}, banco_horas:{label:'BH',badge:'badge-purple'},
-      outro_status:{label:'Outros',badge:'badge-default'}, desligado:{label:'Desligado',badge:'badge-danger'},
-      sem_escala:{label:'Sem Escala',badge:'badge-default'}
-    }[st] || {label:'-',badge:'badge-default'};
-    let statusLabel = statusInfo.label;
-    if (st === 'operacao') { const s = contarDiasNaFuncaoAtual(c.historicoDias); statusLabel = isFuncaoAlocada(s.funcao) ? s.funcao : 'Presente PHD'; }
-    else if (st === 'sem_escala' || st === 'outro_status') { statusLabel = ((c.presencaDias&&c.presencaDias[diaHoje-1])||'-'); }
-    h += '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2">';
-    h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">' + c.nome + '</div>';
-    h += '<div class="text-[10px] text-slate-400 truncate">' + c.escala + ' · DSR: ' + c.dsr + '</div>';
-    h += '<div class="text-[10px] text-amber-400 font-semibold mt-1">' + statusLabel + '</div></div>';
-    h += '<span class="badge ' + statusInfo.badge + ' shrink-0">' + statusInfo.label + '</span></div>';
+function criarBlocoDiaristas(){
+  const d=getDiaristasDia();
+  const total=d.presentes+d.faltantes;
+  const pd=d.pedidos>0;
+  const dif=d.presentes-d.pedidos;
+  let status='';let cs='';
+  if(d.pedidos===0){status='Defina o pedido';cs='text-slate-400'}
+  else if(dif===0){status='Meta atendida';cs='text-emerald-400'}
+  else if(dif>0){status=dif+' alem';cs='text-cyan-400'}
+  else{status='Faltam '+Math.abs(dif)+' do pedido';cs='text-yellow-400'}
+  const bloco=document.createElement('div');
+  bloco.className='bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl';
+  const clP=pd?'bg-slate-900 border border-emerald-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';
+  const clF=pd?'bg-slate-900 border border-red-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';
+  bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-cyan-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-cyan-400">Diaristas Hoje <span class="text-[10px] font-normal opacity-70">- quantidades por dia</span></h2><span class="badge badge-info">'+total+' registrado(s)</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl"><button onclick="abrirModalDiaristasPedidos()" class="text-left bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5 cursor-pointer active:scale-[0.98]"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-cyan-400 font-bold">Pedidos</span><i data-lucide="edit-3" class="w-4 h-4 text-cyan-400"></i></div><div class="text-3xl font-extrabold text-cyan-300">'+d.pedidos+'</div><div class="text-[10px] '+cs+' font-semibold mt-1">'+status+'</div></button><button onclick="'+(pd?"abrirModalAddDiarista('presente')":'')+'" '+(pd?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clP+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-emerald-400 font-bold">Presentes</span><i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i></div><div class="text-3xl font-extrabold text-emerald-300">'+d.presentes+'</div><div class="text-[10px] text-slate-500 mt-1">'+(pd?'de '+d.pedidos+' pedido(s)':'sem pedido')+' · somam em <span class="text-emerald-400 font-bold">Operação</span></div></button><button onclick="'+(pd?"abrirModalAddDiarista('faltou')":'')+'" '+(pd?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clF+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-red-400 font-bold">Faltaram</span><i data-lucide="edit-3" class="w-4 h-4 text-red-400"></i></div><div class="text-3xl font-extrabold text-red-300">'+d.faltantes+'</div><div class="text-[10px] text-slate-500 mt-1">Total: '+total+' · somam em <span class="text-yellow-400 font-bold">Faltas</span></div></button></div>'+(pd?'':'<div class="mt-3 pt-3 border-t border-cyan-500/20 text-[11px] text-yellow-400">Defina primeiro a quantidade de diaristas pedidos.</div>');
+  return bloco;
+}
+
+function criarListaPresentes(colsPresentes){
+  const d=getDiaristasDia();
+  const bloco=document.createElement('div');
+  bloco.className='bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 shadow-xl';
+  const totalPres=colsPresentes.length+d.presentes;
+  let h='<div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Presentes Hoje <span class="text-[10px] font-normal opacity-70">- lista única</span></h2><span class="badge badge-success">'+totalPres+' presente(s)</span></div>';
+  h+='<div class="grid grid-cols-2 gap-2 mb-3">';
+  h+='<div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-emerald-400 font-bold">Escalados (P/S2/S1)</div><div class="text-xl font-extrabold text-emerald-300">'+colsPresentes.length+'</div></div>';
+  h+='<div class="bg-slate-900 border border-cyan-500/30 rounded-lg p-2"><div class="text-[10px] uppercase text-cyan-400 font-bold">Diaristas</div><div class="text-xl font-extrabold text-cyan-300">'+d.presentes+'</div></div>';
+  h+='</div>';
+  if(totalPres===0){h+='<p class="text-xs text-slate-500 italic py-4 text-center">Nenhum presente hoje.</p>';bloco.innerHTML=h;return bloco;}
+  h+='<div class="space-y-2">';
+  colsPresentes.forEach(function(c){
+    const status=contarDiasNaFuncaoAtual(c.historicoDias);
+    const funcao=status.funcao||'-';
+    const alocadoSetor=isFuncaoAlocada(funcao);
+    h+='<div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
+    h+='<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">'+c.nome+'</div>';
+    h+='<div class="text-[10px] text-slate-400 truncate">'+c.escala+' · DSR: '+c.dsr+'</div>';
+    h+='<div class="text-[10px] '+(alocadoSetor?'text-amber-400':'text-slate-500')+' font-semibold mt-0.5">Função: <strong>'+(alocadoSetor?funcao:'Sem setor (Excel)')+'</strong></div></div>';
+    if(alocadoSetor)h+='<span class="badge badge-success shrink-0">Escalado</span>';
+    else h+='<span class="badge badge-default shrink-0">Presente</span>';
+    h+='</div>';
   });
-  h += '</div>';
-  bloco.innerHTML = h; return bloco;
+  for(let i=1;i<=d.presentes;i++){
+    h+='<div class="bg-slate-900 border border-cyan-500/30 rounded-xl p-3 flex items-center justify-between gap-2">';
+    h+='<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100">Diarista '+i+'</div>';
+    h+='<div class="text-[10px] text-slate-400">Sem cadastro · alocado por quantidade</div>';
+    h+='<div class="text-[10px] text-amber-400 font-semibold mt-0.5">Função: <strong>Diarista</strong></div></div>';
+    h+='<span class="badge badge-info shrink-0">Diarista</span></div>';
+  }
+  h+='</div>';
+  bloco.innerHTML=h;
+  return bloco;
+}
+
+function criarListaGeral(cols){
+  const bloco=document.createElement('div');
+  bloco.className='bg-amber-950/10 border-2 border-amber-500/40 rounded-2xl p-4 shadow-2xl';
+  let h='<div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400 flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4"></i> Lista Geral</h2><span class="badge badge-warning">'+cols.length+' colaborador(es)</span></div>';
+  if(cols.length===0){h+='<p class="text-xs text-slate-500 italic py-4 text-center">Nenhum colaborador cadastrado.</p>';bloco.innerHTML=h;return bloco;}
+  h+='<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
+  cols.forEach(function(c){
+    const st=obterStatusHoje(c);
+    const statusInfo={
+      operacao:{label:'Em Operação',badge:'badge-success'},presente:{label:'Presente',badge:'badge-success'},
+      dsr:{label:'DSR',badge:'badge-orange'},falta:{label:'FALTA',badge:'badge-warning'},
+      atestado:{label:'ATESTADO',badge:'badge-danger'},ferias:{label:'Férias',badge:'badge-purple'},
+      afastamento:{label:'Afastamento',badge:'badge-default'},banco_horas:{label:'BH',badge:'badge-purple'},
+      outro_status:{label:'Outros',badge:'badge-default'},desligado:{label:'Desligado',badge:'badge-danger'},
+      sem_escala:{label:'Sem Escala',badge:'badge-default'}
+    }[st]||{label:'-',badge:'badge-default'};
+    let statusLabel=statusInfo.label;
+    if(st==='operacao'){const s=contarDiasNaFuncaoAtual(c.historicoDias);statusLabel=isFuncaoAlocada(s.funcao)?s.funcao:'Presente PHD';}
+    else if(st==='sem_escala'||st==='outro_status'){statusLabel=((c.presencaDias&&c.presencaDias[diaHoje-1])||'-');}
+    h+='<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2">';
+    h+='<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">'+c.nome+'</div>';
+    h+='<div class="text-[10px] text-slate-400 truncate">'+c.escala+' · DSR: '+c.dsr+'</div>';
+    h+='<div class="text-[10px] text-amber-400 font-semibold mt-1">'+statusLabel+'</div></div>';
+    h+='<span class="badge '+statusInfo.badge+' shrink-0">'+statusInfo.label+'</span></div>';
+  });
+  h+='</div>';
+  bloco.innerHTML=h;
+  return bloco;
 }
 
 window.renderizar = function(){
@@ -771,8 +808,8 @@ function renderizarSetores(cols,cont,forcarTodos){
     const cs=setoresComColabs[setor];
     const b=document.createElement('div');
     b.className='bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl';
-    const esc = setor.replace(/\\/g,'\\\\').replace(/'/g, "\\'");
-    b.innerHTML = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400">' + setor + '</h2><div class="flex items-center gap-2"><span class="badge ' + (cs.length > 0 ? 'badge-success' : 'badge-default') + '">' + cs.length + ' operador(es)</span><button onclick="abrirModalAlocar(\'' + esc + '\')" class="btn btn-primary btn-sm"><i data-lucide="user-plus" class="w-3 h-3"></i> Adicionar</button></div></div>' + (cs.length === 0 ? '<p class="text-xs text-slate-500 italic py-2">Nenhum operador alocado.</p>' : '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">' + cs.map(function(c){return cardColaborador(c,'operacao')}).join('') + '</div>');
+    const esc=setor.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    b.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-wrap gap-2"><h2 class="text-sm font-bold text-amber-400">'+setor+'</h2><div class="flex items-center gap-2"><span class="badge '+(cs.length>0?'badge-success':'badge-default')+'">'+cs.length+' operador(es)</span><button onclick="abrirModalAlocar(\''+esc+'\')" class="btn btn-primary btn-sm"><i data-lucide="user-plus" class="w-3 h-3"></i> Adicionar</button></div></div>'+(cs.length===0?'<p class="text-xs text-slate-500 italic py-2">Nenhum operador alocado.</p>':'<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+cs.map(function(c){return cardColaborador(c,'operacao')}).join('')+'</div>');
     cont.appendChild(b);
   }
 }
@@ -804,9 +841,20 @@ window.fecharModalAlocar = function(){
 window.filtrarColabsAlocar = function(){
   const t=normalizarTexto(document.getElementById('alocar-busca').value);
   const cont=document.getElementById('alocar-lista');
-  const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){const st=obterStatusHoje(c);let ind=false;let mot='';if(st==='dsr'){ind=true;mot='DSR'}else if(st==='falta'){ind=true;mot='Falta'}else if(st==='atestado'){ind=true;mot='Atestado'}else if(st==='ferias'){ind=true;mot='Ferias'}else if(st==='afastamento'){ind=true;mot='Afast.'}else if(st==='banco_horas'){ind=true;mot='BH'}return{colab:c,ind:ind,mot:mot}}).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});
+  const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){
+    const st=obterStatusHoje(c);let ind=false;let mot='';
+    if(st==='dsr'){ind=true;mot='DSR'}else if(st==='falta'){ind=true;mot='Falta'}else if(st==='atestado'){ind=true;mot='Atestado'}else if(st==='ferias'){ind=true;mot='Ferias'}else if(st==='afastamento'){ind=true;mot='Afast.'}else if(st==='banco_horas'){ind=true;mot='BH'}
+    return{colab:c,ind:ind,mot:mot};
+  }).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});
   if(lista.length===0){cont.innerHTML='<p class="text-xs text-slate-500 italic p-3">Nenhum.</p>';return}
-  cont.innerHTML=lista.map(function(x){const sel=x.colab.id===alocarColabSelecionadoId;const f=x.colab.historicoDias[diaHoje-1]||"-";const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';const btnClass=x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60';const rightIcon=x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>';return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(\''+x.colab.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+btnClass+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' · DSR: '+x.colab.dsr+(ft?' · Hoje: '+ft:'')+'</div></div>'+rightIcon+'</button>'}).join('');
+  cont.innerHTML=lista.map(function(x){
+    const sel=x.colab.id===alocarColabSelecionadoId;
+    const f=x.colab.historicoDias[diaHoje-1]||"-";
+    const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';
+    const btnClass=x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60';
+    const rightIcon=x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>';
+    return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(\''+x.colab.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+btnClass+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' · DSR: '+x.colab.dsr+(ft?' · Hoje: '+ft:'')+'</div></div>'+rightIcon+'</button>';
+  }).join('');
   lucide.createIcons();
 };
 
@@ -831,8 +879,30 @@ window.confirmarAlocacao = async function(){
   }catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}
 };
 
-window.abrirModalAdd = function(){document.getElementById('edit-id').value='';document.getElementById('modal-titulo').innerHTML='Adicionar Auxiliar';document.getElementById('input-nome-colab').value='';document.getElementById('select-escala').value='6x1';document.getElementById('select-dsr').value='Domingo';document.getElementById('input-horario').value='08:00 - 17:00';document.getElementById('campos-add-extras').classList.remove('hidden');popularSelectFuncoesPorSetor();document.getElementById('modal-add').classList.remove('hidden');lucide.createIcons()};
-window.abrirModalEditar = function(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('edit-id').value=c.id;document.getElementById('modal-titulo').innerHTML='Alterar Auxiliar';document.getElementById('input-nome-colab').value=c.nome;document.getElementById('campos-add-extras').classList.add('hidden');const f=c.historicoDias[diaHoje-1]||"-";popularSelectFuncoesPorSetor(f);document.getElementById('modal-add').classList.remove('hidden');lucide.createIcons()};
+window.abrirModalAdd = function(){
+  document.getElementById('edit-id').value='';
+  document.getElementById('modal-titulo').innerHTML='Adicionar Auxiliar';
+  document.getElementById('input-nome-colab').value='';
+  document.getElementById('select-escala').value='6x1';
+  document.getElementById('select-dsr').value='Domingo';
+  document.getElementById('input-horario').value='08:00 - 17:00';
+  document.getElementById('campos-add-extras').classList.remove('hidden');
+  popularSelectFuncoesPorSetor();
+  document.getElementById('modal-add').classList.remove('hidden');
+  lucide.createIcons();
+};
+window.abrirModalEditar = function(id){
+  const c=colaboradores.find(function(x){return x.id===id});
+  if(!c)return;
+  document.getElementById('edit-id').value=c.id;
+  document.getElementById('modal-titulo').innerHTML='Alterar Auxiliar';
+  document.getElementById('input-nome-colab').value=c.nome;
+  document.getElementById('campos-add-extras').classList.add('hidden');
+  const f=c.historicoDias[diaHoje-1]||"-";
+  popularSelectFuncoesPorSetor(f);
+  document.getElementById('modal-add').classList.remove('hidden');
+  lucide.createIcons();
+};
 window.fecharModalAdd = function(){document.getElementById('modal-add').classList.add('hidden')};
 
 window.salvarColaborador = async function(){
@@ -854,7 +924,7 @@ window.salvarColaborador = async function(){
       const c=colaboradores.find(function(x){return x.id===idEdit});
       if(c&&!isColabEmDSRHoje(c))await atualizarDiaSupabase(idEdit,diaHoje,func);
       else if(c&&isColabEmDSRHoje(c)&&isStatusEspecial(func))await atualizarDiaSupabase(idEdit,diaHoje,func);
-      toast(nome+' atualizado.','ok')
+      toast(nome+' atualizado.','ok');
     }else{
       const esc=document.getElementById('select-escala').value;
       const dsr=document.getElementById('select-dsr').value;
@@ -865,7 +935,7 @@ window.salvarColaborador = async function(){
         const dh=new Date(anoAtual,mesAtualIndex,diaHoje);
         const hd=isDiaDSR(dsr,dh);
         if(!hd||isStatusEspecial(func))await atualizarDiaSupabase(ri.data[0].id,diaHoje,func);
-        toast(nome+' adicionado.','ok')
+        toast(nome+' adicionado.','ok');
       }
     }
     fecharModalAdd();
@@ -900,7 +970,8 @@ window.abrirHistorico = function(id){
     const borderCls=eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950';
     const labelCls=eH?'text-amber-300':eD?'text-orange-400':'text-slate-300';
     const labelTxt=eH?'HOJE':eD?'DSR':eP?'trancado':'';
-    cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+borderCls+' gap-2"><span class="text-[11px] font-bold '+labelCls+' w-32">Dia '+nd+' '+labelTxt+'</span><select onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>';
+    const selectHtml='<select class="select flex-grow '+(bl?'opacity-50':'')+'" onchange="tentarAlterarDia(\''+id+'\', '+i+', this)">'+op+'</select>';
+    cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+borderCls+' gap-2"><span class="text-[11px] font-bold '+labelCls+' w-32">Dia '+nd+' '+labelTxt+'</span>'+selectHtml+'</div>';
   });
   document.getElementById('modal-historico').classList.remove('hidden');
 };
@@ -975,7 +1046,7 @@ function calcularAcumuladoColab(c){
     if(val==='DSR'||val==='FO'){r.dsr++;continue}
     if(['P','S2','S1'].includes(val)||isFuncaoAlocada(val)){
       if(isFuncaoAlocada(f)){r.totalOperacao++;r.funcoes[f]=(r.funcoes[f]||0)+1;}
-      else {r.totalOperacao++;r.funcoes['Presente PHD']=(r.funcoes['Presente PHD']||0)+1;}
+      else{r.totalOperacao++;r.funcoes['Presente PHD']=(r.funcoes['Presente PHD']||0)+1;}
       continue;
     }
     if(['BH','TD','SU','FC','IN','NC','NS','PR','TR'].includes(val)){r.dsrExtra++;continue}
