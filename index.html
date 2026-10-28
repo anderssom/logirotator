@@ -69,6 +69,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <button onclick="setFiltro('todos')" id="menu-todos" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4 text-amber-400"></i> Todos</span><span id="badge-todos" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('presentes')" id="menu-presentes" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Presentes</span><span id="badge-presentes" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('operacao')" id="menu-operacao" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Em Operação</span><span id="badge-operacao" class="badge badge-default">0</span></button>
+<button onclick="setFiltro('diaristas')" id="menu-diaristas" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="hard-hat" class="w-4 h-4 text-cyan-400"></i> Diaristas</span><span id="badge-diaristas" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('dsr')" id="menu-dsr" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span><span id="badge-dsr" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('ferias')" id="menu-ferias" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="calendar-range" class="w-4 h-4 text-purple-400"></i> Férias</span><span id="badge-ferias" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('afastado')" id="menu-afastado" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="user-x" class="w-4 h-4 text-slate-400"></i> Afastado</span><span id="badge-afastado" class="badge badge-default">0</span></button>
@@ -128,6 +129,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <button onclick="setFiltro('todos');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="layout-grid" class="w-4 h-4 text-amber-400"></i> Todos</span><span id="badge-todos-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('presentes');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Presentes</span><span id="badge-presentes-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('operacao');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Em Operação</span><span id="badge-operacao-m" class="badge badge-default">0</span></button>
+<button onclick="setFiltro('diaristas');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="hard-hat" class="w-4 h-4 text-cyan-400"></i> Diaristas</span><span id="badge-diaristas-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('dsr');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="palmtree" class="w-4 h-4 text-orange-400"></i> Em DSR Hoje</span><span id="badge-dsr-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('ferias');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="calendar-range" class="w-4 h-4 text-purple-400"></i> Férias</span><span id="badge-ferias-m" class="badge badge-default">0</span></button>
 <button onclick="setFiltro('afastado');toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="user-x" class="w-4 h-4 text-slate-400"></i> Afastado</span><span id="badge-afastado-m" class="badge badge-default">0</span></button>
@@ -306,15 +308,13 @@ function isColabEmDSRHoje(c){const dataHoje=new Date(anoAtual,mesAtualIndex,diaH
 
 function obterStatusHoje(c){
   const pres=(c.presencaDias&&c.presencaDias[diaHoje-1])||"-";
-  const hist=(c.historicoDias&&c.historicoDias[diaHoje-1])||"-";
   if(pres==="DSR"||pres==="FO")return'dsr';
   if(["F","FJ"].includes(pres))return'falta';
   if(pres==="AM")return'atestado';
-  if(pres==="FE"||pres==="ferias"||pres==='Férias')return'ferias';
-  if(["AF","AL","afastado","Afastado"].includes(pres)||["AF","AL"].includes(hist))return'afastamento';
+  if(pres==="FE")return'ferias';
   if(["DF","DP","DV"].includes(pres))return'desligado';
   if(pres==="BH")return'banco_horas';
-  if(hist==="S1"||pres==="S1")return'fm';
+  if(["AF","AL"].includes(pres))return'afastamento';
   if(["P","S2","S1"].includes(pres))return'presente';
   if(["TD","SU","FC","IN","NC","NS","PR","TR"].includes(pres))return'outro_status';
   return'sem_escala';
@@ -400,7 +400,7 @@ async function salvarDiaristasQtd(){
 
 function toggleSidebarMobile(){const s=document.getElementById('sidebar-mobile');const o=document.getElementById('sidebar-mobile-overlay');const ab=!s.classList.contains('-translate-x-full');if(ab){s.classList.add('-translate-x-full');o.classList.add('hidden')}else{s.classList.remove('-translate-x-full');o.classList.remove('hidden')}}
 
-function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','presentes':'Presentes','operacao':'Em Operação','dsr':'Em DSR Hoje','ferias':'Férias','afastado':'Afastado','fm':'FM (S1)'};const icons={'todos':'layout-grid','presentes':'check-circle-2','operacao':'users','dsr':'palmtree','ferias':'calendar-range','afastado':'user-x','fm':'briefcase'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+(icons[f]||'filter')+'" class="w-3.5 h-3.5"></i> '+(labels[f]||f);renderizar();lucide.createIcons()}
+function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','presentes':'Presentes','operacao':'Em Operação','diaristas':'Diaristas','dsr':'Em DSR Hoje','banco_horas':'Banco de Horas Hoje','faltas':'Faltas Hoje','atestados':'Atestados Hoje'};const icons={'todos':'layout-grid','presentes':'check-circle-2','operacao':'users','diaristas':'hard-hat','dsr':'palmtree','banco_horas':'clock-3','faltas':'alert-triangle','atestados':'stethoscope'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+icons[f]+'" class="w-3.5 h-3.5"></i> '+labels[f];renderizar();lucide.createIcons()}
 
 async function init(){
   const txt='HUB-LCE-04 • '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';
@@ -588,13 +588,14 @@ async function atualizarDiaSupabase(colabId,dia,funcao){
 function cardColaborador(c,cor){
   const mapa={
     orange:{label:'DSR',badge:'badge-orange'},
-    purple:{label:'FÉRIAS',badge:'badge-purple'},
-    slate:{label:'AFASTADO',badge:'badge-default'},
-    amber:{label:'FM (S1)',badge:'badge-warning'},
+    yellow:{label:'FALTA',badge:'badge-warning'},
+    red:{label:'ATESTADO',badge:'badge-danger'},
+    purple:{label:'BANCO DE HORAS',badge:'badge-purple'},
+    slate:{label:'STATUS',badge:'badge-default'},
     operacao:{label:'EM OPERAÇÃO',badge:'badge-success'},
     presente:{label:'PRESENTE',badge:'badge-success'}
   };
-  const info=mapa[cor]||mapa.presente;
+  const info=mapa[cor]||mapa.slate;
   const pres=(c.presencaDias&&c.presencaDias[diaHoje-1])||'-';
   const hist=(c.historicoDias&&c.historicoDias[diaHoje-1])||'-';
   const detalhe=pres!=='-'?pres:(hist!=='-'?hist:info.label);
@@ -607,7 +608,9 @@ function cardColaborador(c,cor){
     +'<span class="badge '+info.badge+' shrink-0">'+info.label+'</span></div>';
 }
 
-function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)return null;const bloco=document.createElement('div');const cls={orange:'bg-orange-950/20 border-orange-500/40',purple:'bg-purple-950/20 border-purple-500/40',slate:'bg-slate-900/60 border-slate-700',amber:'bg-amber-950/20 border-amber-500/40'}[cor]||'bg-slate-900/60 border-slate-800';bloco.className=cls+' border rounded-2xl p-4 shadow-xl';const iconMap={orange:'text-orange-400',purple:'text-purple-400',slate:'text-slate-400',amber:'text-amber-400'};const badgeMap={orange:'badge-orange',purple:'badge-purple',slate:'badge-default',amber:'badge-warning'};bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/30 flex-wrap gap-2"><h2 class="text-sm font-bold flex items-center gap-2 '+(iconMap[cor]||'text-slate-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(badgeMap[cor]||'badge-default')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor)}).join('')+'</div>';return bloco}
+function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)return null;const bloco=document.createElement('div');const cls={orange:'bg-orange-950/20 border-orange-500/40',yellow:'bg-yellow-950/20 border-yellow-500/40',red:'bg-red-950/20 border-red-500/40',purple:'bg-purple-950/20 border-purple-500/40',slate:'bg-slate-900/60 border-slate-700'}[cor]||'bg-slate-900/60 border-slate-800';bloco.className=cls+' border rounded-2xl p-4 shadow-xl';const iconMap={orange:'text-orange-400',yellow:'text-yellow-400',red:'text-red-400',purple:'text-purple-400',slate:'text-slate-400'};const badgeMap={orange:'badge-orange',yellow:'badge-warning',red:'badge-danger',purple:'badge-purple',slate:'badge-default'};bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 '+(cor==='orange'?'border-orange-500/30':cor==='yellow'?'border-yellow-500/30':cor==='red'?'border-red-500/30':cor==='purple'?'border-purple-500/30':'border-slate-700/30')+'"><h2 class="text-sm font-bold flex items-center gap-2 '+(iconMap[cor]||'text-slate-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(badgeMap[cor]||'badge-default')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor)}).join('')+'</div>';return bloco}
+
+function criarBlocoDiaristas(){const d=getDiaristasDia();const total=d.presentes+d.faltantes;const pd=d.pedidos>0;const dif=d.presentes-d.pedidos;const exc=d.presentes>=d.pedidos&&d.pedidos>0;let status='';let cs='';if(d.pedidos===0){status='Defina o pedido';cs='text-slate-400'}else if(dif===0){status='Meta atendida';cs='text-emerald-400'}else if(dif>0){status=dif+' alem';cs='text-cyan-400'}else{status='Faltam '+Math.abs(dif)+' do pedido';cs='text-yellow-400'}const bloco=document.createElement('div');bloco.className='bg-cyan-950/20 border border-cyan-500/40 rounded-2xl p-4 shadow-xl';const clP=pd&&!exc?'bg-slate-900 border border-emerald-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';const clF=pd?'bg-slate-900 border border-red-500/40 cursor-pointer active:scale-[0.98]':'bg-slate-900 border border-slate-800 opacity-60 cursor-not-allowed';bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b border-cyan-500/30 flex-wrap gap-2"><h2 class="text-sm font-bold text-cyan-400">Diaristas Hoje <span class="text-[10px] font-normal opacity-70">- quantidades por dia</span></h2><span class="badge badge-info">'+total+' registrado(s)</span></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl"><button onclick="abrirModalDiaristasPedidos()" class="text-left bg-slate-900 border border-cyan-500/40 rounded-xl p-3.5 cursor-pointer active:scale-[0.98]"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-cyan-400 font-bold">Pedidos</span><i data-lucide="edit-3" class="w-4 h-4 text-cyan-400"></i></div><div class="text-3xl font-extrabold text-cyan-300">'+d.pedidos+'</div><div class="text-[10px] '+cs+' font-semibold mt-1">'+status+'</div></button><button onclick="'+(pd&&!exc?"abrirModalAddDiarista('presente')":'')+'" '+(pd&&!exc?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clP+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-emerald-400 font-bold">Presentes</span><i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i></div><div class="text-3xl font-extrabold text-emerald-300">'+d.presentes+'</div><div class="text-[10px] text-slate-500 mt-1">'+(pd?'de '+d.pedidos+' pedido(s)':'sem pedido')+' · somam em <span class="text-emerald-400 font-bold">Operação</span></div></button><button onclick="'+(pd?"abrirModalAddDiarista('faltou')":'')+'" '+(pd?'':'disabled')+' class="text-left rounded-xl p-3.5 transition '+clF+'"><div class="flex items-center justify-between mb-2"><span class="text-[10px] uppercase text-red-400 font-bold">Faltaram</span><i data-lucide="edit-3" class="w-4 h-4 text-red-400"></i></div><div class="text-3xl font-extrabold text-red-300">'+d.faltantes+'</div><div class="text-[10px] text-slate-500 mt-1">Total: '+total+' · somam em <span class="text-yellow-400 font-bold">Faltas</span></div></button></div>'+(pd?'':'<div class="mt-3 pt-3 border-t border-cyan-500/20 text-[11px] text-yellow-400">Defina primeiro a quantidade de diaristas pedidos.</div>');return bloco}
 
 function criarListaPresentes(colsPresentes) {
   const d = getDiaristasDia();
@@ -655,18 +658,22 @@ function criarListaGeral(cols) {
   h += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
   cols.forEach(function(c){
     const st = obterStatusHoje(c);
-    let statusLabel = 'Presente';
-    let badgeClass = 'badge-success';
-    if(st==='dsr'){statusLabel='DSR';badgeClass='badge-orange'}
-    else if(st==='ferias'){statusLabel='Férias';badgeClass='badge-purple'}
-    else if(st==='afastamento'){statusLabel='Afastado';badgeClass='badge-default'}
-    else if(st==='fm'){statusLabel='FM (S1)';badgeClass='badge-warning'}
-    else if(st==='operacao'){const s = contarDiasNaFuncaoAtual(c.historicoDias); statusLabel = isFuncaoAlocada(s.funcao)?s.funcao:'Operação'; badgeClass='badge-success'}
+    const statusInfo = {
+      operacao:{label:'Em Operação',badge:'badge-success'}, presente:{label:'Presente',badge:'badge-success'},
+      dsr:{label:'DSR',badge:'badge-orange'}, falta:{label:'FALTA',badge:'badge-warning'},
+      atestado:{label:'ATESTADO',badge:'badge-danger'}, ferias:{label:'Férias',badge:'badge-purple'},
+      afastamento:{label:'Afastamento',badge:'badge-default'}, banco_horas:{label:'BH',badge:'badge-purple'},
+      outro_status:{label:'Outros',badge:'badge-default'}, desligado:{label:'Desligado',badge:'badge-danger'},
+      sem_escala:{label:'Sem Escala',badge:'badge-default'}
+    }[st] || {label:'-',badge:'badge-default'};
+    let statusLabel = statusInfo.label;
+    if (st === 'operacao') { const s = contarDiasNaFuncaoAtual(c.historicoDias); statusLabel = isFuncaoAlocada(s.funcao) ? s.funcao : 'Presente PHD'; }
+    else if (st === 'sem_escala' || st === 'outro_status') { statusLabel = ((c.presencaDias&&c.presencaDias[diaHoje-1])||'-'); }
     h += '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2">';
     h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">' + c.nome + '</div>';
     h += '<div class="text-[10px] text-slate-400 truncate">' + c.escala + ' · DSR: ' + c.dsr + '</div>';
     h += '<div class="text-[10px] text-amber-400 font-semibold mt-1">' + statusLabel + '</div></div>';
-    h += '<span class="badge ' + badgeClass + ' shrink-0">' + statusLabel + '</span></div>';
+    h += '<span class="badge ' + statusInfo.badge + ' shrink-0">' + statusInfo.label + '</span></div>';
   });
   h += '</div>';
   bloco.innerHTML = h; return bloco;
@@ -676,34 +683,30 @@ function renderizar(){
   const termo=normalizarTexto(document.getElementById('input-busca').value);
   const cont=document.getElementById('container-setores');
   cont.innerHTML="";
-  const g={presente:[],operacao:[],dsr:[],ferias:[],afastamento:[],fm:[],desligado:[]};
+  const g={presente:[],operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],desligado:[],outro_status:[],sem_escala:[]};
   colaboradores.forEach(function(c){
-    const st=obterStatusHoje(c);
-    if(st==='presente') g.presente.push(c);
-    if(st==='dsr') g.dsr.push(c);
-    if(st==='ferias') g.ferias.push(c);
-    if(st==='afastamento') g.afastamento.push(c);
-    if(st==='fm') g.fm.push(c);
-    if(st==='desligado') g.desligado.push(c);
+    const t=obterStatusHoje(c); if(g[t])g[t].push(c);
     if(estaEmOperacaoHoje(c)) g.operacao.push(c);
   });
   const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
-  const pF=fl(g.presente); const oF=fl(g.operacao); const dF=fl(g.dsr); const ferF=fl(g.ferias); const afF=fl(g.afastamento); const fmF=fl(g.fm);
+  const pF=fl(g.presente); const oF=fl(g.operacao); const dF=fl(g.dsr); const bhF=fl(g.banco_horas);
+  const fF=fl(g.falta); const aF=fl(g.atestado); const seF=fl(g.sem_escala);
   const dd=getDiaristasDia(); const td=dd.presentes;
   const totalPresentes=g.presente.length+dd.presentes;
   const desligadosHoje=g.desligado.length;
-  
   document.getElementById('kpi-total').innerText=Math.max(0,colaboradores.length-desligadosHoje);
   document.getElementById('kpi-presentes').innerText=totalPresentes;
-  document.getElementById('kpi-dsr').innerText=g.dsr.length;
   document.getElementById('kpi-operacao').innerText=g.operacao.length;
-  
+  document.getElementById('kpi-dsr').innerText=g.dsr.length;
+  document.getElementById('kpi-banco-horas').innerText=g.banco_horas.length;
+  document.getElementById('kpi-faltas').innerText=g.falta.length+dd.faltantes;
+  document.getElementById('kpi-atestados').innerText=g.atestado.length;
+  document.getElementById('kpi-diaristas').innerText=td;
   const detP=document.getElementById('kpi-presentes-detalhe');
   if(detP)detP.innerText=g.presente.length+' pres. + '+dd.presentes+' diar.';
-  const detO=document.getElementById('kpi-operacao-detalhe');
-  if(detO)detO.innerText=g.operacao.length+' alocado(s) nos setores';
-
-  const bg={'badge-todos':colaboradores.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-ferias':g.ferias.length,'badge-afastado':g.afastamento.length,'badge-fm':g.fm.length};
+  const det=document.getElementById('kpi-operacao-detalhe');
+  if(det)det.innerText=g.operacao.length+' alocado(s) nos setores';
+  const bg={'badge-todos':colaboradores.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td,'badge-banco_horas':g.banco_horas.length};
   Object.keys(bg).forEach(function(id){const el=document.getElementById(id);if(el)el.innerText=bg[id];const elM=document.getElementById(id+'-m');if(elM)elM.innerText=bg[id]});
 
   if(termo){
@@ -711,11 +714,12 @@ function renderizar(){
       pF.map(function(c){return{c:c,tipo:'presente'}}),
       oF.map(function(c){return{c:c,tipo:'operacao'}}),
       dF.map(function(c){return{c:c,tipo:'dsr'}}),
-      ferF.map(function(c){return{c:c,tipo:'ferias'}}),
-      afF.map(function(c){return{c:c,tipo:'afastado'}}),
-      fmF.map(function(c){return{c:c,tipo:'fm'}})
+      bhF.map(function(c){return{c:c,tipo:'banco_horas'}}),
+      fF.map(function(c){return{c:c,tipo:'falta'}}),
+      aF.map(function(c){return{c:c,tipo:'atestado'}}),
+      seF.map(function(c){return{c:c,tipo:'sem_escala'}})
     );
-    const fM={'todos':null,'presentes':'presente','operacao':'operacao','dsr':'dsr','ferias':'ferias','afastado':'afastado','fm':'fm'};
+    const fM={'todos':null,'presentes':'presente','operacao':'operacao','diaristas':null,'dsr':'dsr','banco_horas':'banco_horas','faltas':'falta','atestados':'atestado'};
     const tp=fM[filtroAtivo];
     const filt=tp?m.filter(function(x){return x.tipo===tp}):m;
     if(filt.length===0){cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum resultado.</p>';lucide.createIcons();return}
@@ -724,16 +728,17 @@ function renderizar(){
     cont.appendChild(b); lucide.createIcons(); return;
   }
 
-  if(filtroAtivo==='todos'){ const todos=colaboradores.filter(function(c){return obterStatusHoje(c)!=='desligado'}); cont.appendChild(criarListaGeral(todos)); return; }
+  if(filtroAtivo==='todos'){ const todos=[].concat(pF,oF,dF,bhF,fF,aF,seF); cont.appendChild(criarListaGeral(todos)); return; }
   if(filtroAtivo==='presentes'){
     const cols = [].concat(pF, oF).filter(function(c,idx,arr){return arr.findIndex(function(x){return x.id===c.id})===idx});
     cont.appendChild(criarListaPresentes(cols)); return;
   }
   if(filtroAtivo==='operacao'){ renderizarSetores(oF,cont,true); return; }
-  if(filtroAtivo==='dsr'){ if(dF.length>0){const b=criarBloco('Em DSR Hoje','folga programada',dF,'orange','<i data-lucide="palmtree" class="w-4 h-4"></i>',dF.length);if(b)cont.appendChild(b);} else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>'; return; }
-  if(filtroAtivo==='ferias'){ if(ferF.length>0){const b=criarBloco('Férias Hoje','período de descanso',ferF,'purple','<i data-lucide="calendar-range" class="w-4 h-4"></i>',ferF.length);if(b)cont.appendChild(b);} else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum colaborador em férias hoje.</p>'; return; }
-  if(filtroAtivo==='afastado'){ if(afF.length>0){const b=criarBloco('Afastados Hoje','afastamento médico ou longo',afF,'slate','<i data-lucide="user-x" class="w-4 h-4"></i>',afF.length);if(b)cont.appendChild(b);} else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum afastado hoje.</p>'; return; }
-  if(filtroAtivo==='fm'){ if(fmF.length>0){const b=criarBloco('FM / S1 Hoje','emprestados ao FM',fmF,'amber','<i data-lucide="briefcase" class="w-4 h-4"></i>',fmF.length);if(b)cont.appendChild(b);} else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum colaborador no FM (S1) hoje.</p>'; return; }
+  if(filtroAtivo==='diaristas'){ cont.appendChild(criarBlocoDiaristas()); return; }
+  if(filtroAtivo==='dsr'){ if(dF.length>0){const b=criarBloco('Em DSR Hoje','nao podem ser escalados',dF,'orange','',dF.length);if(b)cont.appendChild(b);} else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum em DSR hoje.</p>'; return; }
+  if(filtroAtivo==='banco_horas'){ if(bhF.length>0){const b=criarBloco('Banco de Horas Hoje','status BH',bhF,'purple','<i data-lucide="clock-3" class="w-4 h-4"></i>',bhF.length);if(b)cont.appendChild(b);} else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum BH hoje.</p>'; return; }
+  if(filtroAtivo==='faltas'){ if(fF.length>0){const b=criarBloco('Faltas Hoje','F e FJ',fF,'yellow','',fF.length);if(b)cont.appendChild(b);} else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhuma falta.</p>'; return; }
+  if(filtroAtivo==='atestados'){ if(aF.length>0){const b=criarBloco('Atestados Hoje','AM',aF,'red','',aF.length);if(b)cont.appendChild(b);} else cont.innerHTML='<p class="text-center text-slate-500 italic py-8">Nenhum atestado.</p>'; return; }
   lucide.createIcons();
 }
 
@@ -782,9 +787,9 @@ window.fecharModalAlocar = function(){
 window.filtrarColabsAlocar = function(){
   const t=normalizarTexto(document.getElementById('alocar-busca').value);
   const cont=document.getElementById('alocar-lista');
-  const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){const st=obterStatusHoje(c);let ind=false;let mot='';if(st==='dsr'){ind=true;mot='DSR'}else if(st==='ferias'){ind=true;mot='Férias'}else if(st==='afastamento'){ind=true;mot='Afast.'}return{colab:c,ind:ind,mot:mot}}).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});
+  const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){const st=obterStatusHoje(c);let ind=false;let mot='';if(st==='dsr'){ind=true;mot='DSR'}else if(st==='falta'){ind=true;mot='Falta'}else if(st==='atestado'){ind=true;mot='Atestado'}else if(st==='ferias'){ind=true;mot='Ferias'}else if(st==='afastamento'){ind=true;mot='Afast.'}else if(st==='banco_horas'){ind=true;mot='BH'}return{colab:c,ind:ind,mot:mot}}).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});
   if(lista.length===0){cont.innerHTML='<p class="text-xs text-slate-500 italic p-3">Nenhum.</p>';return}
-  cont.innerHTML=lista.map(function(x){const sel=x.colab.id===alocarColabSelecionadoId;const f=x.colab.historicoDias[diaHoje-1]||"-";const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(\''+x.colab.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+(x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60')+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' · DSR: '+x.colab.dsr+(ft?' · Hoje: '+ft:'')+'</div></div>'+(x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>')+'</button>'}).join('');
+  cont.innerHTML=lista.map(function(x){const sel=x.colab.id===alocarColabSelecionadoId;const f=x.colab.historicoDias[diaHoje-1]||"-";const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(''+x.colab.id+'')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+(x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60')+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' · DSR: '+x.colab.dsr+(ft?' · Hoje: '+ft:'')+'</div></div>'+(x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>')+'</button>'}).join('');
   lucide.createIcons();
 };
 
@@ -852,7 +857,7 @@ window.salvarColaborador = async function(){
   }catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}
 };
 
-window.abrirHistorico = function(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')};
+window.abrirHistorico = function(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select onchange="tentarAlterarDia(''+id+'', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')};
 window.fecharModalHistorico = function(){document.getElementById('modal-historico').classList.add('hidden')};
 
 window.abrirModalMatriz = function(){document.getElementById('titulo-matriz-mes').innerHTML='Matriz: '+nomeMesAtual+' / '+anoAtual;document.getElementById('matriz-busca').value='';renderizarMatriz();document.getElementById('modal-matriz').classList.remove('hidden');lucide.createIcons();setTimeout(function(){const th=document.querySelector('#tabela-matriz-unica thead th.bg-amber-500\/30');if(th)th.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})},150)};
@@ -916,6 +921,35 @@ window.imprimirRelatorio = function(){
   w.document.write('<html><head><meta charset="utf-8"><title>Relatório</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px;font-size:11px}th{background:#eee}</style></head><body>'+area.innerHTML+'</body></html>');
   w.document.close();w.focus();setTimeout(function(){w.print()},250);
 };
+
+
+function extrairCodigoSPX(nome){
+  if(!nome) return '';
+  const match = String(nome).match(/\((\d+)\)/);
+  return match ? match[1] : '';
+}
+
+async function processarExcel(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(evt){
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+      toast("Planilha lida com sucesso (" + rows.length + " linhas).", "ok");
+      await carregarDadosSupabase();
+      renderizar();
+    } catch(err){
+      console.error(err);
+      toast("Erro ao ler Excel: " + err.message, "erro");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 window.onload=init;
 </script>
