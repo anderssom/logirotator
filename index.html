@@ -284,7 +284,7 @@ const STATUS_ESPECIAIS=[
 {valor:"DP",label:"DP: Desligamento Programado"},{valor:"DSR",label:"DSR: Descanso Semanal Remunerado"},{valor:"DV",label:"DV: Desligamento voluntário"},
 {valor:"F",label:"F: Falta Injustificada"},{valor:"FE",label:"FE: Férias"},{valor:"FJ",label:"FJ: Falta Justificada"},{valor:"FO",label:"FO: Folga"},
 {valor:"NC",label:"NC: Não Contratado"},{valor:"NS",label:"NS: No-Show"},{valor:"PR",label:"PR: Promoção"},
-{valor:"S2",label:"S2: Sinergia Recebida"},{valor:"TR",label:"TR: Transferência"},
+{valor:"S1",label:"S1: Sinergia Enviada"},{valor:"S2",label:"S2: Sinergia Recebida"},{valor:"TR",label:"TR: Transferência"},
 {valor:"TD",label:"TD: Treinamento e desenvolvimento"},{valor:"SU",label:"SU: Suspensão"},{valor:"FC",label:"FC: Folga compensatória"},{valor:"IN",label:"IN: Internalização"}
 ];
 function isStatusEspecial(v){return STATUS_ESPECIAIS.some(function(s){return s.valor===v})}
@@ -585,7 +585,7 @@ async function atualizarDiaSupabase(colabId,dia,funcao){
     return;
   }
   if(isStatusEspecial(funcao)){
-    await apagarHistorico();
+    // Presença e função operacional são históricos independentes.
     await salvarPresenca(funcao);
     return;
   }
@@ -593,7 +593,6 @@ async function atualizarDiaSupabase(colabId,dia,funcao){
   for(const s of Object.keys(SETORES_E_FUNCOES)){
     if(SETORES_E_FUNCOES[s].includes(funcao)){setor=s;break}
   }
-  await apagarPresenca();
   const q=await supabaseClient.from('historico_escala').select('id').eq('colaborador_id',colabId).eq('data',dataStr).limit(1);
   if(q.error)throw q.error;
   let r;
@@ -1125,242 +1124,57 @@ window.fecharModalResultadoImport = function(){document.getElementById('modal-re
 // IMPORTAÇÃO DE EXCEL — APENAS ATUALIZA PRESENÇA (NÃO CRIA COLABORADOR)
 // ============================================================
 async function processarExcel(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-
-  reader.onload = async function(evt){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async function(evt){
     try{
-      const data = new Uint8Array(evt.target.result);
-      const wb = XLSX.read(data, {type:'array'});
-
-      let melhorAba = wb.SheetNames[0];
-      let melhorQtd = 0;
+      const wb=XLSX.read(new Uint8Array(evt.target.result),{type:'array'});
+      let melhorAba=wb.SheetNames[0], melhorQtd=0;
       for(const nomeAba of wb.SheetNames){
-        const wsA = wb.Sheets[nomeAba];
-        const rowsA = XLSX.utils.sheet_to_json(wsA, {header:1, defval:''});
-        const validas = rowsA.filter(function(r){return r.some(function(c){return String(c||'').trim().length>2})}).length;
-        if(validas > melhorQtd){ melhorQtd = validas; melhorAba = nomeAba; }
+        const rr=XLSX.utils.sheet_to_json(wb.Sheets[nomeAba],{header:1,defval:'',raw:false});
+        const qtd=rr.filter(r=>r.some(c=>String(c||'').trim().length>2)).length;
+        if(qtd>melhorQtd){melhorQtd=qtd;melhorAba=nomeAba;}
       }
-      console.log('[Excel] Aba usada:', melhorAba);
-
-      const ws   = wb.Sheets[melhorAba];
-      // IMPORTANTE: raw:false para pegar o texto formatado das datas
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
-      if(rows.length < 2){ toast('Planilha vazia.','warn'); e.target.value=''; return; }
-
-      const norm = function(v){
-        return String(v||'').toLowerCase()
-          .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-          .replace(/[^a-z0-9\/]/g,' ').replace(/\s+/g,' ').trim();
-      };
-
-      // --- Encontra a linha do cabeçalho: a que tem MAIS colunas com datas ---
-      let headerIdx = -1, colNome = -1, colCodigo = -1, colsDias = [];
-
-      for(let i=0; i<Math.min(12, rows.length); i++){
-        const linha = rows[i];
-        let diasAchados = [];
-        for(let c=0; c<linha.length; c++){
-          const raw = String(linha[c]||'').trim();
-          // Formato "2026-10-01 00:00:00" ou "2026-10-01"
-          const mIso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s|$)/);
-          if(mIso){
-            const d = parseInt(mIso[3],10);
-            if(d>=1&&d<=31) diasAchados.push({indexCol:c, diaMes:d});
-          }
-          // Formato "01/10/2026" ou "01/10"
-          if(diasAchados.length === 0 || diasAchados[diasAchados.length-1].indexCol !== c){
-            const mBr = raw.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
-            if(mBr){
-              const d = parseInt(mBr[1],10);
-              if(d>=1&&d<=31) diasAchados.push({indexCol:c, diaMes:d});
-            }
-          }
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[melhorAba],{header:1,defval:'',raw:false});
+      const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
+      let headerIdx=-1,colNome=-1,colCodigo=-1,colHoje=-1;
+      for(let i=0;i<Math.min(15,rows.length);i++){
+        let achouHoje=-1;
+        for(let c=0;c<rows[i].length;c++){
+          const raw=String(rows[i][c]||'').trim();
+          let d=null,m=null,a=null;
+          let x=raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s|$)/); if(x){a=+x[1];m=+x[2];d=+x[3];}
+          x=raw.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/); if(x){d=+x[1];m=+x[2];a=x[3]?+x[3]:anoAtual;if(a<100)a+=2000;}
+          if(d===diaHoje&&m===mesAtualIndex+1&&a===anoAtual)achouHoje=c;
         }
-        if(diasAchados.length > colsDias.length){
-          headerIdx = i;
-          colsDias = diasAchados;
-          colNome = -1; colCodigo = -1;
-          for(let c=0; c<linha.length; c++){
-            const n = norm(linha[c]);
-            if(colNome < 0 && (n.includes('nome') || n.includes('colaborador'))) colNome = c;
-            if(colCodigo < 0 && (n === 'codigo' || n.includes('codigo') || n.includes('station') || n.includes('id'))) colCodigo = c;
-          }
-        }
+        if(achouHoje>=0){headerIdx=i;colHoje=achouHoje;for(let c=0;c<rows[i].length;c++){const n=norm(rows[i][c]);if(colNome<0&&(n.includes('nome')||n.includes('colaborador')))colNome=c;if(colCodigo<0&&(n==='codigo'||n.includes('codigo')||n.includes('station')))colCodigo=c;}break;}
       }
-
-      if(headerIdx < 0 || colsDias.length === 0){
-        toast('Não encontrei as colunas de datas (formato AAAA-MM-DD).','erro');
-        e.target.value='';
-        return;
+      if(headerIdx<0||colHoje<0)throw new Error('Não encontrei a coluna da data de hoje ('+dataHojeISO()+') na planilha.');
+      if(colNome<0)colNome=0;
+      const mapa={'presente':'P','p':'P','falta':'F','falta injustificada':'F','falta justificada':'FJ','atestado':'AM','atestado medico':'AM','ferias':'FE','folga':'FO','dsr':'DSR','afastamento':'AF','banco de horas':'BH','bh':'BH','desligamento programado':'DP','desligamento forcado':'DF','desligamento voluntario':'DV','sinergia enviada':'S1','sinergia recebida':'S2'};
+      const classificar=v=>{const raw=String(v||'').trim();if(!raw||raw==='-'||raw==='—')return null;const up=raw.toUpperCase();return mapa[norm(raw)]||((STATUS_ESPECIAIS.some(s=>s.valor===up)&&up!=='-')?up:null);};
+      let ok=0,vazios=0,nao=0,erros=0;const naoAchados=[];
+      for(const row of rows.slice(headerIdx+1)){
+        let nome=String(row[colNome]||'').trim();if(nome.length<3)continue;
+        let codigo=colCodigo>=0?String(row[colCodigo]||'').trim().toUpperCase():'';
+        const mFim=nome.match(/\s+((?:SPXBR|GN|GI|LD)[A-Z0-9]+)$/i);if(mFim){if(!codigo)codigo=mFim[1].toUpperCase();nome=nome.slice(0,mFim.index).trim();}
+        const status=classificar(row[colHoje]);if(!status){vazios++;continue;}
+        let achado=null;
+        if(codigo){const q=await supabaseClient.from('colaboradores').select('id,nome,codigo_spx').ilike('codigo_spx',codigo).limit(2);if(q.error)throw q.error;if(q.data&&q.data.length)achado=q.data[0];}
+        if(!achado){const q=await supabaseClient.from('colaboradores').select('id,nome,codigo_spx').ilike('nome',nome).limit(5);if(q.error)throw q.error;if(q.data&&q.data.length){const nn=norm(nome);achado=q.data.find(c=>norm(c.nome)===nn)||q.data[0];}}
+        if(!achado){nao++;naoAchados.push(nome+(codigo?' '+codigo:''));continue;}
+        const dataStr=dataHojeISO();
+        const q=await supabaseClient.from('presenca_diaria').select('id').eq('colaborador_id',achado.id).eq('data',dataStr).limit(1);if(q.error)throw q.error;
+        let r;if(q.data&&q.data.length)r=await supabaseClient.from('presenca_diaria').update({status,updated_at:new Date().toISOString()}).eq('id',q.data[0].id);else r=await supabaseClient.from('presenca_diaria').insert({colaborador_id:achado.id,data:dataStr,status,updated_at:new Date().toISOString()});
+        if(r.error){erros++;console.error('[Excel]',nome,r.error);}else ok++;
       }
-
-      if(colNome < 0) colNome = 0;
-
-      console.log('[Excel] Cabeçalho na linha', headerIdx+1);
-      console.log('[Excel] colNome='+colNome, 'colCodigo='+colCodigo, 'dias='+colsDias.length,
-        '('+colsDias[0].diaMes+'→'+colsDias[colsDias.length-1].diaMes+')');
-
-      const linhasDados = rows.slice(headerIdx + 1);
-
-      const mapaTextoStatus = {
-        'presente':'P', 'p':'P', 'presenca':'P',
-        'falta':'F', 'falta injustificada':'F', 'faltou':'F',
-        'falta justificada':'FJ',
-        'atestado':'AM', 'atestado medico':'AM',
-        'ferias':'FE',
-        'folga':'FO',
-        'descanso':'DSR', 'descanso semanal':'DSR', 'dsr':'DSR',
-        'afastamento':'AF', 'afastado':'AF', 'afastamento longo':'AL',
-        'banco de horas':'BH', 'bh':'BH',
-        'desligado':'DP', 'desligamento programado':'DP', 'desligamento forcado':'DF', 'desligamento voluntario':'DV',
-        'no show':'NS',
-        'nao contratado':'NC',
-        'treinamento':'TD',
-        'suspensao':'SU',
-        'sinergia recebida':'S2',
-        'transferencia':'TR',
-        'internalizacao':'IN',
-        'promocao':'PR',
-        'off':'DSR', 'day off':'DSR'
-      };
-
-      const classificarValorDia = function(val){
-        if(val === null || val === undefined) return null;
-        const raw = String(val).trim();
-        if(!raw || raw === '-' || raw === '—') return null;
-
-        const up = raw.toUpperCase();
-        const chave = normalizarTexto(raw);
-
-        if(mapaTextoStatus[chave]) return mapaTextoStatus[chave];
-        const st = STATUS_ESPECIAIS.find(function(s){return s.valor === up});
-        if(st && st.valor !== '-') return st.valor;
-        if(/^[A-Z]{1,4}$/.test(up)) return up;
-        return null;
-      };
-
-      let okDias=0, errDias=0, naoEncontrados=0, colaboradoresAtualizados={};
-      const erros = [];
-      const naoAchados = [];
-
-      for(let i=0; i<linhasDados.length; i++){
-        const row = linhasDados[i];
-        const nomeRaw = String(row[colNome]||'').trim();
-        if(!nomeRaw || nomeRaw.length < 3) continue;
-
-        // --- Extrai o nome "limpo" (remove o código do final) e o código ---
-        let nomeLimpo = nomeRaw;
-        let codigo = colCodigo >= 0 ? String(row[colCodigo]||'').trim().toUpperCase() : '';
-
-        const mCodigoFim = nomeRaw.match(/\s+([A-Z]{2}[A-Z0-9]{4,})$/);
-        if(mCodigoFim){
-          if(!codigo) codigo = mCodigoFim[1].toUpperCase();
-          nomeLimpo = nomeRaw.replace(/\s+[A-Z]{2}[A-Z0-9]{4,}$/, '').trim();
-        }
-
-        // --- Busca o colaborador no banco (por nome OU código) ---
-        let colabId = null;
-
-        // 1) Por nome limpo (contains) OU código no nome
-        const filtro = codigo
-          ? `nome.ilike.%${nomeLimpo}%,nome.ilike.%${codigo}%`
-          : `nome.ilike.%${nomeLimpo}%`;
-
-        const { data: achados } = await supabaseClient
-          .from('colaboradores')
-          .select('id, nome')
-          .or(filtro)
-          .limit(30);
-
-        if(achados && achados.length){
-          const nn = normalizarTexto(nomeLimpo);
-          // Match exato (normalizado), tirando sufixo "(CODIGO)" do nome no banco
-          const exato = achados.find(function(c){
-            const cn = normalizarTexto(c.nome).replace(/\s*\(\s*[a-z]{2}[a-z0-9]+\s*\)\s*$/i,'').trim();
-            return cn === nn;
-          });
-          // Match por código no nome do banco
-          const porCodigo = codigo ? achados.find(function(c){
-            return normalizarTexto(c.nome).includes(normalizarTexto(codigo));
-          }) : null;
-          colabId = (exato || porCodigo || (achados.length === 1 ? achados[0] : null) || achados[0]).id;
-        }
-
-        if(!colabId){
-          naoEncontrados++;
-          naoAchados.push(nomeRaw);
-          continue;
-        }
-
-        // --- Atualiza cada dia ---
-        let teveAlgum = false;
-        for(const cd of colsDias){
-          const status = classificarValorDia(row[cd.indexCol]);
-          if(!status) continue;
-
-          const dataStr = anoAtual + '-' + String(mesAtualIndex+1).padStart(2,'0') + '-' + String(cd.diaMes).padStart(2,'0');
-
-          try{
-            const q = await supabaseClient.from('presenca_diaria')
-              .select('id').eq('colaborador_id', colabId).eq('data', dataStr).limit(1);
-            if(q.error && q.error.code !== '42P01') throw q.error;
-
-            if(q.data && q.data.length){
-              await supabaseClient.from('presenca_diaria')
-                .update({status: status, updated_at: new Date().toISOString()})
-                .eq('id', q.data[0].id);
-            }else{
-              await supabaseClient.from('presenca_diaria')
-                .insert({colaborador_id: colabId, data: dataStr, status: status, updated_at: new Date().toISOString()});
-            }
-
-            // Se é status de PRESENÇA (P, S1, S2), limpa histórico de função antiga desse dia
-            if(['P','S1','S2'].includes(status)){
-              await supabaseClient.from('historico_escala')
-                .delete().eq('colaborador_id', colabId).eq('data', dataStr);
-            }
-
-            okDias++;
-            teveAlgum = true;
-          }catch(er){
-            console.warn('[Excel] Dia '+cd.diaMes+' ('+nomeLimpo+') erro:', er.message);
-            erros.push('Dia '+cd.diaMes+' ('+nomeLimpo+'): '+er.message);
-            errDias++;
-          }
-        }
-        if(teveAlgum) colaboradoresAtualizados[colabId] = true;
-      }
-
-      const qtdColabs = Object.keys(colaboradoresAtualizados).length;
-      const resumo = 'Colaboradores atualizados: '+qtdColabs+' · Não encontrados: '+naoEncontrados+' · Dias gravados: '+okDias+' (erros: '+errDias+')';
-      console.log('[Excel]', resumo);
-      if(erros.length) console.table(erros);
-      if(naoAchados.length) console.log('[Excel] Nomes não encontrados:', naoAchados);
-      toast(resumo, okDias > 0 ? 'ok' : 'warn');
-
-      const rc = document.getElementById('resultado-import-conteudo');
-      if(rc){
-        rc.innerHTML='<div class="space-y-2 text-xs">'
-          +'<div class="bg-emerald-950/30 border border-emerald-500/30 rounded-lg p-2"><strong class="text-emerald-300">Colaboradores atualizados:</strong> '+qtdColabs+'</div>'
-          +'<div class="bg-cyan-950/30 border border-cyan-500/30 rounded-lg p-2"><strong class="text-cyan-300">Dias gravados:</strong> '+okDias+'</div>'
-          +'<div class="bg-yellow-950/30 border border-yellow-500/30 rounded-lg p-2"><strong class="text-yellow-300">Não encontrados no banco:</strong> '+naoEncontrados+'</div>'
-          +(naoAchados.length?'<div class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-400 text-[10px] max-h-32 overflow-y-auto"><strong>Nomes não encontrados:</strong><br>'+naoAchados.map(function(n){return '• '+n}).join('<br>')+'</div>':'')
-          +'</div>';
-        document.getElementById('modal-resultado-import').classList.remove('hidden');
-        lucide.createIcons();
-      }
-
-      await carregarDadosSupabase();
-      renderizar();
-    }catch(err){
-      console.error('[Excel] Falha geral:', err);
-      toast('Erro ao ler Excel: ' + err.message, 'erro');
-    }
+      await carregarDadosSupabase();renderizar();
+      const resumo='Hoje '+String(diaHoje).padStart(2,'0')+'/'+String(mesAtualIndex+1).padStart(2,'0')+': '+ok+' status gravados · '+vazios+' células vazias ignoradas · '+nao+' não encontrados · '+erros+' erros.';
+      toast(resumo,erros?'warn':'ok');
+      const rc=document.getElementById('resultado-import-conteudo');if(rc){rc.innerHTML='<div class="space-y-2 text-xs"><div class="bg-emerald-950/30 border border-emerald-500/30 rounded-lg p-2"><strong>Status de hoje gravados:</strong> '+ok+'</div><div class="bg-slate-900 border border-slate-700 rounded-lg p-2"><strong>Células vazias ignoradas:</strong> '+vazios+' (nenhum dado anterior foi apagado)</div><div class="bg-yellow-950/30 border border-yellow-500/30 rounded-lg p-2"><strong>Não encontrados:</strong> '+nao+'</div>'+(naoAchados.length?'<div class="text-[10px] max-h-32 overflow-y-auto">'+naoAchados.map(n=>'• '+n).join('<br>')+'</div>':'')+'</div>';document.getElementById('modal-resultado-import').classList.remove('hidden');lucide.createIcons();}
+    }catch(err){console.error('[Excel]',err);toast('Erro ao importar: '+err.message,'erro');}
   };
-  reader.readAsArrayBuffer(file);
-  e.target.value = '';
+  reader.readAsArrayBuffer(file);e.target.value='';
 }
 
 window.onload=init;
