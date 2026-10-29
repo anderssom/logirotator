@@ -1122,7 +1122,7 @@ function extrairCodigoSPX(nome){
 window.fecharModalResultadoImport = function(){document.getElementById('modal-resultado-import').classList.add('hidden')};
 
 // ============================================================
-// IMPORTAÇÃO ROBUSTA DE EXCEL — GRADE MENSAL
+// IMPORTAÇÃO DE EXCEL — APENAS ATUALIZA PRESENÇA (NÃO CRIA COLABORADOR)
 // ============================================================
 async function processarExcel(e){
   const file = e.target.files[0];
@@ -1134,7 +1134,6 @@ async function processarExcel(e){
       const data = new Uint8Array(evt.target.result);
       const wb = XLSX.read(data, {type:'array'});
 
-      // --- Escolhe a aba com mais linhas com dados ---
       let melhorAba = wb.SheetNames[0];
       let melhorQtd = 0;
       for(const nomeAba of wb.SheetNames){
@@ -1143,242 +1142,211 @@ async function processarExcel(e){
         const validas = rowsA.filter(function(r){return r.some(function(c){return String(c||'').trim().length>2})}).length;
         if(validas > melhorQtd){ melhorQtd = validas; melhorAba = nomeAba; }
       }
-      console.log('[Excel] Abas:', wb.SheetNames, '→ usando:', melhorAba);
+      console.log('[Excel] Aba usada:', melhorAba);
 
       const ws   = wb.Sheets[melhorAba];
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      // IMPORTANTE: raw:false para pegar o texto formatado das datas
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
       if(rows.length < 2){ toast('Planilha vazia.','warn'); e.target.value=''; return; }
 
-      console.log('[Excel] Total de linhas:', rows.length);
-
-      // --- Normalização ---
       const norm = function(v){
         return String(v||'').toLowerCase()
           .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
           .replace(/[^a-z0-9\/]/g,' ').replace(/\s+/g,' ').trim();
       };
 
-      // --- Sinônimos ---
-      const sinNome   = ['nome','colaborador','funcionario','funcionaria','auxiliar','operador','matricula','colab','nome completo','nome do colaborador','nome do funcionario','nome do auxiliar'];
-      const sinEscala = ['escala','turno','jornada'];
-      const sinDsr    = ['dsr','folga','descanso'];
-      const sinHor    = ['horario','hora','entrada'];
+      // --- Encontra a linha do cabeçalho: a que tem MAIS colunas com datas ---
+      let headerIdx = -1, colNome = -1, colCodigo = -1, colsDias = [];
 
-      const temPalavra = function(celula, lista){
-        const n = norm(celula);
-        return lista.some(function(k){return n.includes(k)});
-      };
-
-      let headerIdx=-1, colNome=-1, colEscala=-1, colDsr=-1, colHor=-1;
-
-      for(let i=0; i<Math.min(10, rows.length); i++){
+      for(let i=0; i<Math.min(12, rows.length); i++){
         const linha = rows[i];
-        const idxN = linha.findIndex(function(c){return temPalavra(c, sinNome)});
-        if(idxN >= 0){
+        let diasAchados = [];
+        for(let c=0; c<linha.length; c++){
+          const raw = String(linha[c]||'').trim();
+          // Formato "2026-10-01 00:00:00" ou "2026-10-01"
+          const mIso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s|$)/);
+          if(mIso){
+            const d = parseInt(mIso[3],10);
+            if(d>=1&&d<=31) diasAchados.push({indexCol:c, diaMes:d});
+          }
+          // Formato "01/10/2026" ou "01/10"
+          if(diasAchados.length === 0 || diasAchados[diasAchados.length-1].indexCol !== c){
+            const mBr = raw.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+            if(mBr){
+              const d = parseInt(mBr[1],10);
+              if(d>=1&&d<=31) diasAchados.push({indexCol:c, diaMes:d});
+            }
+          }
+        }
+        if(diasAchados.length > colsDias.length){
           headerIdx = i;
-          colNome   = idxN;
-          colEscala = linha.findIndex(function(c){return temPalavra(c, sinEscala)});
-          colDsr    = linha.findIndex(function(c){return temPalavra(c, sinDsr)});
-          colHor    = linha.findIndex(function(c){return temPalavra(c, sinHor)});
-          console.log('[Excel] Cabeçalho detectado na linha', i+1);
-          console.log('[Excel] colNome='+colNome, 'colEscala='+colEscala, 'colDsr='+colDsr, 'colHor='+colHor);
-          break;
+          colsDias = diasAchados;
+          colNome = -1; colCodigo = -1;
+          for(let c=0; c<linha.length; c++){
+            const n = norm(linha[c]);
+            if(colNome < 0 && (n.includes('nome') || n.includes('colaborador'))) colNome = c;
+            if(colCodigo < 0 && (n === 'codigo' || n.includes('codigo') || n.includes('station') || n.includes('id'))) colCodigo = c;
+          }
         }
       }
 
-      if(headerIdx < 0){
-        const primeiraLinha = rows[0] || [];
-        let opcoes = '';
-        primeiraLinha.forEach(function(v,i){ opcoes += i + ' - ' + String(v||'(vazio)') + '\n'; });
-        const resp = prompt(
-          'Não encontrei a coluna NOME automaticamente.\n\n' +
-          'Cabeçalho lido na linha 1:\n' + opcoes +
-          '\nDigite o ÍNDICE da coluna que contém os NOMES (ex: 0, 1, 2...):',
-          '0'
-        );
-        if(resp === null){ toast('Importação cancelada.','warn'); e.target.value=''; return; }
-        colNome   = parseInt(resp,10) || 0;
-        headerIdx = 0;
-        colEscala = -1; colDsr = -1; colHor = -1;
-        console.warn('[Excel] Usuário indicou coluna', colNome, 'como nome.');
+      if(headerIdx < 0 || colsDias.length === 0){
+        toast('Não encontrei as colunas de datas (formato AAAA-MM-DD).','erro');
+        e.target.value='';
+        return;
       }
 
-      // --- Detecta colunas de dias no cabeçalho ---
-      const headerRow = rows[headerIdx];
-      const colsDias = [];
-      for(let c=0; c<headerRow.length; c++){
-        if(c === colNome || c === colEscala || c === colDsr || c === colHor) continue;
-        const raw = String(headerRow[c]||'').trim();
-        if(!raw) continue;
+      if(colNome < 0) colNome = 0;
 
-        let diaMes = null;
-        if(/^\d{1,2}$/.test(raw)){ const n=parseInt(raw,10); if(n>=1&&n<=31) diaMes=n; }
-        if(diaMes === null){ const m=raw.match(/^dia\s*(\d{1,2})$/i); if(m){const n=parseInt(m[1],10);if(n>=1&&n<=31)diaMes=n;} }
-        if(diaMes === null){ const m=raw.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/); if(m){const d=parseInt(m[1],10);if(d>=1&&d<=31)diaMes=d;} }
-        if(diaMes === null){ const m=raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); if(m){const d=parseInt(m[3],10);if(d>=1&&d<=31)diaMes=d;} }
-        if(diaMes === null){ const m=raw.match(/(\d{1,2})\s*$/); if(m&&/[a-zA-Z]/.test(raw)){const n=parseInt(m[1],10);if(n>=1&&n<=31)diaMes=n;} }
-        if(diaMes === null && /^\d{5}$/.test(raw)){ const n=parseInt(raw,10); if(n>40000&&n<60000){const dt=XLSX.SSF.parse_date_code(n);if(dt)diaMes=dt.d;} }
-
-        if(diaMes !== null) colsDias.push({indexCol:c, diaMes:diaMes});
-      }
-
-      console.log('[Excel] Colunas de dias detectadas:', colsDias.length);
-      if(colsDias.length > 0){
-        console.log('[Excel] Primeira:', colsDias[0], '| Última:', colsDias[colsDias.length-1]);
-      }
+      console.log('[Excel] Cabeçalho na linha', headerIdx+1);
+      console.log('[Excel] colNome='+colNome, 'colCodigo='+colCodigo, 'dias='+colsDias.length,
+        '('+colsDias[0].diaMes+'→'+colsDias[colsDias.length-1].diaMes+')');
 
       const linhasDados = rows.slice(headerIdx + 1);
 
-      // --- Mapa de funções conhecidas ---
-      const todasFuncoes = {};
-      for(const s of Object.keys(SETORES_E_FUNCOES)){
-        for(const f of SETORES_E_FUNCOES[s]){
-          todasFuncoes[normalizarTexto(f)] = {funcao: f, setor: s};
-        }
-      }
-
-      // --- Classificador de valor do dia ---
       const mapaTextoStatus = {
-        'presente':'P', 'p':'P', 'presenca':'P', 'presente no hub':'P',
+        'presente':'P', 'p':'P', 'presenca':'P',
         'falta':'F', 'falta injustificada':'F', 'faltou':'F',
-        'falta justificada':'FJ', 'falta justif':'FJ',
-        'atestado':'AM', 'atestado medico':'AM', 'atestado médico':'AM',
-        'ferias':'FE', 'férias':'FE',
-        'folga':'FO', 'folga compensatoria':'FC',
-        'descanso':'DSR', 'descanso semanal':'DSR', 'descanso semanal remunerado':'DSR', 'dsr':'DSR',
+        'falta justificada':'FJ',
+        'atestado':'AM', 'atestado medico':'AM',
+        'ferias':'FE',
+        'folga':'FO',
+        'descanso':'DSR', 'descanso semanal':'DSR', 'dsr':'DSR',
         'afastamento':'AF', 'afastado':'AF', 'afastamento longo':'AL',
         'banco de horas':'BH', 'bh':'BH',
         'desligado':'DP', 'desligamento programado':'DP', 'desligamento forcado':'DF', 'desligamento voluntario':'DV',
-        'no show':'NS', 'noshow':'NS',
+        'no show':'NS',
         'nao contratado':'NC',
-        'treinamento':'TD', 'treinamento e desenvolvimento':'TD',
-        'suspensao':'SU', 'suspensão':'SU',
+        'treinamento':'TD',
+        'suspensao':'SU',
         'sinergia recebida':'S2',
-        'transferencia':'TR', 'transferência':'TR',
-        'internalizacao':'IN', 'internalização':'IN',
-        'promocao':'PR', 'promoção':'PR',
-        'off':'DSR', 'descanso off':'DSR', 'day off':'DSR', 'dayoff':'DSR',
-        '6x1':'DSR', '5x2':'DSR', '12x36':'DSR', '3x4':'DSR'
+        'transferencia':'TR',
+        'internalizacao':'IN',
+        'promocao':'PR',
+        'off':'DSR', 'day off':'DSR'
       };
 
       const classificarValorDia = function(val){
         if(val === null || val === undefined) return null;
         const raw = String(val).trim();
-        if(!raw) return null;
-        if(raw === '-' || raw === '—' || raw === '--') return null;
+        if(!raw || raw === '-' || raw === '—') return null;
 
         const up = raw.toUpperCase();
         const chave = normalizarTexto(raw);
 
-        // 1) Match direto em texto
-        if(mapaTextoStatus[chave]) return {tipo:'status', valor: mapaTextoStatus[chave]};
-
-        // 2) Status especial exato (sigla)
+        if(mapaTextoStatus[chave]) return mapaTextoStatus[chave];
         const st = STATUS_ESPECIAIS.find(function(s){return s.valor === up});
-        if(st && st.valor !== '-') return {tipo:'status', valor: st.valor};
-
-        // 3) Função conhecida
-        if(todasFuncoes[chave]) return {tipo:'funcao', valor: todasFuncoes[chave].funcao, setor: todasFuncoes[chave].setor};
-
-        // 4) Se for sigla curta (2-3 letras) → trata como status
-        if(/^[A-Z]{1,4}$/.test(up)) return {tipo:'status', valor: up};
-
-        // 5) Se contém palavra de função conhecida → trata como função
-        const palavrasFuncao = ['bipador','sorting','abastecedor','patoleiro','etequitador','gaioleiro','inventario','facilitador','recebimento','expedicao','triagem','volumoso','aux'];
-        if(palavrasFuncao.some(function(p){return chave.includes(p)})) return {tipo:'funcao', valor: raw, setor:'Recebimento'};
-
-        // 6) Não classificável
+        if(st && st.valor !== '-') return st.valor;
+        if(/^[A-Z]{1,4}$/.test(up)) return up;
         return null;
       };
 
-      let okCadastro=0, okDias=0, errCadastro=0, errDias=0;
+      let okDias=0, errDias=0, naoEncontrados=0, colaboradoresAtualizados={};
       const erros = [];
+      const naoAchados = [];
 
       for(let i=0; i<linhasDados.length; i++){
         const row = linhasDados[i];
-        const nome = String(row[colNome]||'').trim();
-        if(!nome || nome.length < 3) continue;
+        const nomeRaw = String(row[colNome]||'').trim();
+        if(!nomeRaw || nomeRaw.length < 3) continue;
 
-        const escala  = colEscala >= 0 ? (String(row[colEscala]||'').trim() || '6x1')         : '6x1';
-        const dsr     = colDsr    >= 0 ? (String(row[colDsr]   ||'').trim() || 'Domingo')     : 'Domingo';
-        const horario = colHor    >= 0 ? (String(row[colHor]   ||'').trim() || '08:00 - 17:00') : '08:00 - 17:00';
+        // --- Extrai o nome "limpo" (remove o código do final) e o código ---
+        let nomeLimpo = nomeRaw;
+        let codigo = colCodigo >= 0 ? String(row[colCodigo]||'').trim().toUpperCase() : '';
 
+        const mCodigoFim = nomeRaw.match(/\s+([A-Z]{2}[A-Z0-9]{4,})$/);
+        if(mCodigoFim){
+          if(!codigo) codigo = mCodigoFim[1].toUpperCase();
+          nomeLimpo = nomeRaw.replace(/\s+[A-Z]{2}[A-Z0-9]{4,}$/, '').trim();
+        }
+
+        // --- Busca o colaborador no banco (por nome OU código) ---
         let colabId = null;
-        try{
-          const existente = await supabaseClient.from('colaboradores').select('id').eq('nome', nome).maybeSingle();
-          if(existente.error && existente.error.code !== 'PGRST116') throw existente.error;
 
-          if(existente.data && existente.data.id){
-            colabId = existente.data.id;
-            const r = await supabaseClient.from('colaboradores')
-              .update({escala:escala, dsr:dsr, horario:horario})
-              .eq('id', colabId);
-            if(r.error) throw r.error;
-          }else{
-            const r = await supabaseClient.from('colaboradores')
-              .insert([{nome:nome, escala:escala, dsr:dsr, horario:horario}])
-              .select();
-            if(r.error) throw r.error;
-            if(r.data && r.data.length) colabId = r.data[0].id;
-          }
-          okCadastro++;
-        }catch(er){
-          console.warn('[Excel] Cadastro linha', headerIdx+i+2, 'erro:', er.message);
-          erros.push('Cadastro linha ' + (headerIdx+i+2) + ': ' + er.message);
-          errCadastro++;
+        // 1) Por nome limpo (contains) OU código no nome
+        const filtro = codigo
+          ? `nome.ilike.%${nomeLimpo}%,nome.ilike.%${codigo}%`
+          : `nome.ilike.%${nomeLimpo}%`;
+
+        const { data: achados } = await supabaseClient
+          .from('colaboradores')
+          .select('id, nome')
+          .or(filtro)
+          .limit(30);
+
+        if(achados && achados.length){
+          const nn = normalizarTexto(nomeLimpo);
+          // Match exato (normalizado), tirando sufixo "(CODIGO)" do nome no banco
+          const exato = achados.find(function(c){
+            const cn = normalizarTexto(c.nome).replace(/\s*\(\s*[a-z]{2}[a-z0-9]+\s*\)\s*$/i,'').trim();
+            return cn === nn;
+          });
+          // Match por código no nome do banco
+          const porCodigo = codigo ? achados.find(function(c){
+            return normalizarTexto(c.nome).includes(normalizarTexto(codigo));
+          }) : null;
+          colabId = (exato || porCodigo || (achados.length === 1 ? achados[0] : null) || achados[0]).id;
+        }
+
+        if(!colabId){
+          naoEncontrados++;
+          naoAchados.push(nomeRaw);
           continue;
         }
 
-        if(!colabId) continue;
-
+        // --- Atualiza cada dia ---
+        let teveAlgum = false;
         for(const cd of colsDias){
-          const valorRaw = row[cd.indexCol];
-          const cls = classificarValorDia(valorRaw);
-          if(!cls) continue;
+          const status = classificarValorDia(row[cd.indexCol]);
+          if(!status) continue;
 
           const dataStr = anoAtual + '-' + String(mesAtualIndex+1).padStart(2,'0') + '-' + String(cd.diaMes).padStart(2,'0');
 
           try{
-            if(cls.tipo === 'status'){
-              await supabaseClient.from('historico_escala').delete().eq('colaborador_id', colabId).eq('data', dataStr);
-              const q = await supabaseClient.from('presenca_diaria').select('id').eq('colaborador_id', colabId).eq('data', dataStr).limit(1);
-              if(q.error && q.error.code !== '42P01') throw q.error;
-              if(q.data && q.data.length){
-                await supabaseClient.from('presenca_diaria').update({status: cls.valor, updated_at: new Date().toISOString()}).eq('id', q.data[0].id);
-              }else{
-                await supabaseClient.from('presenca_diaria').insert({colaborador_id: colabId, data: dataStr, status: cls.valor, updated_at: new Date().toISOString()});
-              }
+            const q = await supabaseClient.from('presenca_diaria')
+              .select('id').eq('colaborador_id', colabId).eq('data', dataStr).limit(1);
+            if(q.error && q.error.code !== '42P01') throw q.error;
+
+            if(q.data && q.data.length){
+              await supabaseClient.from('presenca_diaria')
+                .update({status: status, updated_at: new Date().toISOString()})
+                .eq('id', q.data[0].id);
             }else{
-              const dp = await supabaseClient.from('presenca_diaria').delete().eq('colaborador_id', colabId).eq('data', dataStr);
-              if(dp.error && dp.error.code !== '42P01') throw dp.error;
-              const q = await supabaseClient.from('historico_escala').select('id').eq('colaborador_id', colabId).eq('data', dataStr).limit(1);
-              if(q.error) throw q.error;
-              if(q.data && q.data.length){
-                await supabaseClient.from('historico_escala').update({setor: cls.setor, funcao: cls.valor}).eq('id', q.data[0].id);
-              }else{
-                await supabaseClient.from('historico_escala').insert({colaborador_id: colabId, data: dataStr, setor: cls.setor, funcao: cls.valor});
-              }
+              await supabaseClient.from('presenca_diaria')
+                .insert({colaborador_id: colabId, data: dataStr, status: status, updated_at: new Date().toISOString()});
             }
+
+            // Se é status de PRESENÇA (P, S1, S2), limpa histórico de função antiga desse dia
+            if(['P','S1','S2'].includes(status)){
+              await supabaseClient.from('historico_escala')
+                .delete().eq('colaborador_id', colabId).eq('data', dataStr);
+            }
+
             okDias++;
+            teveAlgum = true;
           }catch(er){
-            console.warn('[Excel] Dia '+cd.diaMes+' ('+nome+') erro:', er.message);
-            erros.push('Dia '+cd.diaMes+' ('+nome+'): '+er.message);
+            console.warn('[Excel] Dia '+cd.diaMes+' ('+nomeLimpo+') erro:', er.message);
+            erros.push('Dia '+cd.diaMes+' ('+nomeLimpo+'): '+er.message);
             errDias++;
           }
         }
+        if(teveAlgum) colaboradoresAtualizados[colabId] = true;
       }
 
-      const resumo = 'Cadastro: '+okCadastro+' ok / '+errCadastro+' erro(s) · Dias: '+okDias+' ok / '+errDias+' erro(s)';
+      const qtdColabs = Object.keys(colaboradoresAtualizados).length;
+      const resumo = 'Colaboradores atualizados: '+qtdColabs+' · Não encontrados: '+naoEncontrados+' · Dias gravados: '+okDias+' (erros: '+errDias+')';
       console.log('[Excel]', resumo);
       if(erros.length) console.table(erros);
-      toast(resumo, (okCadastro+okDias)>0 ? 'ok' : 'warn');
+      if(naoAchados.length) console.log('[Excel] Nomes não encontrados:', naoAchados);
+      toast(resumo, okDias > 0 ? 'ok' : 'warn');
 
       const rc = document.getElementById('resultado-import-conteudo');
       if(rc){
         rc.innerHTML='<div class="space-y-2 text-xs">'
-          +'<div class="bg-emerald-950/30 border border-emerald-500/30 rounded-lg p-2"><strong class="text-emerald-300">Cadastro:</strong> '+okCadastro+' importado(s), '+errCadastro+' erro(s)</div>'
-          +'<div class="bg-cyan-950/30 border border-cyan-500/30 rounded-lg p-2"><strong class="text-cyan-300">Dias:</strong> '+okDias+' registrado(s), '+errDias+' erro(s)</div>'
-          +(colsDias.length>0?'<div class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-400"><strong>Colunas de dias detectadas:</strong> '+colsDias.length+' (dia '+colsDias[0].diaMes+' → '+colsDias[colsDias.length-1].diaMes+')</div>':'<div class="bg-yellow-950/30 border border-yellow-500/30 rounded-lg p-2 text-yellow-300"><strong>Atenção:</strong> nenhuma coluna de dias foi detectada. Apenas o cadastro foi importado.</div>')
+          +'<div class="bg-emerald-950/30 border border-emerald-500/30 rounded-lg p-2"><strong class="text-emerald-300">Colaboradores atualizados:</strong> '+qtdColabs+'</div>'
+          +'<div class="bg-cyan-950/30 border border-cyan-500/30 rounded-lg p-2"><strong class="text-cyan-300">Dias gravados:</strong> '+okDias+'</div>'
+          +'<div class="bg-yellow-950/30 border border-yellow-500/30 rounded-lg p-2"><strong class="text-yellow-300">Não encontrados no banco:</strong> '+naoEncontrados+'</div>'
+          +(naoAchados.length?'<div class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-400 text-[10px] max-h-32 overflow-y-auto"><strong>Nomes não encontrados:</strong><br>'+naoAchados.map(function(n){return '• '+n}).join('<br>')+'</div>':'')
           +'</div>';
         document.getElementById('modal-resultado-import').classList.remove('hidden');
         lucide.createIcons();
