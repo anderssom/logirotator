@@ -737,6 +737,7 @@ function criarListaGeral(cols) {
     const st = obterStatusHoje(c);
     const statusInfo = {
       operacao: {tipo:'operacao', label:'Em Opera\u00e7\u00e3o', badge:'badge-success'},
+      presente: {tipo:'presente', label:'PRESENTE', badge:'badge-success'},
       dsr: {tipo:'dsr', label:'DSR', badge:'badge-orange'},
       falta: {tipo:'falta', label:'FALTA', badge:'badge-warning'},
       atestado: {tipo:'atestado', label:'ATESTADO', badge:'badge-danger'},
@@ -747,30 +748,27 @@ function criarListaGeral(cols) {
       sem_escala: {tipo:'sem_escala', label:'Sem informação no Excel', badge:'badge-default'}
     }[st] || {tipo:'sem_escala', label:'-', badge:'badge-default'};
     
-    let statusLabel = statusInfo.label;
-    if (st === 'operacao') {
-      const s = contarDiasNaFuncaoAtual(c.historicoDias);
-      statusLabel = isFuncaoAlocada(s.funcao) ? s.funcao : 'Presente PHD';
-    } else if (st === 'sem_escala' || st === 'outro_status' || st === 'banco_horas') {
-      const rawExcel = String((c.presencaDias&&c.presencaDias[diaHoje-1]) || '-').toUpperCase();
-      const labelsExcel = {
-        'P':'Presente (P)', 'AF':'Afastamento (AF)', 'AL':'Afastamento longo (AL)', 'AM':'Atestado médico (AM)',
-        'BH':'Banco de Horas (BH)', 'DF':'Desligamento forçado (DF)', 'DP':'Desligamento Programado (DP)',
-        'DSR':'Descanso Semanal Remunerado (DSR)', 'DV':'Desligamento voluntário (DV)',
-        'F':'Falta Injustificada (F)', 'FE':'Férias (FE)', 'FJ':'Falta Justificada (FJ)', 'FO':'Folga (FO)',
-        'NC':'Não Contratado (NC)', 'NS':'No-Show (NS)', 'PR':'Promoção (PR)', 'S1':'Sinergia Enviada (S1)',
-        'S2':'Sinergia Recebida (S2)', 'TR':'Transferência (TR)', 'TD':'Treinamento e desenvolvimento (TD)',
-        'SU':'Suspensão (SU)', 'FC':'Folga compensatória (FC)', 'IN':'Internalização (IN)', '-':'Sem informação no Excel'
-      };
-      statusLabel = labelsExcel[rawExcel] || rawExcel;
-    }
+    // Status de presença: para TODOS os LOGIs, exibe diretamente o valor
+    // de presenca_diaria do dia operacional. Escala, DSR, horário e alocação
+    // continuam independentes e não são alterados por esta correção.
+    const rawPresenca = String((c.presencaDias&&c.presencaDias[diaHoje-1]) || '-').toUpperCase();
+    const labelsPresenca = {
+      'P':'Presente (P)', 'AF':'Afastamento (AF)', 'AL':'Afastamento longo (AL)', 'AM':'Atestado médico (AM)',
+      'BH':'Banco de Horas (BH)', 'DF':'Desligamento forçado (DF)', 'DP':'Desligamento Programado (DP)',
+      'DSR':'Descanso Semanal Remunerado (DSR)', 'DV':'Desligamento voluntário (DV)',
+      'F':'Falta Injustificada (F)', 'FE':'Férias (FE)', 'FJ':'Falta Justificada (FJ)', 'FO':'Folga (FO)',
+      'NC':'Não Contratado (NC)', 'NS':'No-Show (NS)', 'PR':'Promoção (PR)', 'S1':'Sinergia Enviada (S1)',
+      'S2':'Sinergia Recebida (S2)', 'TR':'Transferência (TR)', 'TD':'Treinamento e desenvolvimento (TD)',
+      'SU':'Suspensão (SU)', 'FC':'Folga compensatória (FC)', 'IN':'Internalização (IN)', '-':'Sem informação de presença'
+    };
+    const statusLabel = labelsPresenca[rawPresenca] || rawPresenca;
     
     h += '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2">';
     h += '<div class="min-w-0 flex-1"><div class="text-xs font-bold text-slate-100 truncate">' + c.nome + '</div>';
     h += '<div class="text-[10px] text-slate-400 truncate">' + c.escala + ' \u00b7 DSR: ' + c.dsr + '</div>';
     h += '<div class="text-[10px] text-slate-500 mt-0.5 truncate">' + c.horario + '</div>';
     h += '<div class="text-[10px] text-amber-400 font-semibold mt-1">' + statusLabel + '</div></div>';
-    h += '<span class="badge ' + statusInfo.badge + ' shrink-0">' + (st==='outro_status' ? statusLabel : statusInfo.label) + '</span>';
+    h += '<span class="badge ' + statusInfo.badge + ' shrink-0">' + statusLabel + '</span>';
     h += '</div>';
   });
   h += '</div>';
