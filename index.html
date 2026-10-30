@@ -291,7 +291,7 @@ function isFuncaoAlocada(v){
 const dataAtualSistema=new Date();
 const anoAtual=dataAtualSistema.getFullYear();
 const mesAtualIndex=dataAtualSistema.getMonth();
-const diaHoje=dataAtualSistema.getDate();
+let diaHoje=dataAtualSistema.getDate();
 function obterTotalDiasMes(a,m){return new Date(a,m+1,0).getDate()}
 const totalDiasDoMes=obterTotalDiasMes(anoAtual,mesAtualIndex);
 const nomesMeses=["Janeiro","Fevereiro","Mar\u00e7o","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -444,6 +444,30 @@ async function carregarDadosSupabase(){
     }
     const presencas=await carregarPresencasDoMesCompleto();
 
+    // Define o dia operacional pela última data com carga diária completa.
+    // Isso evita usar o dia do navegador quando a planilha/banco ainda está
+    // fechado no dia anterior (ex.: hoje dia 30, última presença completa dia 29).
+    const contagemPorDia={};
+    presencas.forEach(function(r){
+      const ds=String(r.data||'').slice(0,10);
+      if(!ds)return;
+      const d=Number(ds.slice(8,10));
+      if(d>=1&&d<=totalDiasDoMes&&d<=dataAtualSistema.getDate()){
+        contagemPorDia[d]=(contagemPorDia[d]||0)+1;
+      }
+    });
+    const diasComDados=Object.keys(contagemPorDia).map(Number).sort(function(a,b){return a-b});
+    if(diasComDados.length){
+      const maiorCarga=Math.max.apply(null,diasComDados.map(function(d){return contagemPorDia[d]}));
+      const minimoCarga=Math.max(1,Math.floor(maiorCarga*0.80));
+      const diasCompletos=diasComDados.filter(function(d){return contagemPorDia[d]>=minimoCarga});
+      if(diasCompletos.length)diaHoje=diasCompletos[diasCompletos.length-1];
+      else diaHoje=diasComDados[diasComDados.length-1];
+    }
+    const txtOperacional='HUB-LCE-04 • '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';
+    const lm=document.getElementById('label-mes-ano'); if(lm)lm.innerText=txtOperacional;
+    const lms=document.getElementById('label-mes-ano-sidebar'); if(lms)lms.innerText=txtOperacional;
+
     // Pagina também o histórico para não truncar alocações quando houver mais
     // de 1000 registros na tabela.
     async function carregarHistoricoCompleto(){
@@ -513,7 +537,9 @@ async function carregarDadosSupabase(){
       total:totalCadastroBanco,
       presencasMes:presencas.length,
       periodo:inicioMes+' a '+fimMes,
-      historico:historico.length
+      historico:historico.length,
+      diaOperacional:diaHoje,
+      cargaDia:contagemPorDia[diaHoje]||0
     });
 
     atualizarKPIs();
@@ -757,11 +783,11 @@ function renderizar(){
 const termo=normalizarTexto(document.getElementById('input-busca').value);
 const cont=document.getElementById('container-setores');
 cont.innerHTML="";
-const g={presente:[],operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],sem_escala:[]};
+const g={presente:[],operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],outro_status:[],sem_escala:[]};
 const quadroHoje=colaboradoresOperacionaisHoje();
 quadroHoje.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c);if(estaEmOperacaoHoje(c))g.operacao.push(c)});
 const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
-const pF=fl(g.presente);const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(g.banco_horas);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const seF=fl(g.sem_escala);
+const pF=fl(g.presente);const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(g.banco_horas);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const otF=fl(g.outro_status);const seF=fl(g.sem_escala);
 const dd=getDiaristasDia();
 const td=dd.presentes;
 const totalPresentes=g.presente.length+dd.presentes;
@@ -791,6 +817,7 @@ if(termo){
     aF.map(function(c){return{c:c,tipo:'atestado'}}),
     feF.map(function(c){return{c:c,tipo:'ferias'}}),
     afF.map(function(c){return{c:c,tipo:'afastamento'}}),
+    otF.map(function(c){return{c:c,tipo:'outro_status'}}),
     seF.map(function(c){return{c:c,tipo:'sem_escala'}})
   );
   const fM={'todos':null,'presentes':'presente','operacao':'operacao','diaristas':null,'dsr':'dsr','banco_horas':'banco_horas','faltas':'falta','atestados':'atestado'};
@@ -804,7 +831,7 @@ if(termo){
 
 // MODO TODOS — LISTA GERAL
 if(filtroAtivo==='todos'){
-  const todosVisiveis = [].concat(pF, oF, dF, bhF, fF, aF, feF, afF, seF);
+  const todosVisiveis = [].concat(pF, oF, dF, bhF, fF, aF, feF, afF, otF, seF);
   cont.appendChild(criarListaGeral(todosVisiveis));
   return;
 }
