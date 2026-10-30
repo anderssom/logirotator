@@ -299,6 +299,7 @@ const nomeMesAtual=nomesMeses[mesAtualIndex];
 const SENHA_ADM="admin123";
 const LIMITE_DIAS_FUNCAO=20;
 let colaboradores=[];
+let totalCadastroBanco=0;
 let filtroAtivo='todos';
 let alocarColabSelecionadoId=null;
 
@@ -412,13 +413,54 @@ async function carregarDadosSupabase(){
     const rc=await supabaseClient.from('colaboradores').select('*').order('nome');
     if(rc.error)throw rc.error;
 
-    const rp=await supabaseClient.from('presenca_diaria').select('*');
-    if(rp.error)throw new Error('Tabela presenca_diaria não encontrada. Detalhe: '+rp.error.message);
+    // Total real do cadastro mestre no Supabase.
+    totalCadastroBanco=(rc.data||[]).length;
 
-    const rh=await supabaseClient.from('historico_escala').select('*');
-    const historico= rh.error ? [] : (rh.data||[]);
+    // O Supabase/PostgREST pode limitar cada resposta a 1000 linhas. Um mês com
+    // 70 colaboradores pode ter mais de 2000 presenças, então carregamos o mês
+    // selecionado em páginas até não haver mais registros.
+    const inicioMes=anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-01';
+    const fimMes=anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(totalDiasDoMes).padStart(2,'0');
 
-    const presencas=rp.data||[];
+    async function carregarPresencasDoMesCompleto(){
+      const todos=[];
+      const tamanhoPagina=1000;
+      let inicio=0;
+      while(true){
+        const rp=await supabaseClient
+          .from('presenca_diaria')
+          .select('*')
+          .gte('data',inicioMes)
+          .lte('data',fimMes)
+          .order('data',{ascending:true})
+          .range(inicio,inicio+tamanhoPagina-1);
+        if(rp.error)throw new Error('Erro ao carregar presenca_diaria: '+rp.error.message);
+        const parte=rp.data||[];
+        todos.push.apply(todos,parte);
+        if(parte.length<tamanhoPagina)break;
+        inicio+=tamanhoPagina;
+      }
+      return todos;
+    }
+    const presencas=await carregarPresencasDoMesCompleto();
+
+    // Pagina também o histórico para não truncar alocações quando houver mais
+    // de 1000 registros na tabela.
+    async function carregarHistoricoCompleto(){
+      const todos=[];
+      const tamanhoPagina=1000;
+      let inicio=0;
+      while(true){
+        const rh=await supabaseClient.from('historico_escala').select('*').range(inicio,inicio+tamanhoPagina-1);
+        if(rh.error){console.warn('LogiRotator: histórico de escala não carregado',rh.error);break;}
+        const parte=rh.data||[];
+        todos.push.apply(todos,parte);
+        if(parte.length<tamanhoPagina)break;
+        inicio+=tamanhoPagina;
+      }
+      return todos;
+    }
+    const historico=await carregarHistoricoCompleto();
     const diasMes=totalDiasDoMes;
 
     colaboradores=(rc.data||[]).map(function(c){
@@ -468,8 +510,10 @@ async function carregarDadosSupabase(){
     }).sort(function(a,b){return String(a.nome).localeCompare(String(b.nome),'pt-BR')});
 
     console.info('LogiRotator: cadastro carregado do banco',{
-      total:colaboradores.length,
-      presencas:presencas.length
+      total:totalCadastroBanco,
+      presencasMes:presencas.length,
+      periodo:inicioMes+' a '+fimMes,
+      historico:historico.length
     });
 
     atualizarKPIs();
@@ -492,7 +536,7 @@ function atualizarKPIs(){
   const atestados=hoje.filter(function(x){return x.status==='atestado'}).length;
 
   const vals={
-    'kpi-total':total,
+    'kpi-total':totalCadastroBanco,
     'kpi-presentes':presentes,
     'kpi-operacao':operacao,
     'kpi-diaristas':diaristas,
@@ -721,7 +765,7 @@ const pF=fl(g.presente);const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(
 const dd=getDiaristasDia();
 const td=dd.presentes;
 const totalPresentes=g.presente.length+dd.presentes;
-document.getElementById('kpi-total').innerText=quadroHoje.length;
+document.getElementById('kpi-total').innerText=totalCadastroBanco;
 document.getElementById('kpi-presentes').innerText=totalPresentes;
 document.getElementById('kpi-operacao').innerText=g.operacao.length;
 document.getElementById('kpi-dsr').innerText=g.dsr.length;
@@ -875,7 +919,7 @@ function abrirRelatorioAcumulado(){
     Object.keys(tot).forEach(function(k){tot[k]+=x.r[k]||0});
   });
 
-  sub.innerText=nomeMesAtual+' / '+anoAtual+' · '+colaboradoresOperacionaisHoje().length+' no quadro de hoje · '+colaboradores.length+' no cadastro';
+  sub.innerText=nomeMesAtual+' / '+anoAtual+' · '+colaboradoresOperacionaisHoje().length+' no quadro de hoje · '+totalCadastroBanco+' no cadastro';
 
   let h='<div id="area-impressao-relatorio">';
   h+='<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">';
