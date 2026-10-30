@@ -205,7 +205,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-[98vw] w-full h-[95vh] flex flex-col p-4 sm:p-6 shadow-2xl">
 <div class="flex justify-between items-center pb-3 border-b border-slate-800 flex-wrap gap-3">
 <div><h3 id="titulo-matriz-mes" class="text-sm sm:text-lg font-bold text-amber-400">Matriz Mensal</h3><p class="text-[11px] text-slate-400">Passado &#8592; HOJE &#8594; Futuros</p></div>
-<div class="flex items-center gap-2"><button onclick="abrirRelatorioAcumulado()" class="btn btn-success btn-sm"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> Relat&#243;rio</button><button onclick="fecharModalMatriz()" class="btn btn-ghost btn-icon"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+<div class="flex items-center gap-2"><button id="btn-modo-admin" onclick="alternarModoAdmin()" class="btn btn-secondary btn-sm"><i data-lucide="lock" class="w-4 h-4"></i> Admin: bloqueado</button><button onclick="abrirRelatorioAcumulado()" class="btn btn-success btn-sm"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> Relat&#243;rio</button><button onclick="fecharModalMatriz()" class="btn btn-ghost btn-icon"><i data-lucide="x" class="w-5 h-5"></i></button></div>
 </div>
 <div class="mt-3 relative"><i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i><input type="text" id="matriz-busca" placeholder="Buscar colaborador..." oninput="renderizarMatriz()" class="input pl-9"><span id="matriz-busca-contador" class="absolute right-3 top-3 text-[10px] text-slate-500 font-mono"></span></div>
 <div class="flex-grow overflow-auto my-3 relative rounded-lg border border-slate-800"><table id="tabela-matriz-unica" class="text-left border-collapse text-xs" style="border-spacing:0"></table></div>
@@ -297,6 +297,7 @@ const totalDiasDoMes=obterTotalDiasMes(anoAtual,mesAtualIndex);
 const nomesMeses=["Janeiro","Fevereiro","Mar\u00e7o","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const nomeMesAtual=nomesMeses[mesAtualIndex];
 const SENHA_ADM="admin123";
+let modoAdmin=false;
 const LIMITE_DIAS_FUNCAO=20;
 let colaboradores=[];
 let totalCadastroBanco=0;
@@ -594,7 +595,40 @@ function atualizarKPIs(){
 
 function popularSelectFuncoesPorSetor(def){const sel=document.getElementById('novo-funcao');sel.innerHTML="";let og=document.createElement('optgroup');og.label="Status Especiais";STATUS_ESPECIAIS.forEach(function(s){const o=document.createElement('option');o.value=s.valor;o.textContent=s.label;if(s.valor===def)o.selected=true;og.appendChild(o)});sel.appendChild(og);for(const setor of Object.keys(SETORES_E_FUNCOES)){const ogr=document.createElement('optgroup');ogr.label=setor;SETORES_E_FUNCOES[setor].forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;if(f===def)o.selected=true;ogr.appendChild(o)});sel.appendChild(ogr)}}
 
-async function tentarAlterarDia(idColab,indexDia,el){const numDia=indexDia+1;const colab=colaboradores.find(function(c){return c.id===idColab});if(!colab)return;if(el.disabled)return;el.disabled=true;el.style.opacity='0.5';try{const dataDoDia=new Date(anoAtual,mesAtualIndex,numDia);const nf=el.value;const eDSR=isDiaDSR(colab.dsr,dataDoDia);if(eDSR&&!isStatusEspecial(nf)){toast(colab.nome+' esta de DSR.','warn');renderizar();return}if(numDia<diaHoje){const s=prompt('Dia '+numDia+' TRANCADO. Senha:');if(s!==SENHA_ADM){toast('Senha errada.','erro');renderizar();return}}if(!isStatusEspecial(nf)){const st=contarDiasNaFuncaoAtual(colab.historicoDias);if(st.dias>=LIMITE_DIAS_FUNCAO&&nf===st.funcao){toast('Limite de '+LIMITE_DIAS_FUNCAO+' dias.','warn');renderizar();return}}await atualizarDiaSupabase(idColab,numDia,nf);colab.historicoDias[indexDia]=nf;renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro');renderizar()}}
+function atualizarBotaoModoAdmin(){
+  const b=document.getElementById('btn-modo-admin');
+  if(!b)return;
+  b.innerHTML=modoAdmin ? '<i data-lucide="unlock" class="w-4 h-4"></i> Admin: desbloqueado' : '<i data-lucide="lock" class="w-4 h-4"></i> Admin: bloqueado';
+  b.className=modoAdmin ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+  if(window.lucide)lucide.createIcons();
+}
+function alternarModoAdmin(){
+  if(modoAdmin){modoAdmin=false;atualizarBotaoModoAdmin();renderizarMatriz();toast('Modo administrador bloqueado.','ok');return;}
+  const senha=prompt('Senha do administrador para desbloquear os dias anteriores:');
+  if(senha!==SENHA_ADM){toast('Senha de administrador incorreta.','erro');return;}
+  modoAdmin=true;atualizarBotaoModoAdmin();renderizarMatriz();toast('Modo administrador desbloqueado. Dias anteriores podem ser alterados.','ok');
+}
+async function tentarAlterarDia(idColab,indexDia,el){
+  const numDia=indexDia+1;
+  const colab=colaboradores.find(function(c){return c.id===idColab});
+  if(!colab)return;
+  if(numDia<diaHoje && !modoAdmin){toast('Dia '+numDia+' está bloqueado. Somente o administrador pode alterar dias anteriores.','warn');renderizarMatriz();return;}
+  if(el.disabled)return;
+  el.disabled=true; el.style.opacity='0.5';
+  try{
+    const dataDoDia=new Date(anoAtual,mesAtualIndex,numDia);
+    const nf=el.value;
+    const eDSR=isDiaDSR(colab.dsr,dataDoDia);
+    if(eDSR&&!isStatusEspecial(nf)){toast(colab.nome+' esta de DSR.','warn');renderizarMatriz();return;}
+    if(!isStatusEspecial(nf)){
+      const st=contarDiasNaFuncaoAtual(colab.historicoDias);
+      if(st.dias>=LIMITE_DIAS_FUNCAO&&nf===st.funcao){toast('Limite de '+LIMITE_DIAS_FUNCAO+' dias.','warn');renderizarMatriz();return;}
+    }
+    await atualizarDiaSupabase(idColab,numDia,nf);
+    colab.historicoDias[indexDia]=nf;
+    renderizarMatriz();
+  }catch(e){console.error(e);toast('Erro: '+(e.message||e),'erro');renderizarMatriz();}
+}
 
 async function atualizarDiaSupabase(colabId,dia,funcao){
   if(String(colabId||'').startsWith('excel-')){
@@ -618,8 +652,12 @@ async function atualizarDiaSupabase(colabId,dia,funcao){
     if(SETORES_E_FUNCOES[s].includes(funcao)){setor=s;break}
   }
   const r=await supabaseClient.from('historico_escala').upsert({
-    colaborador_id:colabId,data:dataStr,setor:setor,funcao:funcao
-  },{onConflict:'colaborador_id,data'});
+    colaborador_id:colabId,
+    data_inicio:dataStr,
+    data_fim:dataStr,
+    setor:setor,
+    funcao:funcao
+  },{onConflict:'colaborador_id,data_inicio'});
   if(r.error) throw r.error;
 }
 
@@ -910,7 +948,7 @@ async function confirmarAlocacao(){const funcao=document.getElementById('alocar-
 
 async function salvarColaborador(){const btn=document.querySelector('#modal-add button[onclick="salvarColaborador()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const idEdit=document.getElementById('edit-id').value;const nome=document.getElementById('input-nome-colab').value.trim();const func=document.getElementById('novo-funcao').value;if(!nome){toast("Insira o nome.",'warn');return}if(nome.length<3){toast("Nome curto.",'warn');return}const nn=normalizarTexto(nome);const dup=colaboradores.some(function(c){return normalizarTexto(c.nome)===nn&&c.id!==idEdit});if(dup){toast('Ja existe: '+nome,'warn');return}if(idEdit){const ru=await supabaseClient.from('colaboradores').update({nome:nome}).eq('id',idEdit);if(ru.error){toast("Erro: "+ru.error.message,'erro');return}const c=colaboradores.find(function(x){return x.id===idEdit});if(c&&!isColabEmDSRHoje(c))await atualizarDiaSupabase(idEdit,diaHoje,func);else if(c&&isColabEmDSRHoje(c)&&isStatusEspecial(func))await atualizarDiaSupabase(idEdit,diaHoje,func);toast(nome+' atualizado.','ok')}else{const esc=document.getElementById('select-escala').value;const dsr=document.getElementById('select-dsr').value;const hor=document.getElementById('input-horario').value;const ri=await supabaseClient.from('colaboradores').insert([{nome:nome,escala:esc,dsr:dsr,horario:hor}]).select();if(ri.error){toast("Erro: "+ri.error.message,'erro');return}if(ri.data&&ri.data.length>0){const dh=new Date(anoAtual,mesAtualIndex,diaHoje);const hd=isDiaDSR(dsr,dh);if(!hd||isStatusEspecial(func))await atualizarDiaSupabase(ri.data[0].id,diaHoje,func);toast(nome+' adicionado.','ok')}}fecharModalAdd();await carregarDadosSupabase();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
 
-function abrirHistorico(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select disabled onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')}
+function abrirHistorico(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP&&!modoAdmin;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select disabled onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')}
 function fecharModalHistorico(){document.getElementById('modal-historico').classList.add('hidden')}
 
 
@@ -994,9 +1032,9 @@ function imprimirRelatorio(){
   setTimeout(function(){w.print();},250);
 }
 
-function abrirModalMatriz(){document.getElementById('titulo-matriz-mes').innerHTML='Matriz: '+nomeMesAtual+' / '+anoAtual;document.getElementById('matriz-busca').value='';renderizarMatriz();document.getElementById('modal-matriz').classList.remove('hidden');lucide.createIcons();setTimeout(function(){const th=document.querySelector('#tabela-matriz-unica thead th.bg-amber-500\\/30');if(th)th.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})},150)}
-function renderizarMatriz(){const t=normalizarTexto(document.getElementById('matriz-busca').value||'');const tab=document.getElementById('tabela-matriz-unica');const cont=document.getElementById('matriz-busca-contador');tab.innerHTML='';const cf=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome,c.escala,c.dsr)});if(cont)cont.innerText=t?cf.length+' de '+colaboradores.length:colaboradores.length+' cols';const dP=[];const dF=[];for(let d=1;d<=totalDiasDoMes;d++){if(d<diaHoje)dP.push(d);else if(d>diaHoje)dF.push(d)}const dO=[].concat(dP,[diaHoje],dF);let th='<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador</th>';dO.forEach(function(d){const eH=d===diaHoje;const eP=d<diaHoje;let c='p-2 text-center font-semibold min-w-[120px] text-[10px] ';if(eH)c+='text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500';else if(eP)c+='text-slate-400 border-l border-slate-800/50 bg-slate-950/40';else c+='text-slate-200 border-l border-slate-800/50';th+='<th class="'+c+'">'+(eH?'HOJE - ':'')+'Dia '+d+'</th>'});th+='</tr></thead>';if(cf.length===0){tab.innerHTML=th+'<tbody><tr><td colspan="'+(dO.length+1)+'" class="text-center text-slate-500 italic py-8">Nenhum.</td></tr></tbody>';return}let tb='<tbody>';cf.forEach(function(c){tb+='<tr class="border-b border-slate-800/60"><td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]"><div class="text-xs font-bold text-slate-200">'+c.nome+'</div><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div></td>';dO.forEach(function(d){const iD=d-1;const fD=(c.presencaDias&&c.presencaDias[iD])||"-";const eH=d===diaHoje;const eP=d<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,d);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===fD?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===fD?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}let tc='p-1 text-center ';if(eH)tc+='bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40';else if(eD)tc+='bg-orange-950/20';else if(eP)tc+='bg-slate-950/60';tb+='<td class="'+tc+'"><select onchange="tentarAlterarDia(\''+c.id+'\', '+iD+', this)" title="Clique para alterar o status. Dias anteriores pedem senha de administrador." class="w-full text-[10px] rounded p-1 '+(bl?'bg-slate-950 border-slate-800 text-slate-300':'bg-slate-950 border-slate-700 text-slate-200')+' border">'+op+'</select></td>'});tb+='</tr>'});tb+='</tbody>';tab.innerHTML=th+tb}
-function fecharModalMatriz(){document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
+function abrirModalMatriz(){document.getElementById('titulo-matriz-mes').innerHTML='Matriz: '+nomeMesAtual+' / '+anoAtual;document.getElementById('matriz-busca').value='';atualizarBotaoModoAdmin();renderizarMatriz();document.getElementById('modal-matriz').classList.remove('hidden');lucide.createIcons();setTimeout(function(){const th=document.querySelector('#tabela-matriz-unica thead th.bg-amber-500\\/30');if(th)th.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})},150)}
+function renderizarMatriz(){const t=normalizarTexto(document.getElementById('matriz-busca').value||'');const tab=document.getElementById('tabela-matriz-unica');const cont=document.getElementById('matriz-busca-contador');tab.innerHTML='';const cf=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome,c.escala,c.dsr)});if(cont)cont.innerText=t?cf.length+' de '+colaboradores.length:colaboradores.length+' cols';const dP=[];const dF=[];for(let d=1;d<=totalDiasDoMes;d++){if(d<diaHoje)dP.push(d);else if(d>diaHoje)dF.push(d)}const dO=[].concat(dP,[diaHoje],dF);let th='<thead><tr class="bg-slate-900 text-amber-400 border-b border-slate-800 sticky top-0 z-30"><th class="p-2.5 font-bold sticky left-0 bg-slate-900 z-40 min-w-[220px] border-r border-slate-800">Colaborador</th>';dO.forEach(function(d){const eH=d===diaHoje;const eP=d<diaHoje;let c='p-2 text-center font-semibold min-w-[120px] text-[10px] ';if(eH)c+='text-amber-400 bg-amber-500/30 font-extrabold border-l-2 border-r-2 border-amber-500';else if(eP)c+='text-slate-400 border-l border-slate-800/50 bg-slate-950/40';else c+='text-slate-200 border-l border-slate-800/50';th+='<th class="'+c+'">'+(eH?'HOJE - ':'')+'Dia '+d+'</th>'});th+='</tr></thead>';if(cf.length===0){tab.innerHTML=th+'<tbody><tr><td colspan="'+(dO.length+1)+'" class="text-center text-slate-500 italic py-8">Nenhum.</td></tr></tbody>';return}let tb='<tbody>';cf.forEach(function(c){tb+='<tr class="border-b border-slate-800/60"><td class="p-2 sticky left-0 bg-slate-900 z-20 border-r border-slate-800 min-w-[220px]"><div class="text-xs font-bold text-slate-200">'+c.nome+'</div><div class="text-[10px] text-amber-400 font-semibold mt-0.5">Escala: '+c.escala+' \u00b7 DSR: '+c.dsr+'</div></td>';dO.forEach(function(d){const iD=d-1;const fD=(c.presencaDias&&c.presencaDias[iD])||"-";const eH=d===diaHoje;const eP=d<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,d);const eD=isDiaDSR(c.dsr,dD);const bl=eP;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===fD?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===fD?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}let tc='p-1 text-center ';if(eH)tc+='bg-amber-500/10 border-l-2 border-r-2 border-amber-500/40';else if(eD)tc+='bg-orange-950/20';else if(eP)tc+='bg-slate-950/60';tb+='<td class="'+tc+'"><select onchange="tentarAlterarDia(\''+c.id+'\', '+iD+', this)" title="'+(eP&&!modoAdmin?'Dia anterior bloqueado para usuário. Somente administrador pode alterar.':'Clique para alterar.')+'" '+(bl?'disabled':'')+' class="w-full text-[10px] rounded p-1 '+(bl?'bg-slate-950 border-slate-800 text-slate-500 cursor-not-allowed':'bg-slate-950 border-slate-700 text-slate-200')+' border">'+op+'</select></td>'});tb+='</tr>'});tb+='</tbody>';tab.innerHTML=th+tb}
+function fecharModalMatriz(){modoAdmin=false;atualizarBotaoModoAdmin();document.getElementById('modal-matriz').classList.add('hidden');renderizar()}
 
 // ============================================================
 // IMPORTAÇÃO DO EXCEL — v26 (Regras Shopee + Anti-duplicidade)
