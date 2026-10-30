@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>LogiRotator v27 - Importação Corrigida - HUB-LCE-04 Juazeiro do Norte</title>
+<title>LogiRotator - HUB-LCE-04 Juazeiro do Norte</title>
 <meta name="theme-color" content="#09090b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -320,6 +320,17 @@ function obterStatusHoje(c){
   if(["P","S2"].includes(pres))return'presente';
   return'sem_escala';
 }
+function colaboradoresOperacionaisHoje(){
+  // O cadastro mestre continua completo no banco, mas o quadro operacional
+  // do dia usa somente quem possui status de presença para hoje.
+  // Desligamentos/NC/NS nunca entram novamente no quadro operacional.
+  const foraDoQuadro=new Set(['DF','DP','DV','NC','NS']);
+  return colaboradores.filter(function(c){
+    const st=String((c.presencaDias&&c.presencaDias[diaHoje-1])||'-').toUpperCase();
+    return st && st!=='-' && !foraDoQuadro.has(st);
+  });
+}
+
 function estaEmOperacaoHoje(c){
   const f=(c.historicoDias&&c.historicoDias[diaHoje-1])||'-';
   const p=(c.presencaDias&&c.presencaDias[diaHoje-1])||'-';
@@ -395,70 +406,119 @@ async function init(){const txt='HUB-LCE-04 \u2022 '+nomeMesAtual+' / '+anoAtual
 
 async function carregarDadosSupabase(){
   try{
+    // O cadastro mestre vem EXCLUSIVAMENTE de colaboradores.
+    // Nunca agrupamos por nome e nunca substituímos a lista por dados do Excel.
     const rc=await supabaseClient.from('colaboradores').select('*').order('nome');
     if(rc.error)throw rc.error;
-    const rh=await supabaseClient.from('historico_escala').select('*');
-    if(rh.error)throw rh.error;
+
     const rp=await supabaseClient.from('presenca_diaria').select('*');
-    if(rp.error)throw new Error('Tabela presenca_diaria não encontrada. Execute primeiro o SQL de atualização do banco. Detalhe: '+rp.error.message);
+    if(rp.error)throw new Error('Tabela presenca_diaria não encontrada. Detalhe: '+rp.error.message);
 
-    // Agrupa colaboradores com o mesmo nome normalizado para impedir contagem duplicada.
-    // Ex.: "JOAO DA SILVA", "João da Silva" e nomes com espaços extras viram uma única pessoa na tela.
-    const grupos=new Map();
-    (rc.data||[]).forEach(function(c){
-      const chave=normalizarTexto(c.nome).replace(/\s+/g,' ').trim();
-      if(!chave)return;
-      if(!grupos.has(chave))grupos.set(chave,[]);
-      grupos.get(chave).push(c);
-    });
+    const rh=await supabaseClient.from('historico_escala').select('*');
+    const historico= rh.error ? [] : (rh.data||[]);
 
-    colaboradores=[];
-    grupos.forEach(function(lista){
-      const principal=lista[0];
-      const ids=new Set(lista.map(function(x){return x.id}));
-      const hd=new Array(totalDiasDoMes).fill('-');
-      const pd=new Array(totalDiasDoMes).fill('-');
-      (rh.data||[]).filter(function(h){return ids.has(h.colaborador_id)}).forEach(function(r){
-        const dn=new Date(r.data+'T00:00:00').getDate();
-        if(dn>=1&&dn<=totalDiasDoMes){
-          // Se houver histórico em registros duplicados, preserva um valor válido.
-          if(hd[dn-1]==='-' || (r.funcao && r.funcao!=='-')) hd[dn-1]=r.funcao||'-';
-        }
-      });
-      (rp.data||[]).filter(function(h){return ids.has(h.colaborador_id)}).forEach(function(r){
-        const dt=new Date(r.data+'T00:00:00');
+    const presencas=rp.data||[];
+    const diasMes=totalDiasDoMes;
+
+    colaboradores=(rc.data||[]).map(function(c){
+      const hd=new Array(diasMes).fill('-');
+      const pd=new Array(diasMes).fill('-');
+
+      presencas.forEach(function(r){
+        if(String(r.colaborador_id)!==String(c.id))return;
+        const dt=new Date(String(r.data).slice(0,10)+'T00:00:00');
         if(dt.getFullYear()===anoAtual && dt.getMonth()===mesAtualIndex){
-          const dn=dt.getDate(); if(dn>=1&&dn<=totalDiasDoMes) pd[dn-1]=r.status||'-';
+          const d=dt.getDate();
+          if(d>=1&&d<=diasMes)pd[d-1]=String(r.status||'-').toUpperCase();
         }
       });
-      colaboradores.push({
-        id:principal.id,
-        nome:principal.nome,
-        escala:principal.escala||'6x1',
-        horario:principal.horario||'08:00 - 17:00',
-        dsr:principal.dsr||'Domingo',
-        // Mantém o identificador SPX quando existir no banco ou estiver anexado ao nome.
-        codigoSPX:String(principal.codigo_spx||principal.codigo||principal.spx||principal.matricula||extrairCodigoSPX(principal.nome)||'').trim().toUpperCase(),
+
+      historico.forEach(function(r){
+        if(String(r.colaborador_id)!==String(c.id))return;
+        const data=r.data || r.data_inicio;
+        if(!data)return;
+        const dt=new Date(String(data).slice(0,10)+'T00:00:00');
+        if(dt.getFullYear()===anoAtual && dt.getMonth()===mesAtualIndex){
+          const d=dt.getDate();
+          if(d>=1&&d<=diasMes)hd[d-1]=r.funcao || r.escala || r.turno || '-';
+        }
+      });
+
+      return {
+        id:c.id,
+        nome:c.nome,
+        escala:c.escala||'6x1',
+        horario:c.horario||'08:00 - 17:00',
+        dsr:c.dsr||'Domingo',
+        codigoSPX:String(c.codigo_spx||c.codigo||c.spx||c.matricula||extrairCodigoSPX(c.nome)||'').trim().toUpperCase(),
+        email:c.email||'',
+        opsId:c.ops_id||'',
+        cargo:c.cargo||'',
+        funcao:c.funcao||'',
+        contrato:c.contrato||'',
+        station:c.station||'',
+        hub:c.hub||'',
+        subRegional:c.sub_regional||'',
+        ativo:c.ativo!==false,
         historicoDias:hd,
         presencaDias:pd,
-        idsDuplicados:lista.slice(1).map(function(x){return x.id})
-      });
+        origemExcelHoje:false
+      };
+    }).sort(function(a,b){return String(a.nome).localeCompare(String(b.nome),'pt-BR')});
+
+    console.info('LogiRotator: cadastro carregado do banco',{
+      total:colaboradores.length,
+      presencas:presencas.length
     });
 
-    colaboradores.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR')});
-    colaboradores.forEach(function(c){
-      c.historicoDias=c.historicoDias.map(function(f,idx){
-        const d=new Date(anoAtual,mesAtualIndex,idx+1);
-        if(isDiaDSR(c.dsr,d)&&!isStatusEspecial(f))return '-';
-        return f;
-      });
-    });
+    atualizarKPIs();
+  }catch(e){
+    console.error(e);
+    alert('Erro ao carregar o banco: '+e.message);
+  }
+}
 
-    const qtdDuplicados=(rc.data||[]).length-colaboradores.length;
-    if(qtdDuplicados>0)console.warn('Duplicidades ocultadas da contagem:',qtdDuplicados);
+function atualizarKPIs(){
+  const quadroHoje=colaboradoresOperacionaisHoje();
+  const hoje=quadroHoje.map(function(c){return {c:c,status:obterStatusHoje(c)}});
+  const total=quadroHoje.length;
+  const presentes=hoje.filter(function(x){return x.status==='presente'}).length;
+  const operacao=hoje.filter(function(x){return x.status==='presente' && !isStatusEspecial(x.c.historicoDias[diaHoje-1])}).length;
+  const diaristas=hoje.filter(function(x){return x.status==='diarista'}).length;
+  const dsr=hoje.filter(function(x){return x.status==='dsr'}).length;
+  const bh=hoje.filter(function(x){return x.status==='banco_horas'}).length;
+  const faltas=hoje.filter(function(x){return x.status==='falta'}).length;
+  const atestados=hoje.filter(function(x){return x.status==='atestado'}).length;
 
-    // Total, presença e histórico são sempre reconstruídos a partir do banco Supabase.
-  }catch(e){console.error(e);alert('Erro: '+e.message)}
+  const vals={
+    'kpi-total':total,
+    'kpi-presentes':presentes,
+    'kpi-operacao':operacao,
+    'kpi-diaristas':diaristas,
+    'kpi-dsr':dsr,
+    'kpi-banco-horas':bh,
+    'kpi-faltas':faltas,
+    'kpi-atestados':atestados,
+    'badge-todos':total,
+    'badge-presentes':presentes,
+    'badge-operacao':operacao,
+    'badge-diaristas':diaristas,
+    'badge-dsr':dsr,
+    'badge-faltas':faltas,
+    'badge-atestados':atestados,
+    'badge-todos-m':total,
+    'badge-presentes-m':presentes,
+    'badge-operacao-m':operacao,
+    'badge-diaristas-m':diaristas,
+    'badge-dsr-m':dsr,
+    'badge-faltas-m':faltas,
+    'badge-atestados-m':atestados
+  };
+  Object.keys(vals).forEach(function(id){
+    const el=document.getElementById(id); if(el)el.textContent=vals[id];
+  });
+  const pd=document.getElementById('kpi-presentes-detalhe'); if(pd)pd.textContent=presentes+' de '+total;
+  const od=document.getElementById('kpi-operacao-detalhe'); if(od)od.textContent=operacao+' alocados nos setores';
 }
 
 function popularSelectFuncoesPorSetor(def){const sel=document.getElementById('novo-funcao');sel.innerHTML="";let og=document.createElement('optgroup');og.label="Status Especiais";STATUS_ESPECIAIS.forEach(function(s){const o=document.createElement('option');o.value=s.valor;o.textContent=s.label;if(s.valor===def)o.selected=true;og.appendChild(o)});sel.appendChild(og);for(const setor of Object.keys(SETORES_E_FUNCOES)){const ogr=document.createElement('optgroup');ogr.label=setor;SETORES_E_FUNCOES[setor].forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;if(f===def)o.selected=true;ogr.appendChild(o)});sel.appendChild(ogr)}}
@@ -651,13 +711,14 @@ const termo=normalizarTexto(document.getElementById('input-busca').value);
 const cont=document.getElementById('container-setores');
 cont.innerHTML="";
 const g={presente:[],operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],sem_escala:[]};
-colaboradores.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c);if(estaEmOperacaoHoje(c))g.operacao.push(c)});
+const quadroHoje=colaboradoresOperacionaisHoje();
+quadroHoje.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c);if(estaEmOperacaoHoje(c))g.operacao.push(c)});
 const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
 const pF=fl(g.presente);const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(g.banco_horas);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const seF=fl(g.sem_escala);
 const dd=getDiaristasDia();
 const td=dd.presentes;
 const totalPresentes=g.presente.length+dd.presentes;
-document.getElementById('kpi-total').innerText=colaboradores.length;
+document.getElementById('kpi-total').innerText=quadroHoje.length;
 document.getElementById('kpi-presentes').innerText=totalPresentes;
 document.getElementById('kpi-operacao').innerText=g.operacao.length;
 document.getElementById('kpi-dsr').innerText=g.dsr.length;
@@ -669,7 +730,7 @@ const detP=document.getElementById('kpi-presentes-detalhe');
 if(detP)detP.innerText=g.presente.length+' PHD + '+dd.presentes+' diar.';
 const det=document.getElementById('kpi-operacao-detalhe');
 if(det)det.innerText=g.operacao.length+' alocado(s) nos setores';
-const bg={'badge-todos':colaboradores.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
+const bg={'badge-todos':quadroHoje.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
 Object.keys(bg).forEach(function(id){const el=document.getElementById(id);if(el)el.innerText=bg[id];const elM=document.getElementById(id+'-m');if(elM)elM.innerText=bg[id]});
 
 // MODO BUSCA
@@ -811,7 +872,7 @@ function abrirRelatorioAcumulado(){
     Object.keys(tot).forEach(function(k){tot[k]+=x.r[k]||0});
   });
 
-  sub.innerText=nomeMesAtual+' / '+anoAtual+' · '+colaboradores.length+' colaboradores';
+  sub.innerText=nomeMesAtual+' / '+anoAtual+' · '+colaboradoresOperacionaisHoje().length+' no quadro de hoje · '+colaboradores.length+' no cadastro';
 
   let h='<div id="area-impressao-relatorio">';
   h+='<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">';
@@ -1068,7 +1129,7 @@ function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, d
   h += '<div class="bg-cyan-950/20 border border-cyan-500/40 rounded-xl p-3 text-center">';
   h += '<div class="text-[11px] uppercase text-cyan-400 font-bold">📅 Data processada</div>';
   h += '<div class="text-lg font-extrabold text-cyan-300">' + dataAlvo + '</div>';
-  h += '<div class="text-[10px] text-slate-400 mt-1">O Excel foi lido apenas nesta data (Dia Atual)</div>';
+  h += '<div class="text-[10px] text-slate-400 mt-1">Todos os dias reconhecidos na planilha foram processados</div>';
   h += '</div>';
 
   h += '<div class="grid grid-cols-2 gap-2">';
@@ -1119,38 +1180,57 @@ function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, d
   abrirModalResultadoImport();
 }
 
-async function processarExcel(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+async function processarExcel(event){
+  const file=event.target.files[0];
+  if(!file)return;
 
-  const dataHojeStr = String(diaHoje).padStart(2,'0') + '/' + String(mesAtualIndex+1).padStart(2,'0') + '/' + anoAtual;
-  const isoHoje = anoAtual + '-' + String(mesAtualIndex+1).padStart(2,'0') + '-' + String(diaHoje).padStart(2,'0');
-
-  if (!confirm(
-    'Importar a presença de ' + dataHojeStr + '?\n\n' +
-    'Somente o DIA ATUAL será gravado em presenca_diaria.\n' +
-    'Os dias anteriores permanecerão intactos no Supabase.'
-  )) { event.target.value=''; return; }
+  if(!confirm(
+    'Importar a planilha de presença completa?\n\n'+
+    'Todos os dias reconhecidos na aba de presença serão gravados em presenca_diaria.\n'+
+    'Os registros existentes serão atualizados pelo par colaborador + data.\n'+
+    'O cadastro de colaboradores NÃO será alterado.'
+  )){event.target.value='';return;}
 
   function dataCabecalhoISO(valor){
-    if (valor instanceof Date && !isNaN(valor)) {
+    if(valor instanceof Date && !isNaN(valor)){
       return valor.getFullYear()+'-'+String(valor.getMonth()+1).padStart(2,'0')+'-'+String(valor.getDate()).padStart(2,'0');
     }
-    if (typeof valor === 'number' && isFinite(valor)) {
+    if(typeof valor==='number'&&isFinite(valor)){
       const d=XLSX.SSF.parse_date_code(valor);
-      if(d && d.y && d.m && d.d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
+      if(d&&d.y&&d.m&&d.d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
     }
     const s=String(valor??'').trim();
     let m=s.match(/^(\d{4})[-\/]([01]?\d)[-\/](\d{1,2})/);
-    if(m) return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
-    m=s.match(/^(\d{1,2})[\/\-]([01]?\d)(?:[\/\-](\d{2,4}))?$/);
-    if(m){
-      let y=m[3] ? +m[3] : anoAtual; if(y<100)y+=2000;
-      return y+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0');
-    }
-    // Cabeçalhos que trazem somente o número do dia (ex.: 27)
-    if(/^\d{1,2}$/.test(s) && +s===diaHoje) return isoHoje;
+    if(m)return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
+    m=s.match(/^(\d{1,2})[\/\-]([01]?\d)[\/\-](\d{2,4})$/);
+    if(m){let y=+m[3];if(y<100)y+=2000;return y+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0');}
     return null;
+  }
+
+  function normalizarCodigo(v){
+    return String(v||'').toUpperCase().trim().replace(/[\s-]+/g,'');
+  }
+
+  function nomeIgual(a,b){
+    return normalizarTexto(limparNomeExcel(a)).replace(/\s+/g,' ').trim()===
+           normalizarTexto(limparNomeExcel(b)).replace(/\s+/g,' ').trim();
+  }
+
+  function localizarColaborador(banco,nome,codigo){
+    // REGRA PRINCIPAL: a planilha de presença não altera o cadastro mestre.
+    // Como existem códigos divergentes entre as fontes, primeiro vinculamos
+    // pelo nome normalizado. O código é apenas fallback quando o nome não resolve.
+    const porNome=banco.filter(function(c){return nomeIgual(c.nome,nome)});
+    if(porNome.length===1)return {colab:porNome[0],metodo:'nome'};
+    if(porNome.length>1)return {colab:null,metodo:'nome_duplicado'};
+
+    const cod=normalizarCodigo(codigo);
+    const candidatosCodigo=cod ? banco.filter(function(c){
+      return normalizarCodigo(c.codigo_spx||c.codigo||c.matricula||'')===cod;
+    }) : [];
+    if(candidatosCodigo.length===1)return {colab:candidatosCodigo[0],metodo:'codigo'};
+    if(candidatosCodigo.length>1)return {colab:null,metodo:'codigo_duplicado'};
+    return {colab:null,metodo:'nao_encontrado'};
   }
 
   const reader=new FileReader();
@@ -1159,107 +1239,104 @@ async function processarExcel(event) {
       const workbook=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
       let escolhido=null;
 
-      // Procura em TODAS as abas. Isso evita depender da primeira aba do arquivo.
+      // Procura a aba Controle-Outubro ou a primeira aba que possua Nome e datas.
       for(const sheetName of workbook.SheetNames){
         const ws=workbook.Sheets[sheetName];
         const matriz=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
-        for(let r=0;r<Math.min(matriz.length,80);r++){
+        for(let r=0;r<Math.min(matriz.length,100);r++){
           const linha=matriz[r]||[];
-          let cNome=-1,cCodigo=-1,cHoje=-1;
+          let cNome=-1,cCodigo=-1;
+          let datas=[];
           for(let c=0;c<linha.length;c++){
             const txt=String(linha[c]??'').trim();
-            if(cNome<0 && /(^|\b)(nome|colaborador|employee)(\b|$)/i.test(txt)) cNome=c;
-            if(cCodigo<0 && /(c[oó]digo|matr[ií]cula|id\s*operator|operator\s*id|spx)/i.test(txt)) cCodigo=c;
-            if(dataCabecalhoISO(linha[c])===isoHoje) cHoje=c;
+            if(cNome<0&&/(^|\b)(nome|colaborador|employee)(\b|$)/i.test(txt))cNome=c;
+            if(cCodigo<0&&/(c[oó]digo|matr[ií]cula|spx)/i.test(txt))cCodigo=c;
+            const iso=dataCabecalhoISO(linha[c]);
+            if(iso)datas.push({col:c,iso:iso});
           }
-          if(cNome>=0 && cHoje>=0){ escolhido={sheetName,matriz,idxCabecalho:r,colNome:cNome,colCodigo:cCodigo,colHoje:cHoje}; break; }
+          if(cNome>=0&&datas.length){escolhido={sheetName,matriz,idxCabecalho:r,colNome:cNome,colCodigo:cCodigo,datas:datas};break;}
         }
         if(escolhido)break;
       }
 
-      if(!escolhido){
-        throw new Error('Não encontrei uma aba com NOME e a coluna de hoje ('+dataHojeStr+'). Verifique se a planilha de presença contém a data atual.');
-      }
+      if(!escolhido)throw new Error('Não encontrei uma aba com Nome e colunas de datas.');
 
-      const {sheetName,matriz,idxCabecalho,colNome,colCodigo,colHoje}=escolhido;
-      toast('Lendo '+sheetName+' e gravando '+dataHojeStr+'...', 'ok');
+      const {sheetName,matriz,idxCabecalho,colNome,colCodigo,datas}=escolhido;
+      toast('Lendo '+sheetName+' — '+datas.length+' datas encontradas...','ok');
 
-      // Recarrega cadastro diretamente do banco antes de comparar.
       const rc=await supabaseClient.from('colaboradores').select('*');
-      if(rc.error) throw new Error('Erro ao consultar colaboradores: '+rc.error.message);
-      const banco = Array.isArray(rc.data) ? rc.data : [];
-      console.log('LogiRotator: colaboradores consultados para importação', { total: banco.length, erro: rc.error });
-      if (banco.length === 0) {
-        throw new Error('O Supabase retornou 0 colaboradores na consulta de importação. Verifique public.colaboradores e as políticas RLS de SELECT.');
-      }
+      if(rc.error)throw new Error('Erro ao consultar colaboradores: '+rc.error.message);
+      const banco=rc.data||[];
+      if(!banco.length)throw new Error('A tabela colaboradores está vazia. Importe primeiro a primeira planilha.');
 
-      function acharNoBanco(nomeLimpo,codigo){
-        const cod=String(codigo||'').toUpperCase().replace(/[\s-]+/g,'');
-        if(cod){
-          const x=banco.filter(c=>String(c.codigo_spx||c.codigo||c.matricula||extrairCodigoSPX(c.nome)||'').toUpperCase().replace(/[\s-]+/g,'')===cod);
-          if(x.length===1)return x[0];
-          if(x.length>1){
-            const alvoCodigoNome=normalizarTexto(limparNomeExcel(nomeLimpo)).replace(/\s+/g,' ').trim();
-            const porNome=x.filter(c=>normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim()===alvoCodigoNome);
-            if(porNome.length===1)return porNome[0];
-          }
-        }
-        const alvo=normalizarTexto(limparNomeExcel(nomeLimpo)).replace(/\s+/g,' ').trim();
-        const x=banco.filter(c=>normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim()===alvo);
-        return x.length===1?x[0]:null;
-      }
-
-      const registros=[];
+      const registrosMap=new Map();
       const naoEncontrados=[];
+      const ambiguos=[];
       const statusDesconhecidos={};
-      const vistos=new Set();
-      let desligados=0, vazios=0;
+      let linhasLidas=0,vazios=0,desligados=0;
 
       for(let i=idxCabecalho+1;i<matriz.length;i++){
         const linha=matriz[i]||[];
         const nomeBruto=linha[colNome];
         if(!String(nomeBruto||'').trim())continue;
+        linhasLidas++;
+
         const nomeLimpo=limparNomeExcel(nomeBruto);
-        const codigo=((colCodigo>=0?String(linha[colCodigo]||''):'')||extrairCodigoSPX(nomeBruto)).trim().toUpperCase();
-        const bruto=String(linha[colHoje]??'').trim().toUpperCase();
-        if(!bruto){vazios++;continue;}
-        if(bruto==='DF'){desligados++;continue;}
-        const status=MAPA_STATUS_EXCEL[bruto];
-        if(status===undefined){statusDesconhecidos[bruto]=(statusDesconhecidos[bruto]||0)+1;continue;}
-        const colab=acharNoBanco(nomeLimpo,codigo);
-        if(!colab){naoEncontrados.push(nomeLimpo+(codigo?' ('+codigo+')':''));continue;}
-        const chave=colab.id+'|'+isoHoje;
-        if(vistos.has(chave))continue;
-        vistos.add(chave);
-        registros.push({colaborador_id:colab.id,data:isoHoje,status:status,updated_at:new Date().toISOString()});
+        const codigo=colCodigo>=0 ? String(linha[colCodigo]||'').trim().toUpperCase() : extrairCodigoSPX(nomeBruto);
+        const encontrado=localizarColaborador(banco,nomeLimpo,codigo);
+
+        if(!encontrado.colab){
+          const desc=nomeLimpo+(codigo?' ('+codigo+')':'');
+          if(encontrado.metodo==='codigo_duplicado'||encontrado.metodo==='nome_duplicado')ambiguos.push(desc);
+          else naoEncontrados.push(desc);
+          continue;
+        }
+
+        for(const d of datas){
+          const bruto=String(linha[d.col]??'').trim().toUpperCase();
+          if(!bruto||bruto==='-')continue;
+          if(['DF','DP','DV','NC','NS'].includes(bruto)){desligados++;continue;}
+          const status=MAPA_STATUS_EXCEL[bruto];
+          if(status===undefined){statusDesconhecidos[bruto]=(statusDesconhecidos[bruto]||0)+1;continue;}
+          const chave=encontrado.colab.id+'|'+d.iso;
+          registrosMap.set(chave,{colaborador_id:encontrado.colab.id,data:d.iso,status:status,updated_at:new Date().toISOString()});
+        }
       }
 
-      if(registros.length===0){
-        throw new Error('Nenhuma presença válida foi encontrada para '+dataHojeStr+'. Aba detectada: '+sheetName+'.');
+      const registros=Array.from(registrosMap.values());
+      if(!registros.length)throw new Error('Nenhum status válido foi encontrado para gravação. Verifique a linha de cabeçalho e as colunas de datas.');
+
+      // Supabase/PostgREST trabalha melhor em lotes menores.
+      let gravados=0;
+      const lote=500;
+      for(let i=0;i<registros.length;i+=lote){
+        const parte=registros.slice(i,i+lote);
+        const r=await supabaseClient.from('presenca_diaria').upsert(parte,{onConflict:'colaborador_id,data'});
+        if(r.error)throw new Error('Erro no lote '+(Math.floor(i/lote)+1)+': '+r.error.message);
+        gravados+=parte.length;
       }
 
-      // Um único UPSERT em lote: grava/atualiza somente colaborador + data atual.
-      const gravacao=await supabaseClient.from('presenca_diaria')
-        .upsert(registros,{onConflict:'colaborador_id,data'});
-      if(gravacao.error) throw new Error('Supabase recusou a gravação: '+gravacao.error.message);
-
-      // Confirma no próprio banco antes de informar sucesso.
-      const conf=await supabaseClient.from('presenca_diaria')
-        .select('colaborador_id,status')
-        .eq('data',isoHoje);
-      if(conf.error) throw new Error('Gravou, mas não consegui conferir: '+conf.error.message);
-      const confirmados=conf.data||[];
-      if(confirmados.length===0) throw new Error('O Supabase respondeu sem erro, mas a conferência retornou 0 registros para '+isoHoje+'.');
-
-      const contagem={}; confirmados.forEach(x=>contagem[x.status]=(contagem[x.status]||0)+1);
-      const stats={inseridos:confirmados.length,atualizados:0,ignorados:vazios+desligados,erros:0,semData:0};
-      renderizarResultadoImport(stats,naoEncontrados,statusDesconhecidos,dataHojeStr);
       await carregarDadosSupabase();
+      atualizarKPIs();
       renderizar();
 
-      const resumo=Object.entries(contagem).sort().map(([k,v])=>k+': '+v).join(' | ');
-      toast('✅ Banco atualizado: '+confirmados.length+' registros em '+dataHojeStr+'. '+resumo,'ok');
-      console.log('IMPORTAÇÃO CONFIRMADA',{aba:sheetName,data:isoHoje,total:confirmados.length,status:contagem,naoEncontrados});
+      const datasImportadas=Array.from(new Set(registros.map(function(r){return r.data}))).sort();
+      const contagem={};registros.forEach(function(r){contagem[r.status]=(contagem[r.status]||0)+1});
+      const resumo=Object.entries(contagem).sort().map(function(x){return x[0]+': '+x[1]}).join(' | ');
+
+      const stats={
+        inseridos:gravados,
+        atualizados:0,
+        ignorados:vazios+desligados,
+        erros:0,
+        semData:0,
+        linhas:linhasLidas,
+        datas:datasImportadas.length
+      };
+
+      renderizarResultadoImport(stats,naoEncontrados.concat(ambiguos),statusDesconhecidos,datasImportadas.length+' dia(s)');
+      toast('✅ Presença gravada: '+gravados+' registros em '+datasImportadas.length+' dia(s). '+resumo,'ok');
+      console.log('IMPORTAÇÃO CONFIRMADA',{aba:sheetName,total:gravados,datas:datasImportadas,naoEncontrados,ambiguos,status:contagem});
     }catch(err){
       console.error('ERRO IMPORTAÇÃO:',err);
       toast('❌ '+(err.message||err),'erro');
