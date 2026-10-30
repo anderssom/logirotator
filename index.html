@@ -310,7 +310,7 @@ function isDiaDSR(dsrTexto,dataObj){if(!dsrTexto)return false;const d=dataObj.ge
 function isColabEmDSRHoje(c){const dataHoje=new Date(anoAtual,mesAtualIndex,diaHoje);return isDiaDSR(c.dsr,dataHoje)}
 
 function obterStatusHoje(c){
-  const pres=String((c.presencaDias&&c.presencaDias[diaHoje-1])||"-").toUpperCase();
+  const pres=(c.presencaDias&&c.presencaDias[diaHoje-1])||"-";
   if(pres==="DSR"||pres==="FO")return'dsr';
   if(["F","FJ"].includes(pres))return'falta';
   if(pres==="AM")return'atestado';
@@ -318,7 +318,6 @@ function obterStatusHoje(c){
   if(pres==="BH")return'banco_horas';
   if(["AF","AL"].includes(pres))return'afastamento';
   if(["P","S2"].includes(pres))return'presente';
-  // Status válidos que fazem parte do quadro, mas não são P/DSR/falta/etc.
   if(["S1","TD","SU","PR","TR","FC","IN"].includes(pres))return'outro_status';
   return'sem_escala';
 }
@@ -650,7 +649,7 @@ function criarListaGeral(cols) {
     return bloco;
   }
   
-  const contagem = {operacao:0, presente:0, dsr:0, falta:0, atestado:0, ferias:0, banco_horas:0, afastamento:0, outro_status:0, sem_escala:0};
+  const contagem = {operacao:0, dsr:0, falta:0, atestado:0, ferias:0, afastamento:0, banco_horas:0, outro_status:0, sem_escala:0};
   cols.forEach(function(c){ const st = obterStatusHoje(c); if (contagem[st] !== undefined) contagem[st]++; });
   
   h += '<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-3">';
@@ -674,7 +673,6 @@ function criarListaGeral(cols) {
       ferias: {tipo:'ferias', label:'F\u00e9rias', badge:'badge-purple'},
       afastamento: {tipo:'afastamento', label:'Afastamento', badge:'badge-default'},
       banco_horas: {tipo:'banco_horas', label:'Banco de Horas', badge:'badge-purple'},
-      presente: {tipo:'presente', label:'PRESENTE', badge:'badge-success'},
       outro_status: {tipo:'outro_status', label:'Outro status', badge:'badge-default'},
       sem_escala: {tipo:'sem_escala', label:'Sem informação no Excel', badge:'badge-default'}
     }[st] || {tipo:'sem_escala', label:'-', badge:'badge-default'};
@@ -683,7 +681,7 @@ function criarListaGeral(cols) {
     if (st === 'operacao') {
       const s = contarDiasNaFuncaoAtual(c.historicoDias);
       statusLabel = isFuncaoAlocada(s.funcao) ? s.funcao : 'Presente PHD';
-    } else if (st === 'sem_escala' || st === 'outro_status' || st === 'banco_horas' || st === 'presente') {
+    } else if (st === 'sem_escala' || st === 'outro_status' || st === 'banco_horas') {
       const rawExcel = String((c.presencaDias&&c.presencaDias[diaHoje-1]) || '-').toUpperCase();
       const labelsExcel = {
         'P':'Presente (P)', 'AF':'Afastamento (AF)', 'AL':'Afastamento longo (AL)', 'AM':'Atestado médico (AM)',
@@ -1090,18 +1088,12 @@ function aplicarSnapshotExcelHoje(){
       usados.add(encontrado.id);
       if(!Array.isArray(encontrado.historicoDias))
         encontrado.historicoDias = new Array(totalDiasDoMes).fill('-');
-      if(!Array.isArray(encontrado.presencaDias))
-        encontrado.presencaDias = new Array(totalDiasDoMes).fill('-');
 
-      // O Excel informa presença/ocorrência e deve alimentar a visão diária
-      // pela mesma fonte usada pelos KPIs: presencaDias.
-      encontrado.presencaDias[diaHoje-1] = String(reg.status||'-').toUpperCase();
-
-      // Mantém função/setor manual em historicoDias. Só espelha o status quando
-      // não existe uma função operacional salva para o dia.
+      // O Excel informa presença/ocorrência. Uma função/setor já alocada pelo
+      // usuário e salva no histórico tem prioridade para a Grade Mensal.
       const jaSalvoHoje = encontrado.historicoDias[diaHoje-1] || '-';
       if(jaSalvoHoje === '-' || isStatusEspecial(jaSalvoHoje)){
-        encontrado.historicoDias[diaHoje-1] = String(reg.status||'-').toUpperCase();
+        encontrado.historicoDias[diaHoje-1] = reg.status;
       }
       encontrado.codigoSPX = encontrado.codigoSPX || reg.codigo || '';
       encontrado.origemExcelHoje = true;
@@ -1110,9 +1102,7 @@ function aplicarSnapshotExcelHoje(){
       // Não cadastra no Supabase. Mantém somente na visão diária para que
       // os KPIs e a lista reflitam exatamente a planilha importada.
       const hd = new Array(totalDiasDoMes).fill('-');
-      const pd = new Array(totalDiasDoMes).fill('-');
-      hd[diaHoje-1] = String(reg.status||'-').toUpperCase();
-      pd[diaHoje-1] = String(reg.status||'-').toUpperCase();
+      hd[diaHoje-1] = reg.status;
       listaDia.push({
         id: 'excel-' + (reg.codigo || normalizarTexto(nomeLimpo).replace(/\s+/g,'-')),
         nome: nomeLimpo,
@@ -1121,7 +1111,6 @@ function aplicarSnapshotExcelHoje(){
         horario: '',
         dsr: '',
         historicoDias: hd,
-        presencaDias: pd,
         origemExcelHoje: true,
         somenteExcel: true
       });
