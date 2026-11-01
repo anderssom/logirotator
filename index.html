@@ -527,7 +527,7 @@ async function carregarDadosSupabase(){
         id:c.id,
         nome:c.nome,
         escala:c.escala||'6x1',
-        horario:c.horario||'08:00 - 17:00',
+        horario:'Horário operacional: 00:00 - 07:54',
         dsr:c.dsr||'Domingo',
         codigoSPX:String(c.codigo_spx||c.codigo||c.spx||c.matricula||extrairCodigoSPX(c.nome)||'').trim().toUpperCase(),
         email:c.email||'',
@@ -541,6 +541,9 @@ async function carregarDadosSupabase(){
         ativo:c.ativo!==false,
         historicoDias:hd,
         presencaDias:pd,
+        movimentosDia:historico.filter(function(r){
+          return String(r.colaborador_id)===String(c.id) && String(r.data_inicio||r.data||'').slice(0,10)===String(anoAtual)+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(diaHoje).padStart(2,'0') && !!r.hora_inicio;
+        }).sort(function(a,b){return String(a.hora_inicio||'').localeCompare(String(b.hora_inicio||''));}),
         origemExcelHoje:false
       };
     }).sort(function(a,b){return String(a.nome).localeCompare(String(b.nome),'pt-BR')});
@@ -688,31 +691,33 @@ async function atualizarDiaSupabase(colabId,dia,funcao){
   if(r.error) throw r.error;
 }
 
+function escaparHtmlLogi(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function duracaoMovimentoLogi(inicio,fim){
+  if(!inicio)return '--';
+  const a=opMin(inicio);let b=fim?opMin(fim):opMin(opAgora());
+  if(a==null||b==null)return '--';
+  if(b<a)b+=1440;
+  const total=Math.max(0,b-a);return String(Math.floor(total/60)).padStart(2,'0')+'h'+String(total%60).padStart(2,'0');
+}
+function htmlLinhaTempoSetores(c){
+  const rows=Array.isArray(c.movimentosDia)?c.movimentosDia:[];
+  if(!rows.length)return '<div class="mt-2 rounded-lg border border-slate-800 bg-slate-950/70 p-2 text-[10px] text-slate-500">Nenhum ponto por setor registrado ainda. A primeira alocação iniciará o ponto.</div>';
+  return '<div class="mt-2 rounded-lg border border-slate-800 bg-slate-950/70 p-2.5"><div class="text-[9px] uppercase tracking-wider font-bold text-slate-400 mb-2">Ponto por setor · 00:00–07:54</div>'+
+    rows.map(function(r,i){
+      const aberto=!r.hora_fim;const ini=String(r.hora_inicio||'--:--').slice(0,5);const fim=aberto?'Em operação':String(r.hora_fim).slice(0,5);const func=escaparHtmlLogi(r.funcao||r.setor||'Setor não informado');const setor=escaparHtmlLogi(r.setor||setorDaFuncao(r.funcao||''));
+      return '<div class="flex gap-2 '+(i?'border-t border-slate-800 pt-2 mt-2':'')+'"><div class="pt-1"><span class="block w-2 h-2 rounded-full '+(aberto?'bg-emerald-400':'bg-cyan-400')+'"></span></div><div class="min-w-0 flex-1"><div class="flex items-center justify-between gap-2"><span class="text-[10px] font-bold text-slate-200">'+func+'</span>'+(aberto?'<span class="badge badge-success">EM OPERAÇÃO</span>':'')+'</div><div class="text-[9px] text-slate-400">'+setor+' · '+ini+' → '+fim+'</div><div class="text-[9px] text-cyan-300 mt-0.5">Permanência: '+duracaoMovimentoLogi(r.hora_inicio,r.hora_fim)+'</div></div></div>';
+    }).join('')+'</div>';
+}
 function cardColaborador(c,cor){
-  const mapa={
-    orange:{label:'DSR',badge:'badge-orange'},
-    yellow:{label:'FALTA',badge:'badge-warning'},
-    red:{label:'ATESTADO',badge:'badge-danger'},
-    purple:{label:'BANCO DE HORAS',badge:'badge-purple'},
-    operacao:{label:'EM OPERAÇÃO',badge:'badge-success'},
-    presente:{label:'PRESENTE',badge:'badge-success'}
-  };
+  const mapa={orange:{label:'DSR',badge:'badge-orange'},yellow:{label:'FALTA',badge:'badge-warning'},red:{label:'ATESTADO',badge:'badge-danger'},purple:{label:'BANCO DE HORAS',badge:'badge-purple'},operacao:{label:'EM OPERAÇÃO',badge:'badge-success'},presente:{label:'PRESENTE',badge:'badge-success'}};
   const info=mapa[cor]||{label:cor||'STATUS',badge:'badge-default'};
-  const pres=(c.presencaDias&&c.presencaDias[diaHoje-1])||'-';
-  let detalhe=info.label;
-  if(pres && pres!=='-') detalhe=pres+' · '+info.label;
-  const nome=String(c.nome||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const escala=String(c.escala||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const dsr=String(c.dsr||'-').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const horario=String(c.horario||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-3">'
-    +'<div class="min-w-0 flex-1">'
-    +'<div class="text-xs font-bold text-slate-100 break-words">'+nome+'</div>'
-    +'<div class="text-[10px] text-slate-400 mt-1">Escala: '+escala+' · DSR: '+dsr+'</div>'
-    +(horario?'<div class="text-[10px] text-slate-500 mt-0.5">'+horario+'</div>':'')
-    +'<div class="text-[10px] text-amber-400 font-semibold mt-1">'+detalhe+'</div>'
-    +(cor==='operacao' ? '<div class="mt-2"><button type="button" onclick="abrirModalAlterarSetor(\''+c.id+'\')" class="btn btn-secondary btn-sm w-full"><i data-lucide="arrow-right-left" class="w-3 h-3"></i> Alterar setor</button></div>' : '')
-    +'</div><div class="flex flex-col items-end gap-2 shrink-0"><span class="badge '+info.badge+'">'+info.label+'</span></div></div>';
+  const pres=(c.presencaDias&&c.presencaDias[diaHoje-1])||'-';let detalhe=info.label;if(pres&&pres!=='-')detalhe=pres+' · '+info.label;
+  const nome=escaparHtmlLogi(c.nome),escala=escaparHtmlLogi(c.escala||''),dsr=escaparHtmlLogi(c.dsr||'-');
+  const horario='Horário operacional: 00:00 - 07:54';
+  return '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-3"><div class="min-w-0 flex-1">'+
+    '<div class="text-xs font-bold text-slate-100 break-words">'+nome+'</div><div class="text-[10px] text-slate-400 mt-1">Escala: '+escala+' · DSR: '+dsr+'</div><div class="text-[10px] text-slate-500 mt-0.5">'+horario+'</div><div class="text-[10px] text-amber-400 font-semibold mt-1">'+detalhe+'</div>'+
+    (cor==='operacao'?htmlLinhaTempoSetores(c)+'<div class="mt-2"><button type="button" onclick="abrirModalAlterarSetor(\''+c.id+'\')" class="btn btn-secondary btn-sm w-full"><i data-lucide="arrow-right-left" class="w-3 h-3"></i> Alterar setor</button></div>':'')+
+    '</div><div class="flex flex-col items-end gap-2 shrink-0"><span class="badge '+info.badge+'">'+info.label+'</span></div></div>';
 }
 
 function criarBloco(titulo,subtitulo,itens,cor,icon,bt){if(itens.length===0)return null;const bloco=document.createElement('div');const cls={orange:'bg-orange-950/20 border-orange-500/40',yellow:'bg-yellow-950/20 border-yellow-500/40',red:'bg-red-950/20 border-red-500/40',purple:'bg-purple-950/20 border-purple-500/40',slate:'bg-slate-900/60 border-slate-700'}[cor]||'bg-slate-900/60 border-slate-800';bloco.className=cls+' border rounded-2xl p-4 shadow-xl';const iconMap={orange:'text-orange-400',yellow:'text-yellow-400',red:'text-red-400',purple:'text-purple-400',slate:'text-slate-400'};const badgeMap={orange:'badge-orange',yellow:'badge-warning',red:'badge-danger',purple:'badge-purple',slate:'badge-default'};bloco.innerHTML='<div class="flex items-center justify-between pb-3 mb-3 border-b flex-wrap gap-2 '+(cor==='orange'?'border-orange-500/30':cor==='yellow'?'border-yellow-500/30':cor==='red'?'border-red-500/30':cor==='purple'?'border-purple-500/30':'border-slate-700/30')+'"><h2 class="text-sm font-bold flex items-center gap-2 '+(iconMap[cor]||'text-slate-400')+'">'+icon+' '+titulo+' <span class="text-[10px] font-normal opacity-70">'+(subtitulo||'')+'</span></h2><span class="badge '+(badgeMap[cor]||'badge-default')+'">'+bt+'</span></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">'+itens.map(function(c){return cardColaborador(c,cor)}).join('')+'</div>';return bloco}
@@ -965,10 +970,30 @@ function renderizarSetores(cols,cont,forcarTodos){
     cont.appendChild(b);
   }
 }
-function abrirModalAdd(){document.getElementById('edit-id').value='';document.getElementById('modal-titulo').innerHTML='Adicionar Auxiliar';document.getElementById('input-nome-colab').value='';document.getElementById('select-escala').value='6x1';document.getElementById('select-dsr').value='Domingo';document.getElementById('input-horario').value='08:00 - 17:00';document.getElementById('campos-add-extras').classList.remove('hidden');popularSelectFuncoesPorSetor();document.getElementById('modal-add').classList.remove('hidden');lucide.createIcons()}
+function abrirModalAdd(){document.getElementById('edit-id').value='';document.getElementById('modal-titulo').innerHTML='Adicionar Auxiliar';document.getElementById('input-nome-colab').value='';document.getElementById('select-escala').value='6x1';document.getElementById('select-dsr').value='Domingo';document.getElementById('input-horario').value='00:00 - 07:54';document.getElementById('campos-add-extras').classList.remove('hidden');popularSelectFuncoesPorSetor();document.getElementById('modal-add').classList.remove('hidden');lucide.createIcons()}
 function abrirModalEditar(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('edit-id').value=c.id;document.getElementById('modal-titulo').innerHTML='Alterar Auxiliar';document.getElementById('input-nome-colab').value=c.nome;document.getElementById('campos-add-extras').classList.add('hidden');const f=c.historicoDias[diaHoje-1]||"-";popularSelectFuncoesPorSetor(f);document.getElementById('modal-add').classList.remove('hidden');lucide.createIcons()}
 function fecharModalAdd(){document.getElementById('modal-add').classList.add('hidden')}
 function abrirModalAlocar(setor){document.getElementById('alocar-setor').value=setor;document.getElementById('alocar-titulo').innerHTML='Alocar em '+setor;document.getElementById('alocar-busca').value='';alocarColabSelecionadoId=null;const sel=document.getElementById('alocar-funcao');sel.innerHTML='';(SETORES_E_FUNCOES[setor]||[]).forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o)});filtrarColabsAlocar();document.getElementById('modal-alocar').classList.remove('hidden');lucide.createIcons();setTimeout(function(){document.getElementById('alocar-busca').focus()},100)}
+
+async function registrarMovimentacaoSetorHoje(colabId,funcao){
+  if(String(colabId||'').startsWith('excel-'))throw new Error('Colaborador sem vínculo com o cadastro do banco.');
+  if(isStatusEspecial(funcao))throw new Error('A presença não pode ser alterada pela movimentação de setor.');
+  const dataStr=String(anoAtual)+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(diaHoje).padStart(2,'0');
+  const agora=opAgora();
+  const q=await supabaseClient.from('historico_escala').select('*').eq('colaborador_id',colabId).eq('data_inicio',dataStr).not('hora_inicio','is',null).is('hora_fim',null).order('hora_inicio',{ascending:false}).limit(1);
+  if(q.error)throw q.error;
+  const aberto=(q.data||[])[0];
+  if(aberto&&String(aberto.funcao||'')===String(funcao))return agora;
+  if(aberto){const fecha=await supabaseClient.from('historico_escala').update({hora_fim:agora,data_fim:dataStr}).eq('id',aberto.id);if(fecha.error)throw fecha.error;}
+  const novo=await supabaseClient.from('historico_escala').insert([{colaborador_id:colabId,data_inicio:dataStr,data_fim:dataStr,setor:setorDaFuncao(funcao),funcao:funcao,hora_inicio:agora,hora_fim:null}]);
+  if(novo.error)throw novo.error;
+  return agora;
+}
+async function recarregarMovimentosCard(c){
+  const dataStr=String(anoAtual)+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(diaHoje).padStart(2,'0');
+  const r=await supabaseClient.from('historico_escala').select('*').eq('colaborador_id',c.id).eq('data_inicio',dataStr).not('hora_inicio','is',null).order('hora_inicio',{ascending:true});
+  if(r.error)throw r.error;c.movimentosDia=r.data||[];
+}
 
 function abrirModalAlterarSetor(id){
   const c=colaboradores.find(function(x){return x.id===id});
@@ -1003,9 +1028,10 @@ async function confirmarAlteracaoSetor(){
   try{
     const st=obterStatusHoje(c);
     if(st!=='presente'){toast(c.nome+' não pode ser alterado neste status.','warn');return}
-    await atualizarDiaSupabase(id,diaHoje,nova);
+    const hora=await registrarMovimentacaoSetorHoje(id,nova);
+    await recarregarMovimentosCard(c);
     c.historicoDias[diaHoje-1]=nova;
-    toast(c.nome+' alterado para '+nova+'.','ok');
+    toast(c.nome+' alterado para '+nova+' às '+hora.slice(0,5)+'.','ok');
     fecharModalAlterarSetor();
     renderizar();
   }catch(e){console.error(e);toast('Erro: '+(e.message||e),'erro')}
@@ -1014,9 +1040,9 @@ async function confirmarAlteracaoSetor(){
 function fecharModalAlocar(){document.getElementById('modal-alocar').classList.add('hidden');alocarColabSelecionadoId=null}
 function filtrarColabsAlocar(){const t=normalizarTexto(document.getElementById('alocar-busca').value);const cont=document.getElementById('alocar-lista');const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){const st=obterStatusHoje(c);let ind=false;let mot='';if(st==='dsr'){ind=true;mot='DSR'}else if(st==='falta'){ind=true;mot='Falta'}else if(st==='atestado'){ind=true;mot='Atestado'}else if(st==='ferias'){ind=true;mot='Ferias'}else if(st==='afastamento'){ind=true;mot='Afast.'}else if(st==='banco_horas'){ind=true;mot='BH'}return{colab:c,ind:ind,mot:mot}}).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});if(lista.length===0){cont.innerHTML='<p class="text-xs text-slate-500 italic p-3">Nenhum.</p>';return}cont.innerHTML=lista.map(function(x){const sel=x.colab.id===alocarColabSelecionadoId;const f=x.colab.historicoDias[diaHoje-1]||"-";const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(\''+x.colab.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+(x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60')+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' \u00b7 DSR: '+x.colab.dsr+(ft?' \u00b7 Hoje: '+ft:'')+'</div></div>'+(x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>')+'</button>'}).join('');lucide.createIcons()}
 function selecionarColabAlocar(id){alocarColabSelecionadoId=id;filtrarColabsAlocar()}
-async function confirmarAlocacao(){const funcao=document.getElementById('alocar-funcao').value;if(!alocarColabSelecionadoId){toast("Selecione um.",'warn');return}const colab=colaboradores.find(function(c){return c.id===alocarColabSelecionadoId});if(!colab)return;const btn=document.querySelector('#modal-alocar button[onclick="confirmarAlocacao()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const st=obterStatusHoje(colab);if(st!=='presente'){toast(colab.nome+' nao pode ser alocado neste status.','warn');return}await atualizarDiaSupabase(colab.id,diaHoje,funcao);colab.historicoDias[diaHoje-1]=funcao;toast(colab.nome+' alocado em '+funcao+'.','ok');fecharModalAlocar();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
+async function confirmarAlocacao(){const funcao=document.getElementById('alocar-funcao').value;if(!alocarColabSelecionadoId){toast("Selecione um.",'warn');return}const colab=colaboradores.find(function(c){return c.id===alocarColabSelecionadoId});if(!colab)return;const btn=document.querySelector('#modal-alocar button[onclick="confirmarAlocacao()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const st=obterStatusHoje(colab);if(st!=='presente'){toast(colab.nome+' nao pode ser alocado neste status.','warn');return}const hora=await registrarMovimentacaoSetorHoje(colab.id,funcao);await recarregarMovimentosCard(colab);colab.historicoDias[diaHoje-1]=funcao;toast(colab.nome+' alocado em '+funcao+' às '+hora.slice(0,5)+'.','ok');fecharModalAlocar();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
 
-async function salvarColaborador(){const btn=document.querySelector('#modal-add button[onclick="salvarColaborador()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const idEdit=document.getElementById('edit-id').value;const nome=document.getElementById('input-nome-colab').value.trim();const func=document.getElementById('novo-funcao').value;if(!nome){toast("Insira o nome.",'warn');return}if(nome.length<3){toast("Nome curto.",'warn');return}const nn=normalizarTexto(nome);const dup=colaboradores.some(function(c){return normalizarTexto(c.nome)===nn&&c.id!==idEdit});if(dup){toast('Ja existe: '+nome,'warn');return}if(idEdit){const ru=await supabaseClient.from('colaboradores').update({nome:nome}).eq('id',idEdit);if(ru.error){toast("Erro: "+ru.error.message,'erro');return}const c=colaboradores.find(function(x){return x.id===idEdit});if(c&&!isColabEmDSRHoje(c))await atualizarDiaSupabase(idEdit,diaHoje,func);else if(c&&isColabEmDSRHoje(c)&&isStatusEspecial(func))await atualizarDiaSupabase(idEdit,diaHoje,func);toast(nome+' atualizado.','ok')}else{const esc=document.getElementById('select-escala').value;const dsr=document.getElementById('select-dsr').value;const hor=document.getElementById('input-horario').value;const ri=await supabaseClient.from('colaboradores').insert([{nome:nome,escala:esc,dsr:dsr,horario:hor}]).select();if(ri.error){toast("Erro: "+ri.error.message,'erro');return}if(ri.data&&ri.data.length>0){const dh=new Date(anoAtual,mesAtualIndex,diaHoje);const hd=isDiaDSR(dsr,dh);if(!hd||isStatusEspecial(func))await atualizarDiaSupabase(ri.data[0].id,diaHoje,func);toast(nome+' adicionado.','ok')}}fecharModalAdd();await carregarDadosSupabase();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
+async function salvarColaborador(){const btn=document.querySelector('#modal-add button[onclick="salvarColaborador()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const idEdit=document.getElementById('edit-id').value;const nome=document.getElementById('input-nome-colab').value.trim();const func=document.getElementById('novo-funcao').value;if(!nome){toast("Insira o nome.",'warn');return}if(nome.length<3){toast("Nome curto.",'warn');return}const nn=normalizarTexto(nome);const dup=colaboradores.some(function(c){return normalizarTexto(c.nome)===nn&&c.id!==idEdit});if(dup){toast('Ja existe: '+nome,'warn');return}if(idEdit){const ru=await supabaseClient.from('colaboradores').update({nome:nome}).eq('id',idEdit);if(ru.error){toast("Erro: "+ru.error.message,'erro');return}const c=colaboradores.find(function(x){return x.id===idEdit});if(c&&!isColabEmDSRHoje(c))await atualizarDiaSupabase(idEdit,diaHoje,func);else if(c&&isColabEmDSRHoje(c)&&isStatusEspecial(func))await atualizarDiaSupabase(idEdit,diaHoje,func);toast(nome+' atualizado.','ok')}else{const esc=document.getElementById('select-escala').value;const dsr=document.getElementById('select-dsr').value;const hor=document.getElementById('input-horario').value;const ri=await supabaseClient.from('colaboradores').insert([{nome:nome,escala:esc,dsr:dsr,horario:'00:00 - 07:54'}]).select();if(ri.error){toast("Erro: "+ri.error.message,'erro');return}if(ri.data&&ri.data.length>0){const dh=new Date(anoAtual,mesAtualIndex,diaHoje);const hd=isDiaDSR(dsr,dh);if(!hd||isStatusEspecial(func))await atualizarDiaSupabase(ri.data[0].id,diaHoje,func);toast(nome+' adicionado.','ok')}}fecharModalAdd();await carregarDadosSupabase();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
 
 function abrirHistorico(id){const c=colaboradores.find(function(x){return x.id===id});if(!c)return;document.getElementById('titulo-modal-hist').innerText='Editar: '+c.nome;const cont=document.getElementById('conteudo-historico-dias');cont.innerHTML='';let idxs=Array.from({length:totalDiasDoMes},function(_,i){return i});idxs.sort(function(a,b){return((a+1)===diaHoje?-1:(b+1)===diaHoje?1:0)});idxs.forEach(function(i){const f=c.historicoDias[i]||"-";const nd=i+1;const eH=nd===diaHoje;const eP=nd<diaHoje;const dD=new Date(anoAtual,mesAtualIndex,nd);const eD=isDiaDSR(c.dsr,dD);const bl=eP&&!modoAdmin;let op='';STATUS_ESPECIAIS.forEach(function(s){op+='<option value="'+s.valor+'" '+(s.valor===f?'selected':'')+'>'+s.label+'</option>'});for(const setor of Object.keys(SETORES_E_FUNCOES)){op+='<optgroup label="'+setor+'">';SETORES_E_FUNCOES[setor].forEach(function(x){op+='<option value="'+x+'" '+(x===f?'selected':'')+'>'+x+'</option>'});op+='</optgroup>'}cont.innerHTML+='<div class="flex items-center justify-between p-2.5 rounded-xl border '+(eH?'border-amber-500 bg-amber-500/10':eD?'border-orange-500/40 bg-orange-950/10':'border-slate-800 bg-slate-950')+' gap-2"><span class="text-[11px] font-bold '+(eH?'text-amber-300':eD?'text-orange-400':'text-slate-300')+' w-32">Dia '+nd+' '+(eH?'HOJE':eD?'DSR':eP?'trancado':'')+'</span><select disabled onchange="tentarAlterarDia(\''+id+'\', '+i+', this)" class="select flex-grow '+(bl?'opacity-50':'')+'">'+op+'</select></div>'});document.getElementById('modal-historico').classList.remove('hidden')}
 function fecharModalHistorico(){document.getElementById('modal-historico').classList.add('hidden')}
