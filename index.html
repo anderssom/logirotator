@@ -1498,8 +1498,8 @@ async function processarExcel(event){
           let cNome=-1,cCodigo=-1;
           for(let c=0;c<linha.length;c++){
             const txt=normalizarTexto(String(linha[c]??'')).trim().toLowerCase();
-            if(cNome<0&&/^(nome|nome completo|nome do colaborador(?:\\(a\\))?|colaborador|colaboradores|employee|funcionario)$/.test(txt))cNome=c;
-            if(cCodigo<0&&/(station\\s*id|codigo|matricula|spx|id colaborador)/i.test(txt))cCodigo=c;
+            if(cNome<0&&/^(nome|nome completo|nome do colaborador(?:\s+a)?|colaborador|colaboradores|employee|funcionario)$/.test(txt))cNome=c;
+            if(cCodigo<0&&/(station\s*id|codigo|matricula|spx|id colaborador)/i.test(txt))cCodigo=c;
           }
           if(cNome<0)continue;
           let melhorDatas=[],linhaDatas=r;
