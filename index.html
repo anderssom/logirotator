@@ -1387,171 +1387,237 @@ function renderizarResultadoImport(stats, naoEncontrados, statusDesconhecidos, d
 }
 
 async function processarExcel(event){
-  const file=event.target.files[0];
+  const file=event.target.files && event.target.files[0];
   if(!file)return;
 
   if(!confirm(
     'Importar a planilha de presença completa?\n\n'+
-    'Todos os dias reconhecidos na aba de presença serão gravados em presenca_diaria.\n'+
-    'Os registros existentes serão atualizados pelo par colaborador + data.\n'+
-    'O cadastro de colaboradores NÃO será alterado.'
+    'Os status reconhecidos serão gravados em presenca_diaria para todos os dias encontrados.\n'+
+    'Registros existentes serão atualizados por colaborador + data.\n'+
+    'O cadastro de colaboradores e o histórico de setores não serão alterados.'
   )){event.target.value='';return;}
 
-  function dataCabecalhoISO(valor){
+  const MESES={
+    'jan':1,'janeiro':1,'january':1,'fev':2,'fevereiro':2,'feb':2,'february':2,
+    'mar':3,'marco':3,'março':3,'march':3,'abr':4,'abril':4,'apr':4,'april':4,
+    'mai':5,'maio':5,'may':5,'jun':6,'junho':6,'june':6,
+    'jul':7,'julho':7,'july':7,'ago':8,'agosto':8,'aug':8,'august':8,
+    'set':9,'setembro':9,'sep':9,'september':9,'out':10,'outubro':10,'oct':10,'october':10,
+    'nov':11,'novembro':11,'november':11,'dez':12,'dezembro':12,'dec':12,'december':12
+  };
+  function contextoMes(texto){
+    const t=normalizarTexto(String(texto||'')).toLowerCase();
+    for(const [nome,mes] of Object.entries(MESES)){
+      if(new RegExp('(^|[^a-z])'+nome+'([^a-z]|$)','i').test(t)){
+        const y=t.match(/20\d{2}/);
+        return {mes:mes,ano:y?Number(y[0]):Number(anoAtual)};
+      }
+    }
+    const y=t.match(/20\d{2}/);
+    return {mes:Number(mesAtualIndex)+1,ano:y?Number(y[0]):Number(anoAtual)};
+  }
+  function montarISO(ano,mes,dia){
+    if(!ano||mes<1||mes>12||dia<1||dia>31)return null;
+    const d=new Date(Date.UTC(ano,mes-1,dia));
+    if(d.getUTCFullYear()!==ano||d.getUTCMonth()!==mes-1||d.getUTCDate()!==dia)return null;
+    return String(ano).padStart(4,'0')+'-'+String(mes).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+  }
+  function dataCabecalhoISO(valor,ctx){
     if(valor instanceof Date && !isNaN(valor)){
-      return valor.getFullYear()+'-'+String(valor.getMonth()+1).padStart(2,'0')+'-'+String(valor.getDate()).padStart(2,'0');
+      // Datas antigas (1899/1900) podem ser apenas os números 1..31 formatados
+      // como data pelo Excel. Nesse caso, interpretamos como dia do mês ativo.
+      if(valor.getFullYear()<2000 && valor.getMonth()===0 && valor.getDate()>=1 && valor.getDate()<=31){
+        return montarISO(ctx.ano,ctx.mes,valor.getDate());
+      }
+      return montarISO(valor.getFullYear(),valor.getMonth()+1,valor.getDate());
     }
     if(typeof valor==='number'&&isFinite(valor)){
+      // Em planilhas operacionais, cabeçalhos 1..31 são dias do mês, não
+      // números seriais de janeiro/1900. Seriais reais normalmente são > 31.
+      if(Number.isInteger(valor)&&valor>=1&&valor<=31)return montarISO(ctx.ano,ctx.mes,valor);
       const d=XLSX.SSF.parse_date_code(valor);
-      if(d&&d.y&&d.m&&d.d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
+      if(d&&d.y&&d.m&&d.d&&d.y>=2000)return montarISO(d.y,d.m,d.d);
+      return null;
     }
-    const s=String(valor??'').trim();
-    let m=s.match(/^(\d{4})[-\/]([01]?\d)[-\/](\d{1,2})/);
-    if(m)return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
-    m=s.match(/^(\d{1,2})[\/\-]([01]?\d)[\/\-](\d{2,4})$/);
-    if(m){let y=+m[3];if(y<100)y+=2000;return y+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0');}
+    const s=String(valor??'').trim().toLowerCase();
+    if(!s)return null;
+    let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+    if(m)return montarISO(+m[1],+m[2],+m[3]);
+    m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if(m){let y=+m[3];if(y<100)y+=2000;return montarISO(y,+m[2],+m[1]);}
+    // Formatos como 01/11, 01-nov ou 1 nov 2026.
+    m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})$/);
+    if(m)return montarISO(ctx.ano,+m[2],+m[1]);
+    m=s.match(/^(\d{1,2})\s*[-/ ]\s*([a-zçãé]{3,})\.?\s*(20\d{2})?$/i);
+    if(m){const chave=normalizarTexto(m[2]).toLowerCase().slice(0,3);const mes=MESES[chave]||MESES[normalizarTexto(m[2]).toLowerCase()];return mes?montarISO(m[3]?+m[3]:ctx.ano,mes,+m[1]):null;}
+    // Cabeçalhos que exibem somente o dia: 1, 2, ... 31.
+    if(/^\d{1,2}$/.test(s)){const dia=+s;return dia>=1&&dia<=31?montarISO(ctx.ano,ctx.mes,dia):null;}
     return null;
   }
-
-  function normalizarCodigo(v){
-    return String(v||'').toUpperCase().trim().replace(/[\s-]+/g,'');
-  }
-
+  function normalizarCodigo(v){return String(v||'').toUpperCase().trim().replace(/[\s-]+/g,'');}
   function nomeIgual(a,b){
     return normalizarTexto(limparNomeExcel(a)).replace(/\s+/g,' ').trim()===
            normalizarTexto(limparNomeExcel(b)).replace(/\s+/g,' ').trim();
   }
-
   function localizarColaborador(banco,nome,codigo){
-    // REGRA PRINCIPAL: a planilha de presença não altera o cadastro mestre.
-    // Como existem códigos divergentes entre as fontes, primeiro vinculamos
-    // pelo nome normalizado. O código é apenas fallback quando o nome não resolve.
-    const porNome=banco.filter(function(c){return nomeIgual(c.nome,nome)});
+    const alvo=nomeIgual(nome,nome)?normalizarTexto(limparNomeExcel(nome)).replace(/\s+/g,' ').trim():'';
+    const porNome=banco.filter(function(c){return normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim()===alvo;});
     if(porNome.length===1)return {colab:porNome[0],metodo:'nome'};
     if(porNome.length>1)return {colab:null,metodo:'nome_duplicado'};
-
     const cod=normalizarCodigo(codigo);
-    const candidatosCodigo=cod ? banco.filter(function(c){
-      return normalizarCodigo(c.codigo_spx||c.codigo||c.matricula||'')===cod;
-    }) : [];
-    if(candidatosCodigo.length===1)return {colab:candidatosCodigo[0],metodo:'codigo'};
-    if(candidatosCodigo.length>1)return {colab:null,metodo:'codigo_duplicado'};
+    const candidatos=cod?banco.filter(function(c){return normalizarCodigo(c.codigo_spx||c.codigo||c.matricula||c.spx||'')===cod;}):[];
+    if(candidatos.length===1)return {colab:candidatos[0],metodo:'codigo'};
+    if(candidatos.length>1)return {colab:null,metodo:'codigo_duplicado'};
     return {colab:null,metodo:'nao_encontrado'};
+  }
+  function normalizarStatus(valor){
+    let s=String(valor??'').toUpperCase().trim().replace(/\s+/g,' ');
+    if(!s||s==='-'||s==='—')return '';
+    if(MAPA_STATUS_EXCEL[s]!==undefined)return MAPA_STATUS_EXCEL[s];
+    // Aceita células com descrição junto do código, por exemplo "P - Presente".
+    const m=s.match(/^(AF|AL|AM|BH|DF|DP|DSR|DV|F|FE|FJ|FO|NC|NS|P|PR|S1|S2|TR|TD|SU|FC|IN)(?:\s|[-–(]|$)/);
+    if(m&&MAPA_STATUS_EXCEL[m[1]]!==undefined)return MAPA_STATUS_EXCEL[m[1]];
+    return undefined;
   }
 
   const reader=new FileReader();
   reader.onload=async function(e){
     try{
+      toast('Analisando estrutura da planilha...','ok');
       const workbook=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
       let escolhido=null;
-
-      // Procura a aba Controle-Outubro ou a primeira aba que possua Nome e datas.
+      const ctxArquivo=contextoMes((file.name||'')+' '+String(anoAtual));
+      // Avalia todas as abas e as primeiras linhas. Algumas planilhas colocam
+      // o nome numa linha e os dias na linha imediatamente abaixo.
       for(const sheetName of workbook.SheetNames){
         const ws=workbook.Sheets[sheetName];
         const matriz=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+        const ctx=contextoMes(sheetName+' '+(file.name||''));
         for(let r=0;r<Math.min(matriz.length,100);r++){
           const linha=matriz[r]||[];
           let cNome=-1,cCodigo=-1;
-          let datas=[];
           for(let c=0;c<linha.length;c++){
-            const txt=String(linha[c]??'').trim();
-            if(cNome<0&&/(^|\b)(nome|colaborador|employee)(\b|$)/i.test(txt))cNome=c;
-            if(cCodigo<0&&/(c[oó]digo|matr[ií]cula|spx)/i.test(txt))cCodigo=c;
-            const iso=dataCabecalhoISO(linha[c]);
-            if(iso)datas.push({col:c,iso:iso});
+            const txt=normalizarTexto(String(linha[c]??'')).trim().toLowerCase();
+            if(cNome<0&&/^(nome|nome completo|colaborador|colaboradores|employee|funcionario|funcionário)$/.test(txt))cNome=c;
+            if(cCodigo<0&&/(codigo|matricula|spx|id colaborador)/i.test(txt))cCodigo=c;
           }
-          if(cNome>=0&&datas.length){escolhido={sheetName,matriz,idxCabecalho:r,colNome:cNome,colCodigo:cCodigo,datas:datas};break;}
+          if(cNome<0)continue;
+          let melhorDatas=[],linhaDatas=r;
+          for(let rr=r;rr<=Math.min(r+2,matriz.length-1);rr++){
+            const l=matriz[rr]||[];const ds=[];
+            for(let c=0;c<l.length;c++){
+              const iso=dataCabecalhoISO(l[c],ctx);
+              if(iso)ds.push({col:c,iso:iso});
+            }
+            if(ds.length>melhorDatas.length){melhorDatas=ds;linhaDatas=rr;}
+          }
+          if(melhorDatas.length>0){
+            const score=melhorDatas.length+(cCodigo>=0?0.25:0);
+            if(!escolhido||score>escolhido.score){escolhido={sheetName,matriz,idxCabecalho:Math.max(r,linhaDatas),linhaNome:r,colNome:cNome,colCodigo:cCodigo,datas:melhorDatas,ctx:ctx,score:score};}
+          }
         }
-        if(escolhido)break;
       }
-
-      if(!escolhido)throw new Error('Não encontrei uma aba com Nome e colunas de datas.');
-
-      const {sheetName,matriz,idxCabecalho,colNome,colCodigo,datas}=escolhido;
-      toast('Lendo '+sheetName+' — '+datas.length+' datas encontradas...','ok');
+      if(!escolhido)throw new Error('Não encontrei cabeçalho de colaborador + datas. Confira se a planilha possui uma coluna Nome e uma linha com os dias do mês.');
+      const {sheetName,matriz,idxCabecalho,linhaNome,colNome,colCodigo,datas,ctx}=escolhido;
+      toast('Aba '+sheetName+': '+datas.length+' datas reconhecidas. Vinculando colaboradores...','ok');
 
       const rc=await supabaseClient.from('colaboradores').select('*');
       if(rc.error)throw new Error('Erro ao consultar colaboradores: '+rc.error.message);
       const banco=rc.data||[];
-      if(!banco.length)throw new Error('A tabela colaboradores está vazia. Importe primeiro a primeira planilha.');
+      if(!banco.length)throw new Error('A tabela colaboradores está vazia.');
 
-      const registrosMap=new Map();
-      const naoEncontrados=[];
-      const ambiguos=[];
-      const statusDesconhecidos={};
-      let linhasLidas=0,vazios=0,desligados=0;
-
-      for(let i=idxCabecalho+1;i<matriz.length;i++){
+      const registrosMap=new Map(),naoEncontrados=[],ambiguos=[],statusDesconhecidos={};
+      let linhasLidas=0,vazios=0,semStatus=0;
+      const inicioDados=Math.max(linhaNome,idxCabecalho)+1;
+      for(let i=inicioDados;i<matriz.length;i++){
         const linha=matriz[i]||[];
         const nomeBruto=linha[colNome];
-        if(!String(nomeBruto||'').trim())continue;
-        linhasLidas++;
-
+        if(!String(nomeBruto??'').trim())continue;
         const nomeLimpo=limparNomeExcel(nomeBruto);
-        const codigo=colCodigo>=0 ? String(linha[colCodigo]||'').trim().toUpperCase() : extrairCodigoSPX(nomeBruto);
+        // Ignora linhas de totais, legendas e rodapés.
+        if(/^(total|subtotal|legenda|observa[cç][aã]o|observa[cç][oõ]es)$/i.test(nomeLimpo))continue;
+        linhasLidas++;
+        const codigo=colCodigo>=0?String(linha[colCodigo]||'').trim().toUpperCase():extrairCodigoSPX(nomeBruto);
         const encontrado=localizarColaborador(banco,nomeLimpo,codigo);
-
         if(!encontrado.colab){
           const desc=nomeLimpo+(codigo?' ('+codigo+')':'');
-          if(encontrado.metodo==='codigo_duplicado'||encontrado.metodo==='nome_duplicado')ambiguos.push(desc);
-          else naoEncontrados.push(desc);
+          if(encontrado.metodo==='codigo_duplicado'||encontrado.metodo==='nome_duplicado')ambiguos.push(desc);else naoEncontrados.push(desc);
           continue;
         }
-
         for(const d of datas){
-          const bruto=String(linha[d.col]??'').trim().toUpperCase();
-          if(!bruto||bruto==='-')continue;
-          if(['DF','DP','DV','NC','NS'].includes(bruto)){desligados++;continue;}
-          const status=MAPA_STATUS_EXCEL[bruto];
-          if(status===undefined){statusDesconhecidos[bruto]=(statusDesconhecidos[bruto]||0)+1;continue;}
-          const chave=encontrado.colab.id+'|'+d.iso;
-          registrosMap.set(chave,{colaborador_id:encontrado.colab.id,data:d.iso,status:status,updated_at:new Date().toISOString()});
+          const bruto=linha[d.col];
+          if(bruto===null||bruto===undefined||String(bruto).trim()===''){vazios++;continue;}
+          const status=normalizarStatus(bruto);
+          if(status===''){semStatus++;continue;}
+          if(status===undefined){const chave=String(bruto).trim().toUpperCase();statusDesconhecidos[chave]=(statusDesconhecidos[chave]||0)+1;continue;}
+          registrosMap.set(encontrado.colab.id+'|'+d.iso,{colaborador_id:encontrado.colab.id,data:d.iso,status:status});
+        }
+      }
+      const registros=Array.from(registrosMap.values());
+      if(!registros.length){
+        const amostra=Object.keys(statusDesconhecidos).slice(0,8).join(', ')||'nenhum status preenchido';
+        throw new Error('Nenhum registro válido foi montado. Aba: '+sheetName+'; datas: '+datas.length+'; linhas de colaboradores: '+linhasLidas+'; valores não reconhecidos: '+amostra+'.');
+      }
+
+      // Primeiro tenta UPSERT em lote. Se a tabela não possuir UNIQUE em
+      // (colaborador_id,data), usa atualização/inserção individual como fallback.
+      let gravados=0,modoGravacao='upsert';
+      const lote=400;
+      let erroUpsert=null;
+      for(let i=0;i<registros.length;i+=lote){
+        const r=await supabaseClient.from('presenca_diaria').upsert(registros.slice(i,i+lote),{onConflict:'colaborador_id,data'});
+        if(r.error){erroUpsert=r.error;break;}
+        gravados+=Math.min(lote,registros.length-i);
+      }
+      if(erroUpsert){
+        const msg=String(erroUpsert.message||'');
+        if(/no unique|unique constraint|on conflict|exclusion constraint|there is no unique/i.test(msg)){
+          modoGravacao='fallback update/insert';gravados=0;
+          for(let i=0;i<registros.length;i+=20){
+            const grupo=registros.slice(i,i+20);
+            const resultados=await Promise.all(grupo.map(async function(reg){
+              const q=await supabaseClient.from('presenca_diaria').select('id').eq('colaborador_id',reg.colaborador_id).eq('data',reg.data).limit(1);
+              if(q.error)throw q.error;
+              if(q.data&&q.data.length){const u=await supabaseClient.from('presenca_diaria').update({status:reg.status}).eq('id',q.data[0].id);if(u.error)throw u.error;}
+              else{const ins=await supabaseClient.from('presenca_diaria').insert([reg]);if(ins.error)throw ins.error;}
+              return 1;
+            }));
+            gravados+=resultados.reduce((a,b)=>a+b,0);
+          }
+        }else{
+          throw new Error('Falha ao gravar presenca_diaria: '+msg);
         }
       }
 
-      const registros=Array.from(registrosMap.values());
-      if(!registros.length)throw new Error('Nenhum status válido foi encontrado para gravação. Verifique a linha de cabeçalho e as colunas de datas.');
-
-      // Supabase/PostgREST trabalha melhor em lotes menores.
-      let gravados=0;
-      const lote=500;
-      for(let i=0;i<registros.length;i+=lote){
-        const parte=registros.slice(i,i+lote);
-        const r=await supabaseClient.from('presenca_diaria').upsert(parte,{onConflict:'colaborador_id,data'});
-        if(r.error)throw new Error('Erro no lote '+(Math.floor(i/lote)+1)+': '+r.error.message);
-        gravados+=parte.length;
+      // Confirma a persistência consultando as datas efetivamente importadas.
+      const datasImportadas=Array.from(new Set(registros.map(r=>r.data))).sort();
+      let confirmados=0;
+      for(let i=0;i<datasImportadas.length;i+=20){
+        const ds=datasImportadas.slice(i,i+20);
+        const q=await supabaseClient.from('presenca_diaria').select('colaborador_id,data,status').in('data',ds);
+        if(q.error)throw new Error('A gravação foi enviada, mas a conferência falhou: '+q.error.message);
+        confirmados+=(q.data||[]).filter(x=>registrosMap.has(String(x.colaborador_id)+'|'+String(x.data).slice(0,10))).length;
       }
+      if(confirmados===0)throw new Error('O Supabase não retornou nenhum registro na conferência após a gravação. Verifique as permissões de INSERT/UPDATE e a política RLS de presenca_diaria.');
 
       await carregarDadosSupabase();
       atualizarKPIs();
       renderizar();
-
-      const datasImportadas=Array.from(new Set(registros.map(function(r){return r.data}))).sort();
-      const contagem={};registros.forEach(function(r){contagem[r.status]=(contagem[r.status]||0)+1});
-      const resumo=Object.entries(contagem).sort().map(function(x){return x[0]+': '+x[1]}).join(' | ');
-
-      const stats={
-        inseridos:gravados,
-        atualizados:0,
-        ignorados:vazios+desligados,
-        erros:0,
-        semData:0,
-        linhas:linhasLidas,
-        datas:datasImportadas.length
-      };
-
+      const contagem={};registros.forEach(r=>contagem[r.status]=(contagem[r.status]||0)+1);
+      const resumo=Object.entries(contagem).sort().map(x=>x[0]+': '+x[1]).join(' | ');
+      const stats={inseridos:confirmados,atualizados:0,ignorados:vazios+semStatus,erros:0,semData:0,linhas:linhasLidas,datas:datasImportadas.length};
       renderizarResultadoImport(stats,naoEncontrados.concat(ambiguos),statusDesconhecidos,datasImportadas.length+' dia(s)');
-      toast('✅ Presença gravada: '+gravados+' registros em '+datasImportadas.length+' dia(s). '+resumo,'ok');
-      console.log('IMPORTAÇÃO CONFIRMADA',{aba:sheetName,total:gravados,datas:datasImportadas,naoEncontrados,ambiguos,status:contagem});
+      toast('Presença confirmada no banco: '+confirmados+' registros em '+datasImportadas.length+' dia(s). '+resumo,'ok');
+      console.log('IMPORTAÇÃO CONFIRMADA',{aba:sheetName,modo:modoGravacao,total:confirmados,linhas:linhasLidas,datas:datasImportadas,naoEncontrados,ambiguos,status:contagem});
     }catch(err){
       console.error('ERRO IMPORTAÇÃO:',err);
-      toast('❌ '+(err.message||err),'erro');
+      toast('Falha na importação: '+(err.message||err),'erro');
       alert('Falha ao alimentar presenca_diaria:\n\n'+(err.message||err));
     }finally{event.target.value='';}
   };
+  reader.onerror=function(){toast('Não foi possível ler o arquivo selecionado.','erro');event.target.value='';};
   reader.readAsArrayBuffer(file);
 }
-
 
 // Inicialização obrigatória: carrega colaboradores, presença e histórico do Supabase.
 // A versão anterior definia init(), mas não a executava; por isso o HTML permanecia com os KPIs em 0.
