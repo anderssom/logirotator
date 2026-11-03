@@ -102,7 +102,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
 <button onclick="setFiltro('todos')" class="text-left card hover:border-blue-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total no Banco</span><h2 id="kpi-total" class="text-2xl font-extrabold text-slate-100 mt-0.5">0</h2></div><div class="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400"><i data-lucide="users" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('presentes')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Presentes</span><h2 id="kpi-presentes" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-presentes-detalhe" class="text-[9px] text-slate-500">&mdash;</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="check-circle-2" class="w-5 h-5"></i></div></button>
-<button onclick="setFiltro('operacao')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em Opera&#231;&#227;o</span><h2 id="kpi-operacao" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-operacao-detalhe" class="text-[9px] text-slate-500">0 alocados nos setores</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="activity" class="w-5 h-5"></i></div></button>
+<button onclick="setFiltro('operacao')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em Opera&#231;&#227;o</span><h2 id="kpi-operacao" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-operacao-detalhe" class="text-[9px] text-slate-500">Total de presentes hoje</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="activity" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('diaristas')" class="text-left card hover:border-cyan-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-cyan-400">Diaristas</span><h2 id="kpi-diaristas" class="text-2xl font-extrabold text-cyan-400 mt-0.5">0</h2></div><div class="bg-cyan-500/10 p-2.5 rounded-lg border border-cyan-500/20 text-cyan-400"><i data-lucide="hard-hat" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('dsr')" class="text-left card hover:border-orange-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Em DSR</span><h2 id="kpi-dsr" class="text-2xl font-extrabold text-orange-400 mt-0.5">0</h2></div><div class="bg-orange-500/10 p-2.5 rounded-lg border border-orange-500/20 text-orange-400"><i data-lucide="palmtree" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('banco_horas')" class="text-left card hover:border-violet-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Banco de Horas</span><h2 id="kpi-banco-horas" class="text-2xl font-extrabold text-violet-400 mt-0.5">0</h2><span class="text-[9px] text-slate-500">Status BH hoje</span></div><div class="bg-violet-500/10 p-2.5 rounded-lg border border-violet-500/20 text-violet-400"><i data-lucide="clock-3" class="w-5 h-5"></i></div></button>
@@ -569,15 +569,18 @@ function atualizarKPIs(){
   const hoje=quadroHoje.map(function(c){return {c:c,status:obterStatusHoje(c)}});
   const total=quadroHoje.length;
   const presentes=hoje.filter(function(x){return x.status==='presente'}).length;
-  const operacao=hoje.filter(function(x){return x.status==='presente' && !isStatusEspecial(x.c.historicoDias[diaHoje-1])}).length;
   const diaristas=hoje.filter(function(x){return x.status==='diarista'}).length;
+  const diaristasDia=getDiaristasDia();
+  const totalPresentes=presentes+diaristasDia.presentes;
+  // O indicador Em Operação acompanha o total de pessoas presentes no dia.
+  const operacao=totalPresentes;
   const dsr=hoje.filter(function(x){return x.status==='dsr'}).length;
   const bh=hoje.filter(function(x){return x.status==='banco_horas'}).length;
   const faltas=hoje.filter(function(x){return x.status==='falta'}).length;
   const atestados=hoje.filter(function(x){return x.status==='atestado'}).length;
 
   const vals={
-    'kpi-total':totalCadastroBanco,
+    'kpi-total':total,
     'kpi-presentes':presentes,
     'kpi-operacao':operacao,
     'kpi-diaristas':diaristas,
@@ -586,7 +589,7 @@ function atualizarKPIs(){
     'kpi-faltas':faltas,
     'kpi-atestados':atestados,
     'badge-todos':total,
-    'badge-presentes':presentes,
+    'badge-presentes':totalPresentes,
     'badge-operacao':operacao,
     'badge-diaristas':diaristas,
     'badge-dsr':dsr,
@@ -603,8 +606,8 @@ function atualizarKPIs(){
   Object.keys(vals).forEach(function(id){
     const el=document.getElementById(id); if(el)el.textContent=vals[id];
   });
-  const pd=document.getElementById('kpi-presentes-detalhe'); if(pd)pd.textContent=presentes+' de '+total;
-  const od=document.getElementById('kpi-operacao-detalhe'); if(od)od.textContent=operacao+' alocados nos setores';
+  const pd=document.getElementById('kpi-presentes-detalhe'); if(pd)pd.textContent=totalPresentes+' de '+total;
+  const od=document.getElementById('kpi-operacao-detalhe'); if(od)od.textContent='Total de presentes hoje';
 }
 
 function popularSelectFuncoesPorSetor(def){const sel=document.getElementById('novo-funcao');sel.innerHTML="";let og=document.createElement('optgroup');og.label="Status Especiais";STATUS_ESPECIAIS.forEach(function(s){const o=document.createElement('option');o.value=s.valor;o.textContent=s.label;if(s.valor===def)o.selected=true;og.appendChild(o)});sel.appendChild(og);for(const setor of Object.keys(SETORES_E_FUNCOES)){const ogr=document.createElement('optgroup');ogr.label=setor;SETORES_E_FUNCOES[setor].forEach(function(f){const o=document.createElement('option');o.value=f;o.textContent=f;if(f===def)o.selected=true;ogr.appendChild(o)});sel.appendChild(ogr)}}
@@ -860,9 +863,9 @@ const pF=fl(g.presente);const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(
 const dd=getDiaristasDia();
 const td=dd.presentes;
 const totalPresentes=g.presente.length+dd.presentes;
-document.getElementById('kpi-total').innerText=totalCadastroBanco;
+document.getElementById('kpi-total').innerText=quadroHoje.length;
 document.getElementById('kpi-presentes').innerText=totalPresentes;
-document.getElementById('kpi-operacao').innerText=g.operacao.length;
+document.getElementById('kpi-operacao').innerText=totalPresentes;
 document.getElementById('kpi-dsr').innerText=g.dsr.length;
 document.getElementById('kpi-banco-horas').innerText=g.banco_horas.length;
 document.getElementById('kpi-faltas').innerText=g.falta.length+dd.faltantes;
@@ -871,8 +874,8 @@ document.getElementById('kpi-diaristas').innerText=td;
 const detP=document.getElementById('kpi-presentes-detalhe');
 if(detP)detP.innerText=g.presente.length+' PHD + '+dd.presentes+' diar.';
 const det=document.getElementById('kpi-operacao-detalhe');
-if(det)det.innerText=g.operacao.length+' alocado(s) nos setores';
-const bg={'badge-todos':quadroHoje.length,'badge-presentes':totalPresentes,'badge-operacao':g.operacao.length,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
+if(det)det.innerText='Total de presentes hoje';
+const bg={'badge-todos':quadroHoje.length,'badge-presentes':totalPresentes,'badge-operacao':totalPresentes,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
 Object.keys(bg).forEach(function(id){const el=document.getElementById(id);if(el)el.innerText=bg[id];const elM=document.getElementById(id+'-m');if(elM)elM.innerText=bg[id]});
 
 // MODO BUSCA
@@ -1515,13 +1518,13 @@ async function processarExcel(event){
           for(let c=0;c<linha.length;c++){
             const txt=normalizarTexto(String(linha[c]??'')).trim().toLowerCase();
             if(cNome<0&&/^(nome|nome completo|nome do colaborador(?:\s+a)?|colaborador|colaboradores|employee|funcionario)$/.test(txt))cNome=c;
-            // Prioridade explícita: Código > matrícula/ID individual > SPX.
-            // Station ID fica apenas como último recurso, nunca vence Código.
+            // Usa somente identificadores individuais.
+            // Station ID é compartilhado (10768 nesta planilha) e NUNCA
+            // pode ser usado como matrícula/código do colaborador.
             let score=-1;
             if(/^(codigo|codigo do colaborador|codigo colaborador)$/.test(txt))score=100;
             else if(/^(matricula|matricula do colaborador|id colaborador|employee id)$/.test(txt))score=80;
             else if(/^(spx|codigo spx|spx code)$/.test(txt))score=70;
-            else if(/^station id$/.test(txt))score=10;
             if(score>codigoScore){codigoScore=score;cCodigo=c;}
           }
           if(cNome<0)continue;
@@ -1542,7 +1545,8 @@ async function processarExcel(event){
       }
       if(!escolhido)throw new Error('Não encontrei cabeçalho de colaborador + datas. Confira se a planilha possui uma coluna Nome e uma linha com os dias do mês.');
       const {sheetName,matriz,idxCabecalho,linhaNome,colNome,colCodigo,datas,ctx}=escolhido;
-      toast('Aba '+sheetName+': '+datas.length+' datas reconhecidas. Identificação pelo campo Código (não pelo Station ID).','ok');
+      if(datas.length===0)throw new Error('Nenhuma data foi reconhecida na planilha.');
+      toast('Aba '+sheetName+': '+datas.length+' datas reconhecidas. O Station ID será ignorado; será usado apenas o código individual.','ok');
 
       const rc=await supabaseClient.from('colaboradores').select('*');
       if(rc.error)throw new Error('Erro ao consultar colaboradores: '+rc.error.message);
@@ -1550,6 +1554,7 @@ async function processarExcel(event){
       if(!banco.length)throw new Error('A tabela colaboradores está vazia.');
 
       const registrosMap=new Map(),naoEncontrados=[],ambiguos=[],statusDesconhecidos={};
+      const codigosLidos=new Set(),colaboradoresIdentificados=new Set();
       let linhasLidas=0,vazios=0,semStatus=0;
       const inicioDados=Math.max(linhaNome,idxCabecalho)+1;
       for(let i=inicioDados;i<matriz.length;i++){
@@ -1560,13 +1565,23 @@ async function processarExcel(event){
         // Ignora linhas de totais, legendas e rodapés.
         if(/^(total|subtotal|legenda|observa[cç][aã]o|observa[cç][oõ]es)$/i.test(nomeLimpo))continue;
         linhasLidas++;
-        const codigo=colCodigo>=0?String(linha[colCodigo]||'').trim().toUpperCase():extrairCodigoSPX(nomeBruto);
+        // A coluna Código contém a matrícula individual (ex.: SPXBR44266).
+        // Se ela não existir, extrai o código do final do nome. Nunca lê Station ID.
+        const codigo=normalizarCodigo(colCodigo>=0?linha[colCodigo]:extrairCodigoSPX(nomeBruto));
+        if(codigo){
+          if(codigosLidos.has(codigo)){
+            ambiguos.push(nomeLimpo+' ('+codigo+') — código repetido na planilha');
+            continue;
+          }
+          codigosLidos.add(codigo);
+        }
         const encontrado=localizarColaborador(banco,nomeLimpo,codigo);
         if(!encontrado.colab){
           const desc=nomeLimpo+(codigo?' ('+codigo+')':'');
           if(encontrado.metodo==='codigo_duplicado'||encontrado.metodo==='nome_duplicado')ambiguos.push(desc);else naoEncontrados.push(desc);
           continue;
         }
+        colaboradoresIdentificados.add(encontrado.colab.id);
         for(const d of datas){
           const bruto=linha[d.col];
           if(bruto===null||bruto===undefined||String(bruto).trim()===''){vazios++;continue;}
@@ -1576,11 +1591,34 @@ async function processarExcel(event){
           registrosMap.set(encontrado.colab.id+'|'+d.iso,{colaborador_id:encontrado.colab.id,data:d.iso,status:status});
         }
       }
+      // Pré-validação: não grava parcialmente se qualquer colaborador/código
+      // estiver ausente, duplicado ou se houver status não reconhecido.
+      if(naoEncontrados.length||ambiguos.length){
+        const detalhes=naoEncontrados.concat(ambiguos).slice(0,12).join('\n');
+        throw new Error('Importação cancelada antes de gravar: '+naoEncontrados.length+' não encontrados e '+ambiguos.length+' ambiguidades.\n\n'+detalhes);
+      }
+      if(Object.keys(statusDesconhecidos).length){
+        const detalhes=Object.entries(statusDesconhecidos).slice(0,10).map(([k,v])=>k+' ('+v+')').join(', ');
+        throw new Error('Importação cancelada: existem status não reconhecidos: '+detalhes);
+      }
       const registros=Array.from(registrosMap.values());
       if(!registros.length){
         const amostra=Object.keys(statusDesconhecidos).slice(0,8).join(', ')||'nenhum status preenchido';
         throw new Error('Nenhum registro válido foi montado. Aba: '+sheetName+'; datas: '+datas.length+'; linhas de colaboradores: '+linhasLidas+'; valores não reconhecidos: '+amostra+'.');
       }
+
+      console.log('PRÉ-VALIDAÇÃO DA IMPORTAÇÃO',{
+        aba:sheetName,
+        colunaNome:colNome+1,
+        colunaCodigoIndividual:colCodigo>=0?colCodigo+1:'código extraído do nome',
+        stationIdIgnorado:true,
+        linhasLidas:linhasLidas,
+        colaboradoresIdentificados:colaboradoresIdentificados.size,
+        codigosIndividuais:codigosLidos.size,
+        datasReconhecidas:datas.length,
+        registrosComStatus:registros.length,
+        status:Object.fromEntries(registros.reduce((m,r)=>m.set(r.status,(m.get(r.status)||0)+1),new Map()))
+      });
 
       // Primeiro tenta UPSERT em lote. Se a tabela não possuir UNIQUE em
       // (colaborador_id,data), usa atualização/inserção individual como fallback.
@@ -1631,7 +1669,7 @@ async function processarExcel(event){
       const stats={inseridos:confirmados,atualizados:0,ignorados:vazios+semStatus,erros:0,semData:0,linhas:linhasLidas,datas:datasImportadas.length};
       renderizarResultadoImport(stats,naoEncontrados.concat(ambiguos),statusDesconhecidos,datasImportadas.length+' dia(s)');
       toast('Presença confirmada no banco: '+confirmados+' registros em '+datasImportadas.length+' dia(s). '+resumo,'ok');
-      console.log('IMPORTAÇÃO CONFIRMADA',{aba:sheetName,modo:modoGravacao,total:confirmados,linhas:linhasLidas,datas:datasImportadas,naoEncontrados,ambiguos,status:contagem});
+      console.log('IMPORTAÇÃO CONFIRMADA',{aba:sheetName,modo:modoGravacao,total:confirmados,linhas:linhasLidas,colaboradores:colaboradoresIdentificados.size,codigos:codigosLidos.size,datas:datasImportadas,naoEncontrados,ambiguos,status:contagem});
     }catch(err){
       console.error('ERRO IMPORTAÇÃO:',err);
       toast('Falha na importação: '+(err.message||err),'erro');
