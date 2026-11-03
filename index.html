@@ -66,7 +66,7 @@ body.role-admin #logi-admin-account{display:flex!important}
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
 
-<div id="logi-auth" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-4">
+<div id="logi-auth" class="hidden fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-4">
  <form id="logi-login-form" class="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl" onsubmit="entrarLogi(event)">
   <div class="flex items-center gap-3 mb-5"><div class="bg-amber-500/10 p-3 rounded-xl text-amber-400"><i data-lucide="layers" class="w-6 h-6"></i></div><div><h1 class="text-xl font-extrabold text-amber-400">LogiRotator</h1><p class="text-xs text-slate-400">Acesso seguro • HUB-LCE-04</p></div></div>
   <label class="label block mb-1" for="logi-email">E-mail</label><input id="logi-email" class="input mb-3" type="email" autocomplete="username" required placeholder="seu@email.com">
@@ -105,6 +105,7 @@ body.role-admin #logi-admin-account{display:flex!important}
  </div>
 </div>
 
+<div id="logi-test-mode-banner" class="bg-amber-500 text-slate-950 text-center text-xs font-bold px-3 py-2">MODO DE TESTE — autenticação desativada temporariamente. Não publique esta versão em produção.</div>
 <div class="flex min-h-screen">
 
 <aside id="sidebar-desktop" class="hidden lg:flex lg:flex-col w-64 bg-slate-900/70 border-r border-slate-800 backdrop-blur-sm sticky top-0 h-screen">
@@ -487,16 +488,35 @@ function toggleSidebarMobile(){const s=document.getElementById('sidebar-mobile')
 function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','presentes':'Presentes','operacao':'Em Opera\u00e7\u00e3o','diaristas':'Diaristas','dsr':'Em DSR Hoje','banco_horas':'Banco de Horas Hoje','faltas':'Faltas Hoje','atestados':'Atestados Hoje'};const icons={'todos':'layout-grid','presentes':'check-circle-2','operacao':'users','diaristas':'hard-hat','dsr':'palmtree','banco_horas':'clock-3','faltas':'alert-triangle','atestados':'stethoscope'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+icons[f]+'" class="w-3.5 h-3.5"></i> '+labels[f];renderizar();lucide.createIcons()}
 
 async function init(){
-  supabaseClient.auth.onAuthStateChange(function(event,session){
-    if(session)sessaoLogi=session;
-    if(event==='SIGNED_OUT'||!session){sessaoLogi=null;perfilLogi=null;papelLogi=null;mostrarLogin();}
-  });
+  // MODO DE TESTE: ignora autenticação e assume perfil administrativo apenas na interface.
+  // As permissões RLS do Supabase continuam ativas; este HTML não as desativa.
   try{
-    const {data,error}=await supabaseClient.auth.getSession();
-    if(error)throw error;
-    if(!data.session){mostrarLogin();return;}
-    await validarSessaoLogi(data.session);
-  }catch(e){console.error(e);mostrarLogin(e.message||'Não foi possível validar o acesso.');}
+    sessaoLogi=null;
+    perfilLogi={nome:'Administrador (modo de teste)',email:'',papel:'admin',ativo:true};
+    papelLogi='admin';
+    modoAdmin=true;
+    document.getElementById('logi-auth')?.classList.add('hidden');
+    document.body.classList.remove('role-user');
+    document.body.classList.add('role-admin');
+    const app=document.querySelector('body > .flex.min-h-screen');
+    if(app)app.style.display='';
+    const txt='HUB-LCE-04 • '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';
+    const a=document.getElementById('label-mes-ano');if(a)a.innerText=txt;
+    const b=document.getElementById('label-mes-ano-sidebar');if(b)b.innerText=txt;
+    popularSelectFuncoesPorSetor();
+    await carregarDadosSupabase();
+    await carregarDiaristasDiaBanco();
+    atualizarBotaoModoAdmin();
+    setFiltro('todos');
+    // Oculta gerenciamento de contas e botão de sair, pois não há sessão autenticada.
+    const conta=document.getElementById('logi-admin-account');
+    if(conta)conta.classList.add('hidden');
+    lucide.createIcons();
+  }catch(e){
+    console.error('Falha ao iniciar modo de teste:',e);
+    toast('Não foi possível carregar os dados. Verifique a conexão e as políticas RLS do Supabase.','erro');
+    const app=document.querySelector('body > .flex.min-h-screen');if(app)app.style.display='';
+  }
 }
 
 async function validarSessaoLogi(session){
