@@ -56,9 +56,55 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 .sidebar-item{display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;padding:.625rem .75rem;border-radius:.5rem;font-size:.8125rem;color:#cbd5e1;transition:background .15s ease;text-align:left;border:1px solid transparent}
 .sidebar-item:hover{background:hsl(var(--muted))}
 .sidebar-item.active{background:hsl(var(--primary)/.1);color:hsl(var(--primary));border-color:hsl(var(--primary)/.3)}
+
+#logi-auth input,#logi-users-modal input,#logi-users-modal select{width:100%}
+body.role-user > .flex.min-h-screen,body.role-user > #sidebar-mobile-overlay,body.role-user > #sidebar-mobile{display:none!important}
+body.role-user #logi-user-view{display:block!important}
+body.role-admin #logi-admin-account{display:flex!important}
+
 </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
+
+<div id="logi-auth" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-4">
+ <form id="logi-login-form" class="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl" onsubmit="entrarLogi(event)">
+  <div class="flex items-center gap-3 mb-5"><div class="bg-amber-500/10 p-3 rounded-xl text-amber-400"><i data-lucide="layers" class="w-6 h-6"></i></div><div><h1 class="text-xl font-extrabold text-amber-400">LogiRotator</h1><p class="text-xs text-slate-400">Acesso seguro • HUB-LCE-04</p></div></div>
+  <label class="label block mb-1" for="logi-email">E-mail</label><input id="logi-email" class="input mb-3" type="email" autocomplete="username" required placeholder="seu@email.com">
+  <label class="label block mb-1" for="logi-password">Senha</label><input id="logi-password" class="input mb-4" type="password" autocomplete="current-password" required placeholder="Sua senha">
+  <p id="logi-login-error" class="text-sm text-red-400 mb-3" role="alert"></p>
+  <button id="logi-login-submit" class="btn btn-primary w-full" type="submit">Entrar</button>
+  <p class="text-[11px] text-slate-500 mt-4 text-center">Contas criadas pelo administrador do sistema.</p>
+ </form>
+</div>
+<div id="logi-user-view" class="hidden min-h-screen max-w-5xl mx-auto p-4 sm:p-6">
+ <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4 mb-5">
+  <div><h1 class="text-xl font-extrabold text-amber-400">LogiRotator</h1><p id="user-view-subtitle" class="text-xs text-slate-400">Painel operacional • HUB-LCE-04</p></div>
+  <div class="flex items-center gap-2"><span id="user-view-name" class="text-xs text-slate-300"></span><button class="btn btn-secondary btn-sm" onclick="sairLogi()">Sair</button></div>
+ </header>
+ <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5" id="user-kpis"></div>
+ <div class="flex flex-wrap items-center justify-between gap-2 mb-3"><h2 id="user-list-title" class="font-bold text-slate-100">Em Operação</h2><span id="user-list-count" class="badge badge-info">0</span></div>
+ <div id="user-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+ <p class="text-[10px] text-slate-500 mt-6">Acesso de consulta. Alterações e cadastros são realizados pelo administrador.</p>
+</div>
+<div id="logi-admin-account" class="hidden max-w-md mx-auto px-3 pb-3 flex flex-wrap items-center justify-end gap-2">
+ <span id="logi-admin-name" class="text-xs text-slate-400"></span>
+ <button class="btn btn-secondary btn-sm" onclick="abrirGestaoUsuarios()"><i data-lucide="users" class="w-4 h-4"></i> Usuários</button>
+ <button class="btn btn-secondary btn-sm" onclick="sairLogi()">Sair</button>
+</div>
+<div id="logi-users-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/80 flex items-center justify-center p-4">
+ <div class="w-full max-w-xl max-h-[90vh] overflow-auto bg-slate-900 border border-slate-700 rounded-2xl p-5">
+  <div class="flex items-center justify-between mb-4"><h2 class="font-bold text-amber-400">Gerenciar usuários</h2><button class="btn btn-secondary btn-sm" onclick="fecharGestaoUsuarios()">Fechar</button></div>
+  <form id="logi-create-user-form" onsubmit="criarUsuarioLogi(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3 border-b border-slate-700 pb-4 mb-4">
+   <div><label class="label">Nome</label><input id="new-user-name" class="input" required maxlength="100"></div>
+   <div><label class="label">E-mail</label><input id="new-user-email" class="input" type="email" required></div>
+   <div><label class="label">Senha inicial</label><input id="new-user-password" class="input" type="password" minlength="8" required></div>
+   <div><label class="label">Perfil</label><select id="new-user-role" class="select"><option value="usuario">Usuário</option><option value="admin">Administrador</option></select></div>
+   <div class="sm:col-span-2 flex justify-end"><button id="new-user-submit" class="btn btn-primary" type="submit">Criar usuário</button></div>
+  </form>
+  <p id="logi-users-message" class="text-xs text-slate-300 mb-3"></p><div id="logi-users-list" class="space-y-2"></div>
+ </div>
+</div>
+
 <div class="flex min-h-screen">
 
 <aside id="sidebar-desktop" class="hidden lg:flex lg:flex-col w-64 bg-slate-900/70 border-r border-slate-800 backdrop-blur-sm sticky top-0 h-screen">
@@ -79,7 +125,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <button onclick="document.getElementById('input-excel').click()" class="sidebar-item text-blue-400"><span class="flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Importar Excel</span><span class="badge badge-info">Sync</span></button>
 <button onclick="abrirModalDiaristasPedidos()" class="sidebar-item text-cyan-400"><span class="flex items-center gap-2"><i data-lucide="clipboard-list" class="w-4 h-4"></i> Diaristas Pedidos</span></button>
 <button onclick="abrirModalMatriz()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="grid" class="w-4 h-4 text-amber-400"></i> Grade Mensal</span></button>
-<button onclick="abrirRelatorioAcumulado()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-400"></i> Relat&#243;rio</span></button><button onclick="abrirPainelOperacao()" class="sidebar-item text-amber-400"><span class="flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i> Opera&#231;&#227;o / Movimenta&#231;&#227;o</span></button>
+<button onclick="abrirRelatorioAcumulado()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-400"></i> Relat&#243;rio</span></button><button onclick="abrirRastreioMensal()" class="sidebar-item text-cyan-300"><span class="flex items-center gap-2"><i data-lucide="map-pin" class="w-4 h-4"></i> Rastreio Mensal</span></button><button onclick="abrirPainelOperacao()" class="sidebar-item text-amber-400"><span class="flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i> Opera&#231;&#227;o / Movimenta&#231;&#227;o</span></button>
 </nav>
 <div class="p-3 border-t border-slate-800 text-[10px] text-slate-500"><p id="label-mes-ano-sidebar">&mdash;</p></div>
 </aside>
@@ -142,7 +188,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 <button onclick="document.getElementById('input-excel').click();toggleSidebarMobile()" class="sidebar-item text-blue-400"><span class="flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Importar Excel</span><span class="badge badge-info">Sync</span></button>
 <button onclick="abrirModalDiaristasPedidos();toggleSidebarMobile()" class="sidebar-item text-cyan-400"><span class="flex items-center gap-2"><i data-lucide="clipboard-list" class="w-4 h-4"></i> Diaristas Pedidos</span></button>
 <button onclick="abrirModalMatriz();toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="grid" class="w-4 h-4 text-amber-400"></i> Grade Mensal</span></button>
-<button onclick="abrirRelatorioAcumulado();toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-400"></i> Relat&#243;rio</span></button><button onclick="abrirPainelOperacao();toggleSidebarMobile()" class="sidebar-item text-amber-400"><span class="flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i> Opera&#231;&#227;o / Movimenta&#231;&#227;o</span></button>
+<button onclick="abrirRelatorioAcumulado();toggleSidebarMobile()" class="sidebar-item"><span class="flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-400"></i> Relat&#243;rio</span></button><button onclick="abrirRastreioMensal();toggleSidebarMobile()" class="sidebar-item text-cyan-300"><span class="flex items-center gap-2"><i data-lucide="map-pin" class="w-4 h-4"></i> Rastreio Mensal</span></button><button onclick="abrirPainelOperacao();toggleSidebarMobile()" class="sidebar-item text-amber-400"><span class="flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i> Opera&#231;&#227;o / Movimenta&#231;&#227;o</span></button>
 </nav>
 </aside>
 
@@ -307,10 +353,13 @@ function obterTotalDiasMes(a,m){return new Date(a,m+1,0).getDate()}
 const totalDiasDoMes=obterTotalDiasMes(anoAtual,mesAtualIndex);
 const nomesMeses=["Janeiro","Fevereiro","Mar\u00e7o","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const nomeMesAtual=nomesMeses[mesAtualIndex];
-const SENHA_ADM="admin123";
 let modoAdmin=false;
+let sessaoLogi=null;
+let perfilLogi=null;
+let papelLogi=null;
 const LIMITE_DIAS_FUNCAO=20;
 let colaboradores=[];
+let historicoMovimentosGlobal=[];
 let totalCadastroBanco=0;
 let filtroAtivo='todos';
 let alocarColabSelecionadoId=null;
@@ -368,7 +417,16 @@ function formatarDataDDMM(d){if(!d)return'';return String(d.getDate()).padStart(
 
 function obterChaveDiaristasDia(){return'diaristas_'+anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(diaHoje).padStart(2,'0')}
 function getDiaristasDia(){const raw=localStorage.getItem(obterChaveDiaristasDia());if(!raw)return{pedidos:0,presentes:0,faltantes:0};try{const o=JSON.parse(raw);return{pedidos:parseInt(o.pedidos,10)||0,presentes:parseInt(o.presentes,10)||0,faltantes:parseInt(o.faltantes,10)||0}}catch(e){return{pedidos:0,presentes:0,faltantes:0}}}
-function setDiaristasDia(o){localStorage.setItem(obterChaveDiaristasDia(),JSON.stringify({pedidos:parseInt(o.pedidos,10)||0,presentes:parseInt(o.presentes,10)||0,faltantes:parseInt(o.faltantes,10)||0}))}
+function setDiaristasDia(o){
+ const dados={pedidos:parseInt(o.pedidos,10)||0,presentes:parseInt(o.presentes,10)||0,faltantes:parseInt(o.faltantes,10)||0};
+ localStorage.setItem(obterChaveDiaristasDia(),JSON.stringify(dados));
+ if(papelLogi==='admin'&&supabaseClient){supabaseClient.from('logirotator_diaristas_diarios').upsert({data:opDataHojeISO(),pedidos:dados.pedidos,presentes:dados.presentes,faltantes:dados.faltantes,updated_by:sessaoLogi?.user?.id},{onConflict:'data'}).then(function(r){if(r.error)console.error('Falha ao sincronizar diaristas:',r.error.message);});}
+}
+function opDataHojeISO(){return anoAtual+'-'+String(mesAtualIndex+1).padStart(2,'0')+'-'+String(diaHoje).padStart(2,'0')}
+async function carregarDiaristasDiaBanco(){
+ try{const r=await supabaseClient.from('logirotator_diaristas_diarios').select('pedidos,presentes,faltantes').eq('data',opDataHojeISO()).maybeSingle();if(r.error){console.warn('Tabela de diaristas ainda não configurada:',r.error.message);return;}if(r.data){localStorage.setItem(obterChaveDiaristasDia(),JSON.stringify({pedidos:r.data.pedidos||0,presentes:r.data.presentes||0,faltantes:r.data.faltantes||0}));}else if(papelLogi==='admin'){const atual=getDiaristasDia();await supabaseClient.from('logirotator_diaristas_diarios').upsert({data:opDataHojeISO(),pedidos:atual.pedidos,presentes:atual.presentes,faltantes:atual.faltantes,updated_by:sessaoLogi?.user?.id},{onConflict:'data'});}}
+ catch(e){console.warn('Não foi possível carregar diaristas compartilhados:',e);}
+}
 function abrirModalDiaristasPedidos(){document.getElementById('input-diaristas-pedidos').value=getDiaristasDia().pedidos;document.getElementById('modal-diaristas-pedidos').classList.remove('hidden');lucide.createIcons();setTimeout(function(){document.getElementById('input-diaristas-pedidos').select()},100)}
 function fecharModalDiaristasPedidos(){document.getElementById('modal-diaristas-pedidos').classList.add('hidden')}
 function salvarDiaristasPedidos(){const v=parseInt(document.getElementById('input-diaristas-pedidos').value,10)||0;const a=getDiaristasDia();let np=a.presentes;let nf=a.faltantes;if(v>0){if(np>v)np=v;if((np+nf)>v)nf=Math.max(0,v-np);}setDiaristasDia({pedidos:v,presentes:np,faltantes:nf});toast('Pedido: '+v,'ok');fecharModalDiaristasPedidos();renderizar()}
@@ -428,7 +486,43 @@ function toggleSidebarMobile(){const s=document.getElementById('sidebar-mobile')
 
 function setFiltro(f){filtroAtivo=f;document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active')});const btn=document.getElementById('menu-'+f);if(btn)btn.classList.add('active');const labels={'todos':'Todos','presentes':'Presentes','operacao':'Em Opera\u00e7\u00e3o','diaristas':'Diaristas','dsr':'Em DSR Hoje','banco_horas':'Banco de Horas Hoje','faltas':'Faltas Hoje','atestados':'Atestados Hoje'};const icons={'todos':'layout-grid','presentes':'check-circle-2','operacao':'users','diaristas':'hard-hat','dsr':'palmtree','banco_horas':'clock-3','faltas':'alert-triangle','atestados':'stethoscope'};const el=document.getElementById('label-filtro-ativo');if(el)el.innerHTML='<i data-lucide="'+icons[f]+'" class="w-3.5 h-3.5"></i> '+labels[f];renderizar();lucide.createIcons()}
 
-async function init(){const txt='HUB-LCE-04 \u2022 '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';document.getElementById('label-mes-ano').innerText=txt;document.getElementById('label-mes-ano-sidebar').innerText=txt;try{const r=await supabaseClient.from('colaboradores').select('id').limit(1);if(r.error)alert("Erro Supabase: "+r.error.message)}catch(e){console.error(e)}popularSelectFuncoesPorSetor();await carregarDadosSupabase();setFiltro('todos');lucide.createIcons()}
+async function init(){
+  supabaseClient.auth.onAuthStateChange(function(event,session){
+    if(session)sessaoLogi=session;
+    if(event==='SIGNED_OUT'||!session){sessaoLogi=null;perfilLogi=null;papelLogi=null;mostrarLogin();}
+  });
+  try{
+    const {data,error}=await supabaseClient.auth.getSession();
+    if(error)throw error;
+    if(!data.session){mostrarLogin();return;}
+    await validarSessaoLogi(data.session);
+  }catch(e){console.error(e);mostrarLogin(e.message||'Não foi possível validar o acesso.');}
+}
+
+async function validarSessaoLogi(session){
+  sessaoLogi=session;
+  const r=await supabaseClient.from('logirotator_perfis').select('user_id,nome,email,papel,ativo').eq('user_id',session.user.id).maybeSingle();
+  if(r.error)throw r.error;
+  if(!r.data||r.data.ativo!==true||!['admin','usuario'].includes(r.data.papel)){
+    await supabaseClient.auth.signOut();mostrarLogin('Sua conta ainda não possui perfil ativo no LogiRotator.');return;
+  }
+  perfilLogi=r.data;papelLogi=r.data.papel;
+  document.getElementById('logi-auth').classList.add('hidden');
+  document.body.classList.toggle('role-user',papelLogi==='usuario');
+  document.body.classList.toggle('role-admin',papelLogi==='admin');
+  const txt='HUB-LCE-04 • '+nomeMesAtual+' / '+anoAtual+' (Dia '+diaHoje+')';
+  const a=document.getElementById('label-mes-ano');if(a)a.innerText=txt;
+  const b=document.getElementById('label-mes-ano-sidebar');if(b)b.innerText=txt;
+  popularSelectFuncoesPorSetor();
+  await carregarDadosSupabase();
+  await carregarDiaristasDiaBanco();
+  if(papelLogi==='admin'){
+    modoAdmin=true;atualizarBotaoModoAdmin();setFiltro('todos');montarBarraContaAdmin();
+  }else{
+    montarPainelUsuario();
+  }
+  lucide.createIcons();
+}
 
 async function carregarDadosSupabase(){
   try{
@@ -509,6 +603,7 @@ async function carregarDadosSupabase(){
       return todos;
     }
     const historico=await carregarHistoricoCompleto();
+    historicoMovimentosGlobal=historico;
     const diasMes=totalDiasDoMes;
 
     colaboradores=(rc.data||[]).map(function(c){
@@ -633,12 +728,11 @@ function atualizarBotaoModoAdmin(){
   if(window.lucide)lucide.createIcons();
 }
 function alternarModoAdmin(){
-  if(modoAdmin){modoAdmin=false;atualizarBotaoModoAdmin();renderizarMatriz();toast('Modo administrador bloqueado.','ok');return;}
-  const senha=prompt('Senha do administrador para desbloquear os dias anteriores:');
-  if(senha!==SENHA_ADM){toast('Senha de administrador incorreta.','erro');return;}
-  modoAdmin=true;atualizarBotaoModoAdmin();renderizarMatriz();toast('Modo administrador desbloqueado. Dias anteriores podem ser alterados.','ok');
+  if(papelLogi!=='admin'){toast('Apenas administradores podem alterar a matriz.','erro');return;}
+  modoAdmin=true;atualizarBotaoModoAdmin();renderizarMatriz();toast('Acesso administrativo validado pela conta.','ok');
 }
 async function tentarAlterarDia(idColab,indexDia,el){
+  if(papelLogi!=='admin'){toast('Apenas administradores podem editar a matriz.','erro');renderizarMatriz();return;}
   const numDia=indexDia+1;
   const colab=colaboradores.find(function(c){return c.id===idColab});
   if(!colab)return;
@@ -1713,8 +1807,77 @@ async function processarExcel(event){
   reader.readAsArrayBuffer(file);
 }
 
+
+function mostrarLogin(msg){
+ document.body.classList.remove('role-user','role-admin');
+ const app=document.querySelector('body > .flex.min-h-screen');if(app)app.style.display='none';
+ const overlay=document.getElementById('logi-auth');if(overlay)overlay.classList.remove('hidden');
+ const uv=document.getElementById('logi-user-view');if(uv)uv.classList.add('hidden');
+ const err=document.getElementById('logi-login-error');if(err)err.textContent=msg||'';
+ if(window.lucide)lucide.createIcons();
+}
+async function entrarLogi(ev){
+ ev.preventDefault();const btn=document.getElementById('logi-login-submit');const err=document.getElementById('logi-login-error');btn.disabled=true;btn.textContent='Validando...';err.textContent='';
+ try{const email=document.getElementById('logi-email').value.trim();const password=document.getElementById('logi-password').value;const r=await supabaseClient.auth.signInWithPassword({email,password});if(r.error)throw r.error;await validarSessaoLogi(r.data.session);}
+ catch(e){err.textContent=e.message||'Falha no login.';}
+ finally{btn.disabled=false;btn.textContent='Entrar';}
+}
+async function sairLogi(){await supabaseClient.auth.signOut();}
+function montarBarraContaAdmin(){
+ const el=document.getElementById('logi-admin-account');if(el)el.classList.remove('hidden');
+ const n=document.getElementById('logi-admin-name');if(n)n.textContent=(perfilLogi?.nome||perfilLogi?.email||'Administrador')+' • Administrador';
+ const app=document.querySelector('body > .flex.min-h-screen');if(app)app.style.display='';
+}
+function montarPainelUsuario(){
+ const app=document.querySelector('body > .flex.min-h-screen');if(app)app.style.display='none';
+ document.getElementById('logi-user-view').classList.remove('hidden');
+ document.getElementById('user-view-name').textContent=perfilLogi?.nome||perfilLogi?.email||'Usuário';
+ document.getElementById('user-view-subtitle').textContent='HUB-LCE-04 • '+nomeMesAtual+' / '+anoAtual+' • '+String(diaHoje).padStart(2,'0')+'/'+String(mesAtualIndex+1).padStart(2,'0');
+ renderPainelUsuario('operacao');
+}
+function renderPainelUsuario(filtro){
+ const hoje=colaboradoresOperacionaisHoje();
+ const grupos={operacao:[],diarista:[],dsr:[],banco_horas:[],faltas:[],atestados:[]};
+ hoje.forEach(function(c){const st=obterStatusHoje(c);if(st==='presente')grupos.operacao.push(c);else if(st==='dsr')grupos.dsr.push(c);else if(st==='banco_horas')grupos.banco_horas.push(c);else if(st==='falta')grupos.faltas.push(c);else if(st==='atestado')grupos.atestados.push(c);});
+ const d=getDiaristasDia();
+ const cards=[['operacao','Em Operação',grupos.operacao.length,'users'],['diarista','Diarista',d.presentes,'hard-hat'],['dsr','Em DSR',grupos.dsr.length,'palmtree'],['banco_horas','Banco de Horas',grupos.banco_horas.length,'clock-3'],['faltas','Faltas',grupos.faltas.length,'alert-triangle'],['atestados','Atestados',grupos.atestados.length,'stethoscope']];
+ document.getElementById('user-kpis').innerHTML=cards.map(function(c){return '<button onclick="renderPainelUsuario(\''+c[0]+'\')" class="text-left bg-slate-900 border '+(filtro===c[0]?'border-amber-500':'border-slate-800')+' rounded-xl p-4 hover:border-amber-500"><div class="flex items-center justify-between text-slate-400 text-xs"><span>'+c[1]+'</span><i data-lucide="'+c[3]+'" class="w-4 h-4"></i></div><div class="text-2xl font-extrabold mt-2 text-slate-100">'+c[2]+'</div></button>';}).join('');
+ const titles={operacao:'Em Operação',diarista:'Diaristas',dsr:'Em DSR',banco_horas:'Banco de Horas',faltas:'Faltas',atestados:'Atestados'};
+ document.getElementById('user-list-title').textContent=titles[filtro]||'Em Operação';
+ let lista=grupos[filtro]||[];
+ if(filtro==='diarista'){
+  document.getElementById('user-list-count').textContent=String(d.presentes);
+  document.getElementById('user-list').innerHTML='<div class="sm:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4"><div class="text-sm font-semibold">Diaristas do dia</div><div class="grid grid-cols-3 gap-2 mt-3 text-center"><div><div class="text-xl font-bold text-emerald-400">'+d.presentes+'</div><div class="text-[10px] text-slate-400">Presentes</div></div><div><div class="text-xl font-bold text-red-400">'+d.faltantes+'</div><div class="text-[10px] text-slate-400">Faltantes</div></div><div><div class="text-xl font-bold">'+d.pedidos+'</div><div class="text-[10px] text-slate-400">Pedido</div></div></div></div>';
+ }else{
+  document.getElementById('user-list-count').textContent=String(lista.length);
+  document.getElementById('user-list').innerHTML=lista.length?lista.map(function(c){return '<div class="bg-slate-900 border border-slate-800 rounded-xl p-3"><div class="font-semibold text-sm">'+escaparHtml(c.nome||'Colaborador')+'</div><div class="text-xs text-slate-400 mt-1">'+escaparHtml(c.codigo||c.matricula||'')+'</div></div>';}).join(''):'<div class="sm:col-span-2 text-sm text-slate-500 bg-slate-900 border border-slate-800 rounded-xl p-5 text-center">Nenhum registro nesta categoria para o dia selecionado.</div>';
+ }
+ if(window.lucide)lucide.createIcons();
+}
+function escaparHtml(v){return String(v??'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function abrirGestaoUsuarios(){if(papelLogi!=='admin')return;document.getElementById('logi-users-modal').classList.remove('hidden');carregarListaUsuarios();}
+function fecharGestaoUsuarios(){document.getElementById('logi-users-modal').classList.add('hidden');}
+async function carregarListaUsuarios(){
+ const box=document.getElementById('logi-users-list');box.innerHTML='<p class="text-xs text-slate-400">Carregando...</p>';
+ const r=await supabaseClient.from('logirotator_perfis').select('user_id,nome,email,papel,ativo').order('nome');
+ if(r.error){box.textContent=r.error.message;return;}
+ box.innerHTML=(r.data||[]).map(function(u){return '<div class="flex items-center justify-between gap-3 bg-slate-950 border border-slate-800 rounded-lg p-3"><div><div class="text-sm font-semibold">'+escaparHtml(u.nome||'')+'</div><div class="text-xs text-slate-400">'+escaparHtml(u.email||'')+' • '+escaparHtml(u.papel)+'</div></div><span class="badge '+(u.ativo?'badge-success':'badge-default')+'">'+(u.ativo?'Ativo':'Inativo')+'</span></div>';}).join('')||'<p class="text-xs text-slate-400">Nenhum usuário cadastrado.</p>';
+}
+async function criarUsuarioLogi(ev){
+ ev.preventDefault();if(papelLogi!=='admin')return;
+ const btn=document.getElementById('new-user-submit'),msg=document.getElementById('logi-users-message');btn.disabled=true;msg.textContent='Criando conta...';
+ try{
+  const payload={nome:document.getElementById('new-user-name').value.trim(),email:document.getElementById('new-user-email').value.trim(),password:document.getElementById('new-user-password').value,papel:document.getElementById('new-user-role').value};
+  const response=await fetch(SUPABASE_URL+'/functions/v1/logirotator-create-user',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+sessaoLogi.access_token},body:JSON.stringify(payload)});
+  const data=await response.json();if(!response.ok)throw new Error(data.error||'Não foi possível criar usuário.');
+  msg.textContent='Usuário criado com sucesso.';document.getElementById('logi-create-user-form').reset();await carregarListaUsuarios();
+ }catch(e){msg.textContent=e.message||String(e);}
+ finally{btn.disabled=false;}
+}
+
 // Inicialização obrigatória: carrega colaboradores, presença e histórico do Supabase.
 // A versão anterior definia init(), mas não a executava; por isso o HTML permanecia com os KPIs em 0.
+const _appInicial=document.querySelector("body > .flex.min-h-screen");if(_appInicial)_appInicial.style.display="none";
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
 } else {
@@ -1735,6 +1898,28 @@ async function registrarSaidaOperacao(){const c=opColabSelecionado(),d=document.
 function abrirPainelOperacao(){const m=document.getElementById("modal-operacao"),s=document.getElementById("op-colaborador");s.innerHTML='<option value="">Selecione...</option>'+colaboradores.map(c=>'<option value="'+c.id+'">'+c.nome+"</option>").join("");document.getElementById("op-data").value=opHojeISO();preencherFuncoesOperacao();m.classList.remove("hidden");m.classList.add("flex");s.onchange=opAtualizar;document.getElementById("op-data").onchange=buscarMovimentosOperacao;opAtualizar()}
 function fecharPainelOperacao(){const m=document.getElementById("modal-operacao");m.classList.add("hidden");m.classList.remove("flex")}
 
+
+function minutosHoraRastreio(h){if(!h)return null;const m=String(h).match(/(\d{1,2}):(\d{2})/);return m?Number(m[1])*60+Number(m[2]):null;}
+function formatarMinutosRastreio(m){if(!Number.isFinite(m)||m<=0)return '0h00';return Math.floor(m/60)+'h'+String(Math.round(m%60)).padStart(2,'0');}
+function abrirRastreioMensal(){if(papelLogi!=='admin'){toast('Rastreio mensal disponível somente para administrador.','erro');return;}const el=document.getElementById('rastreio-mes');if(el&&!el.value)el.value=String(anoAtual)+'-'+String(mesAtualIndex+1).padStart(2,'0');const m=document.getElementById('modal-rastreio-mensal');m.classList.remove('hidden');m.classList.add('flex');renderizarRastreioMensal();}
+function fecharRastreioMensal(){const m=document.getElementById('modal-rastreio-mensal');m.classList.add('hidden');m.classList.remove('flex');}
+function obterDadosRastreioMensal(){const mes=document.getElementById('rastreio-mes')?.value;if(!mes)return {mes:'',rows:[],porColab:[],setores:{},minutos:0,semHora:0};const [aa,mm]=mes.split('-').map(Number);const inicio=mes+'-01';const fim=mes+'-'+String(new Date(aa,mm,0).getDate()).padStart(2,'0');const hoje=opHojeISO();const agora=opAgora();const rows=historicoMovimentosGlobal.filter(r=>{const d=String(r.data_inicio||r.data||'').slice(0,10);return d>=inicio&&d<=fim&&!!r.hora_inicio;});const porId={};const setores={};let minutosTotal=0,semHora=0;rows.forEach(r=>{const c=colaboradores.find(x=>String(x.id)===String(r.colaborador_id));const nome=c?.nome||'Colaborador não localizado';const setor=r.setor||setorDaFuncao(r.funcao||'')||'Setor não informado';const funcao=r.funcao||setor;let ini=minutosHoraRastreio(r.hora_inicio),f=minutosHoraRastreio(r.hora_fim);if(ini===null){semHora++;return;}if(f===null){if(String(r.data_inicio||'').slice(0,10)===hoje)f=minutosHoraRastreio(agora);else{semHora++;return;}}if(f!==null&&f<ini)f+=1440;const dur=Math.max(0,(f??ini)-ini);minutosTotal+=dur;if(!porId[r.colaborador_id])porId[r.colaborador_id]={id:r.colaborador_id,nome:nome,total:0,setores:{},dias:{},movimentos:0};const x=porId[r.colaborador_id];x.total+=dur;x.setores[setor]=(x.setores[setor]||0)+dur;x.movimentos++;const dia=String(r.data_inicio||r.data||'').slice(0,10);if(!x.dias[dia])x.dias[dia]=[];x.dias[dia].push({setor,funcao,inicio:r.hora_inicio,fim:r.hora_fim||((dia===hoje)?agora:null),minutos:dur});if(!setores[setor])setores[setor]={minutos:0,pessoas:{}};setores[setor].minutos+=dur;setores[setor].pessoas[r.colaborador_id]=true;});return {mes,rows,porColab:Object.values(porId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')),setores,minutos:minutosTotal,semHora};}
+function renderizarRastreioMensal(){const d=obterDadosRastreioMensal();const resumo=document.getElementById('rastreio-resumo'),cont=document.getElementById('rastreio-conteudo');if(!resumo||!cont)return;const pessoas=d.porColab.length,reg=d.rows.length,qtSetores=Object.keys(d.setores).length;resumo.innerHTML=[['LOGIs rastreados',pessoas],['Movimentações',reg],['Setores utilizados',qtSetores],['Tempo rastreado',formatarMinutosRastreio(d.minutos)]].map(x=>'<div class="bg-slate-950 border border-slate-800 rounded-xl p-3"><div class="text-[9px] uppercase text-slate-400">'+x[0]+'</div><div class="text-xl font-extrabold text-cyan-300 mt-1">'+x[1]+'</div></div>').join('');const termo=normalizarTexto(document.getElementById('rastreio-busca')?.value||'');const setores=Object.entries(d.setores).sort((a,b)=>b[1].minutos-a[1].minutos);let h='<section class="bg-slate-950 border border-slate-800 rounded-xl p-3"><h4 class="text-xs font-bold text-cyan-300 mb-3">Permanência por setor / função</h4>';if(!setores.length)h+='<p class="text-xs text-slate-500">Nenhuma movimentação com horário foi registrada neste mês.</p>';else{const max=Math.max(1,...setores.map(x=>x[1].minutos));setores.forEach(([nome,x])=>{h+='<div class="mb-3"><div class="flex justify-between gap-2 text-xs"><b>'+escaparHtmlLogi(nome)+'</b><span class="text-cyan-300">'+formatarMinutosRastreio(x.minutos)+' · '+Object.keys(x.pessoas).length+' LOGIs</span></div><div class="h-2 bg-slate-800 rounded-full mt-1 overflow-hidden"><div class="h-full bg-cyan-500 rounded-full" style="width:'+Math.round(x.minutos/max*100)+'%"></div></div></div>';});}h+='</section><section><h4 class="text-xs font-bold text-slate-200 mb-2">Rastreio individual</h4>';const lista=d.porColab.filter(x=>!termo||matchBuscaAvancada(termo,x.nome,Object.keys(x.setores).join(' ')));if(!lista.length)h+='<p class="text-xs text-slate-500">Nenhum colaborador encontrado.</p>';lista.forEach(x=>{const ss=Object.entries(x.setores).sort((a,b)=>b[1]-a[1]);h+='<details class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-2"><summary class="cursor-pointer flex flex-wrap items-center justify-between gap-2"><span class="text-xs font-bold text-slate-100">'+escaparHtmlLogi(x.nome)+'</span><span class="text-[10px] text-cyan-300">'+formatarMinutosRastreio(x.total)+' · '+x.movimentos+' movimentações</span></summary><div class="mt-3 grid md:grid-cols-2 gap-3"><div><div class="text-[10px] uppercase text-slate-500 mb-2">Tempo por setor</div>'+ss.map(z=>'<div class="flex justify-between text-[10px] border-b border-slate-800 py-1"><span>'+escaparHtmlLogi(z[0])+'</span><b class="text-cyan-300">'+formatarMinutosRastreio(z[1])+'</b></div>').join('')+'</div><div><div class="text-[10px] uppercase text-slate-500 mb-2">Linha do tempo diária</div>';Object.keys(x.dias).sort().forEach(dia=>{h+='<div class="border-b border-slate-800 py-2"><b class="text-[10px] text-amber-300">'+dia.split('-').reverse().join('/')+'</b>';x.dias[dia].forEach(m=>{h+='<div class="text-[10px] text-slate-300 mt-1">'+escaparHtmlLogi(m.setor)+' / '+escaparHtmlLogi(m.funcao)+' · '+String(m.inicio).slice(0,5)+' → '+(m.fim?String(m.fim).slice(0,5):'Sem saída')+' · '+formatarMinutosRastreio(m.minutos)+'</div>';});h+='</div>';});h+='</div></div></details>';});h+='</section>';if(d.semHora)h+='<p class="text-[10px] text-yellow-300">'+d.semHora+' registro(s) sem horário completo não entraram no cálculo de permanência.</p>';cont.innerHTML=h;}
+function exportarRastreioMensalCSV(){const d=obterDadosRastreioMensal();const linhas=[['Colaborador','Data','Setor','Função','Entrada','Saída','Permanência (minutos)']];d.porColab.forEach(c=>Object.keys(c.dias).sort().forEach(data=>c.dias[data].forEach(m=>linhas.push([c.nome,data,m.setor,m.funcao,String(m.inicio||'').slice(0,5),String(m.fim||'').slice(0,5),m.minutos]))));if(linhas.length===1){toast('Não há movimentações para exportar.','warn');return;}const csv='\ufeff'+linhas.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\
+');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='rastreio-logirotator-'+d.mes+'.csv';a.click();URL.revokeObjectURL(url);}
+
 </script>
+<div id="modal-rastreio-mensal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-sm z-[95] hidden items-center justify-center p-2 sm:p-4">
+ <div class="w-full max-w-7xl max-h-[94vh] overflow-hidden bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col">
+  <div class="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+   <div><h3 class="text-base sm:text-lg font-bold text-cyan-300">Rastreio mensal dos LOGIs</h3><p class="text-[10px] text-slate-400">Setores, funções e tempo de permanência registrados no mês.</p></div>
+   <div class="flex items-center gap-2"><input id="rastreio-mes" type="month" class="input w-auto" onchange="renderizarRastreioMensal()"><button onclick="fecharRastreioMensal()" class="btn btn-ghost btn-icon">✕</button></div>
+  </div>
+  <div id="rastreio-resumo" class="p-4 grid grid-cols-2 md:grid-cols-4 gap-2 border-b border-slate-800"></div>
+  <div class="p-4 overflow-auto flex-1"><div class="flex flex-wrap gap-2 mb-3"><input id="rastreio-busca" class="input max-w-sm" placeholder="Buscar colaborador, setor ou função..." oninput="renderizarRastreioMensal()"><button onclick="exportarRastreioMensalCSV()" class="btn btn-secondary btn-sm">Exportar CSV</button></div><div id="rastreio-conteudo" class="space-y-4"></div></div>
+ </div>
+</div>
+
+
 <div id="modal-operacao" class="fixed inset-0 bg-slate-950/95 backdrop-blur-sm z-[90] hidden items-center justify-center p-4"><div class="w-full max-w-5xl max-h-[92vh] overflow-auto bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl"><div class="sticky top-0 z-10 bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between"><div><h3 class="text-base font-bold text-amber-400">⏱ Operação / Movimentação</h3><p class="text-[10px] text-slate-500">Entrada 00:00–07:54 · troca automática · saída.</p></div><button onclick="fecharPainelOperacao()" class="btn btn-ghost btn-icon-sm">✕</button></div><div class="p-4 space-y-4"><div class="grid grid-cols-1 lg:grid-cols-3 gap-3"><div class="lg:col-span-2"><label class="text-[10px] uppercase text-slate-400 font-bold">Colaborador</label><select id="op-colaborador" class="select mt-1 w-full"></select></div><div><label class="text-[10px] uppercase text-slate-400 font-bold">Data</label><input id="op-data" type="date" class="input mt-1 w-full"></div></div><div id="op-status" class="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-400">Selecione um colaborador.</div><div class="flex flex-wrap gap-2"><button id="op-btn-entrada" onclick="registrarEntradaOperacao()" class="btn btn-primary">Registrar Entrada</button><button id="op-btn-troca" onclick="trocarFuncaoOperacao()" class="btn btn-secondary">Trocar Função</button><button id="op-btn-saida" onclick="registrarSaidaOperacao()" class="btn btn-danger">Registrar Saída</button></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><h4 class="text-xs font-bold text-amber-400 mb-3">Função</h4><select id="op-funcao" class="select w-full"></select></div><div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><h4 class="text-xs font-bold text-cyan-400 mb-3">Movimentações do dia</h4><div id="op-historico" class="space-y-2 text-xs"></div></div></div></div></div></div></body>
 </html>
