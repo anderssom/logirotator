@@ -1055,7 +1055,26 @@ async function confirmarAlteracaoSetor(){
   finally{if(btn)btn.disabled=false}
 }
 function fecharModalAlocar(){document.getElementById('modal-alocar').classList.add('hidden');alocarColabSelecionadoId=null}
-function filtrarColabsAlocar(){const t=normalizarTexto(document.getElementById('alocar-busca').value);const cont=document.getElementById('alocar-lista');const lista=colaboradores.filter(function(c){return matchBuscaAvancada(t,c.nome)}).map(function(c){const st=obterStatusHoje(c);let ind=false;let mot='';if(st==='dsr'){ind=true;mot='DSR'}else if(st==='falta'){ind=true;mot='Falta'}else if(st==='atestado'){ind=true;mot='Atestado'}else if(st==='ferias'){ind=true;mot='Ferias'}else if(st==='afastamento'){ind=true;mot='Afast.'}else if(st==='banco_horas'){ind=true;mot='BH'}return{colab:c,ind:ind,mot:mot}}).sort(function(a,b){if(a.ind!==b.ind)return a.ind?1:-1;return a.colab.nome.localeCompare(b.colab.nome)});if(lista.length===0){cont.innerHTML='<p class="text-xs text-slate-500 italic p-3">Nenhum.</p>';return}cont.innerHTML=lista.map(function(x){const sel=x.colab.id===alocarColabSelecionadoId;const f=x.colab.historicoDias[diaHoje-1]||"-";const ft=(f!=="-"&&!isStatusEspecial(f))?f:'';return '<button type="button" '+(x.ind?'disabled':'')+' onclick="selecionarColabAlocar(\''+x.colab.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+(x.ind?'opacity-40 cursor-not-allowed':sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60')+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+x.colab.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+x.colab.escala+' \u00b7 DSR: '+x.colab.dsr+(ft?' \u00b7 Hoje: '+ft:'')+'</div></div>'+(x.ind?'<span class="badge badge-orange">'+x.mot+'</span>':sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<i data-lucide="circle" class="w-4 h-4 text-slate-600"></i>')+'</button>'}).join('');lucide.createIcons()}
+function filtrarColabsAlocar(){
+  const t=normalizarTexto(document.getElementById('alocar-busca').value);
+  const cont=document.getElementById('alocar-lista');
+  // A lista de Adicionar no Operacional deve mostrar somente quem está PRESENTE hoje.
+  // DSR, faltas, atestados, férias, BH, afastamentos e demais status ficam fora da lista.
+  const lista=colaboradores
+    .filter(function(c){return obterStatusHoje(c)==='presente' && matchBuscaAvancada(t,c.nome)})
+    .sort(function(a,b){return a.nome.localeCompare(b.nome)});
+  if(lista.length===0){
+    cont.innerHTML='<p class="text-xs text-slate-500 italic p-3">Nenhum colaborador presente disponível para adicionar.</p>';
+    return;
+  }
+  cont.innerHTML=lista.map(function(c){
+    const sel=c.id===alocarColabSelecionadoId;
+    const f=c.historicoDias[diaHoje-1]||'-';
+    const ft=(f!=='-'&&!isStatusEspecial(f))?f:'';
+    return '<button type="button" onclick="selecionarColabAlocar(\''+c.id+'\')" class="w-full text-left px-3 py-2.5 border-b border-slate-800/60 last:border-0 flex items-center justify-between gap-2 '+(sel?'bg-amber-500/15 border-l-2 border-l-amber-500':'hover:bg-slate-900/60')+'"><div class="min-w-0"><div class="text-xs font-bold text-slate-200 truncate">'+c.nome+'</div><div class="text-[10px] text-slate-400 truncate">'+c.escala+' · DSR: '+c.dsr+(ft?' · Hoje: '+ft:'')+'</div></div>'+(sel?'<i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>':'<span class="badge badge-success">Presente</span>')+'</button>';
+  }).join('');
+  lucide.createIcons();
+}
 function selecionarColabAlocar(id){alocarColabSelecionadoId=id;filtrarColabsAlocar()}
 async function confirmarAlocacao(){const funcao=document.getElementById('alocar-funcao').value;if(!alocarColabSelecionadoId){toast("Selecione um.",'warn');return}const colab=colaboradores.find(function(c){return c.id===alocarColabSelecionadoId});if(!colab)return;const btn=document.querySelector('#modal-alocar button[onclick="confirmarAlocacao()"]');if(btn&&btn.disabled)return;if(btn)btn.disabled=true;try{const st=obterStatusHoje(colab);if(st!=='presente'){toast(colab.nome+' nao pode ser alocado neste status.','warn');return}const hora=await registrarMovimentacaoSetorHoje(colab.id,funcao);await recarregarMovimentosCard(colab);colab.historicoDias[diaHoje-1]=funcao;toast(colab.nome+' alocado em '+funcao+' às '+hora.slice(0,5)+'.','ok');fecharModalAlocar();renderizar()}catch(e){console.error(e);toast("Erro: "+(e.message||e),'erro')}finally{if(btn)btn.disabled=false}}
 
