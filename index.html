@@ -1460,14 +1460,30 @@ async function processarExcel(event){
            normalizarTexto(limparNomeExcel(b)).replace(/\s+/g,' ').trim();
   }
   function localizarColaborador(banco,nome,codigo){
-    const alvo=nomeIgual(nome,nome)?normalizarTexto(limparNomeExcel(nome)).replace(/\s+/g,' ').trim():'';
-    const porNome=banco.filter(function(c){return normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim()===alvo;});
+    // O código individual é a chave primária de associação do Excel.
+    // Não usar Station ID (ex.: 10768), pois ele pode ser compartilhado
+    // por dezenas de colaboradores e causar associações incorretas.
+    const cod=normalizarCodigo(codigo || extrairCodigoSPX(nome));
+    if(cod){
+      const candidatos=banco.filter(function(c){
+        const codigoBanco=normalizarCodigo(
+          c.codigo_spx || c.codigo || c.matricula || c.spx || extrairCodigoSPX(c.nome) || ''
+        );
+        return codigoBanco===cod;
+      });
+      if(candidatos.length===1)return {colab:candidatos[0],metodo:'codigo'};
+      if(candidatos.length>1)return {colab:null,metodo:'codigo_duplicado'};
+      // Se veio um código individual e ele não existe no banco, não associar
+      // pelo nome: isso poderia vincular a pessoa errada.
+      return {colab:null,metodo:'codigo_nao_encontrado'};
+    }
+
+    const alvo=normalizarTexto(limparNomeExcel(nome)).replace(/\s+/g,' ').trim();
+    const porNome=banco.filter(function(c){
+      return normalizarTexto(limparNomeExcel(c.nome)).replace(/\s+/g,' ').trim()===alvo;
+    });
     if(porNome.length===1)return {colab:porNome[0],metodo:'nome'};
     if(porNome.length>1)return {colab:null,metodo:'nome_duplicado'};
-    const cod=normalizarCodigo(codigo);
-    const candidatos=cod?banco.filter(function(c){return normalizarCodigo(c.codigo_spx||c.codigo||c.matricula||c.spx||'')===cod;}):[];
-    if(candidatos.length===1)return {colab:candidatos[0],metodo:'codigo'};
-    if(candidatos.length>1)return {colab:null,metodo:'codigo_duplicado'};
     return {colab:null,metodo:'nao_encontrado'};
   }
   function normalizarStatus(valor){
@@ -1495,11 +1511,18 @@ async function processarExcel(event){
         const ctx=contextoMes(sheetName+' '+(file.name||''));
         for(let r=0;r<Math.min(matriz.length,100);r++){
           const linha=matriz[r]||[];
-          let cNome=-1,cCodigo=-1;
+          let cNome=-1,cCodigo=-1,codigoScore=-1;
           for(let c=0;c<linha.length;c++){
             const txt=normalizarTexto(String(linha[c]??'')).trim().toLowerCase();
             if(cNome<0&&/^(nome|nome completo|nome do colaborador(?:\s+a)?|colaborador|colaboradores|employee|funcionario)$/.test(txt))cNome=c;
-            if(cCodigo<0&&/(station\s*id|codigo|matricula|spx|id colaborador)/i.test(txt))cCodigo=c;
+            // Prioridade explícita: Código > matrícula/ID individual > SPX.
+            // Station ID fica apenas como último recurso, nunca vence Código.
+            let score=-1;
+            if(/^(codigo|codigo do colaborador|codigo colaborador)$/.test(txt))score=100;
+            else if(/^(matricula|matricula do colaborador|id colaborador|employee id)$/.test(txt))score=80;
+            else if(/^(spx|codigo spx|spx code)$/.test(txt))score=70;
+            else if(/^station id$/.test(txt))score=10;
+            if(score>codigoScore){codigoScore=score;cCodigo=c;}
           }
           if(cNome<0)continue;
           let melhorDatas=[],linhaDatas=r;
@@ -1519,7 +1542,7 @@ async function processarExcel(event){
       }
       if(!escolhido)throw new Error('Não encontrei cabeçalho de colaborador + datas. Confira se a planilha possui uma coluna Nome e uma linha com os dias do mês.');
       const {sheetName,matriz,idxCabecalho,linhaNome,colNome,colCodigo,datas,ctx}=escolhido;
-      toast('Aba '+sheetName+': '+datas.length+' datas reconhecidas. Vinculando colaboradores...','ok');
+      toast('Aba '+sheetName+': '+datas.length+' datas reconhecidas. Identificação pelo campo Código (não pelo Station ID).','ok');
 
       const rc=await supabaseClient.from('colaboradores').select('*');
       if(rc.error)throw new Error('Erro ao consultar colaboradores: '+rc.error.message);
