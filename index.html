@@ -100,7 +100,7 @@ body{font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
 </header>
 
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
-<button onclick="setFiltro('todos')" class="text-left card hover:border-blue-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total no Banco</span><h2 id="kpi-total" class="text-2xl font-extrabold text-slate-100 mt-0.5">0</h2></div><div class="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400"><i data-lucide="users" class="w-5 h-5"></i></div></button>
+<button onclick="setFiltro('todos')" class="text-left card hover:border-blue-500/50 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total Atual</span><h2 id="kpi-total" class="text-2xl font-extrabold text-slate-100 mt-0.5">0</h2></div><div class="bg-blue-500/10 p-2.5 rounded-lg border border-blue-500/20 text-blue-400"><i data-lucide="users" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('presentes')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Presentes</span><h2 id="kpi-presentes" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-presentes-detalhe" class="text-[9px] text-slate-500">&mdash;</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="check-circle-2" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('operacao')" class="text-left card hover:border-emerald-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Em Opera&#231;&#227;o</span><h2 id="kpi-operacao" class="text-2xl font-extrabold text-emerald-400 mt-0.5">0</h2><span id="kpi-operacao-detalhe" class="text-[9px] text-slate-500">Total de presentes hoje</span></div><div class="bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400"><i data-lucide="activity" class="w-5 h-5"></i></div></button>
 <button onclick="setFiltro('diaristas')" class="text-left card hover:border-cyan-400 active:scale-[0.98]"><div><span class="text-[10px] font-semibold uppercase tracking-wider text-cyan-400">Diaristas</span><h2 id="kpi-diaristas" class="text-2xl font-extrabold text-cyan-400 mt-0.5">0</h2></div><div class="bg-cyan-500/10 p-2.5 rounded-lg border border-cyan-500/20 text-cyan-400"><i data-lucide="hard-hat" class="w-5 h-5"></i></div></button>
@@ -335,13 +335,25 @@ function obterStatusHoje(c){
   return'sem_escala';
 }
 function colaboradoresOperacionaisHoje(){
-  // O cadastro mestre continua completo no banco, mas o quadro operacional
-  // do dia usa somente quem possui status de presença para hoje.
-  // Desligamentos/NC/NS nunca entram novamente no quadro operacional.
+  // Pessoas com status válido registrado para o dia selecionado.
   const foraDoQuadro=new Set(['DF','DP','DV','NC','NS']);
   return colaboradores.filter(function(c){
     const st=String((c.presencaDias&&c.presencaDias[diaHoje-1])||'-').toUpperCase();
     return st && st!=='-' && !foraDoQuadro.has(st);
+  });
+}
+
+function colaboradoresOperacionaisMes(){
+  // Total atual da equipe: colaboradores com ao menos um status registrado
+  // no mês selecionado. Cadastros históricos sem presença no mês não entram.
+  const foraDoQuadro=new Set(['DF','DP','DV','NC','NS']);
+  return colaboradores.filter(function(c){
+    if(c.ativo===false)return false;
+    const dias=Array.isArray(c.presencaDias)?c.presencaDias:[];
+    return dias.some(function(valor){
+      const st=String(valor||'-').trim().toUpperCase();
+      return st!=='' && st!=='-' && !foraDoQuadro.has(st);
+    });
   });
 }
 
@@ -566,8 +578,9 @@ async function carregarDadosSupabase(){
 
 function atualizarKPIs(){
   const quadroHoje=colaboradoresOperacionaisHoje();
+  const totalAtual=colaboradoresOperacionaisMes().length;
   const hoje=quadroHoje.map(function(c){return {c:c,status:obterStatusHoje(c)}});
-  const total=quadroHoje.length;
+  const total=totalAtual;
   const presentes=hoje.filter(function(x){return x.status==='presente'}).length;
   const diaristas=hoje.filter(function(x){return x.status==='diarista'}).length;
   const diaristasDia=getDiaristasDia();
@@ -857,13 +870,14 @@ const cont=document.getElementById('container-setores');
 cont.innerHTML="";
 const g={presente:[],operacao:[],dsr:[],banco_horas:[],falta:[],atestado:[],ferias:[],afastamento:[],outro_status:[],sem_escala:[]};
 const quadroHoje=colaboradoresOperacionaisHoje();
+const totalEquipeAtual=colaboradoresOperacionaisMes().length;
 quadroHoje.forEach(function(c){const t=obterStatusHoje(c);if(g[t])g[t].push(c);if(estaEmOperacaoHoje(c))g.operacao.push(c)});
 const fl=function(l){return l.filter(function(c){return matchBuscaAvancada(termo,c.nome,c.escala,c.dsr,c.horario)})};
 const pF=fl(g.presente);const oF=fl(g.operacao);const dF=fl(g.dsr);const bhF=fl(g.banco_horas);const fF=fl(g.falta);const aF=fl(g.atestado);const feF=fl(g.ferias);const afF=fl(g.afastamento);const otF=fl(g.outro_status);const seF=fl(g.sem_escala);
 const dd=getDiaristasDia();
 const td=dd.presentes;
 const totalPresentes=g.presente.length+dd.presentes;
-document.getElementById('kpi-total').innerText=quadroHoje.length;
+document.getElementById('kpi-total').innerText=totalEquipeAtual;
 document.getElementById('kpi-presentes').innerText=totalPresentes;
 document.getElementById('kpi-operacao').innerText=totalPresentes;
 document.getElementById('kpi-dsr').innerText=g.dsr.length;
@@ -875,7 +889,7 @@ const detP=document.getElementById('kpi-presentes-detalhe');
 if(detP)detP.innerText=g.presente.length+' PHD + '+dd.presentes+' diar.';
 const det=document.getElementById('kpi-operacao-detalhe');
 if(det)det.innerText='Total de presentes hoje';
-const bg={'badge-todos':quadroHoje.length,'badge-presentes':totalPresentes,'badge-operacao':totalPresentes,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
+const bg={'badge-todos':totalEquipeAtual,'badge-presentes':totalPresentes,'badge-operacao':totalPresentes,'badge-dsr':g.dsr.length,'badge-faltas':g.falta.length+dd.faltantes,'badge-atestados':g.atestado.length,'badge-diaristas':td};
 Object.keys(bg).forEach(function(id){const el=document.getElementById(id);if(el)el.innerText=bg[id];const elM=document.getElementById(id+'-m');if(elM)elM.innerText=bg[id]});
 
 // MODO BUSCA
